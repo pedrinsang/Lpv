@@ -24,7 +24,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: url('/assets/images/fundo-lab.png') no-repeat center center;
+  background: url('assets/images/fundo-lab.png') no-repeat center center;
   background-size: cover;
   background-attachment: fixed;
 }
@@ -186,7 +186,7 @@ footer {
 
   /* Usa uma imagem vertical quando disponível */
   .hero::before {
-    background: url("/assets/images/splash-portrait.png"), url("/assets/images/imagem_pc.png"), url("/assets/images/LPV2.png"), url("https://source.unsplash.com/900x1600/?laboratory");
+    background: url("assets/images/splash-portrait.png"), url("assets/images/imagem_pc.png"), url("assets/images/LPV2.png"), url("https://source.unsplash.com/900x1600/?laboratory");
     background-size: cover;
     background-position: center;
   }

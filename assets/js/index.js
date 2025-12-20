@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
-import { firebaseConfig } from "/assets/js/firebase-config.js";
+import { firebaseConfig } from "./firebase-config.js";
 
 function isConfigValid(cfg) {
 	return (
@@ -12,7 +12,7 @@ function isConfigValid(cfg) {
 }
 
 if (!isConfigValid(firebaseConfig)) {
-	window.location.href = "/pages/auth.html";
+	window.location.href = "pages/auth.html";
 	throw new Error("Invalid Firebase config");
 }
 
@@ -24,7 +24,7 @@ const signOutBtn = document.getElementById("sign-out");
 
 onAuthStateChanged(auth, (user) => {
 	if (!user) {
-		window.location.href = "/pages/auth.html";
+		window.location.href = "pages/auth.html";
 		return;
 	}
 	userNameEl.textContent = user.displayName || user.email;
@@ -32,5 +32,5 @@ onAuthStateChanged(auth, (user) => {
 
 signOutBtn?.addEventListener("click", async () => {
 	await signOut(auth);
-	window.location.href = "/pages/auth.html";
+	window.location.href = "pages/auth.html";
 });
