@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Autenticação - Patologia Veterinária" />
+  <title>Login | Patologia Veterinária</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/assets/css/auth.css" />
+</head>
+<body class="auth-body">
+  <div class="auth-container">
+    <!-- Painel Esquerdo: Branding -->
+    <aside class="branding-panel">
+      <div class="branding-content">
+        <div class="branding-logo">
+          <img src="/assets/images/lpvminilogo.png" alt="Logo LPV" class="logo-icon" />
+          <h1 class="branding-title">Laboratório de Patologia Veterinária</h1>
+        </div>
+
+        <div class="branding-hero">
+          <img
+            src="/assets/images/LPV2.png"
+            alt="Laboratório de patologia veterinária"
+            class="hero-image"
+          />
+        </div>
+
+        <div class="branding-text">
+          <h2 class="branding-slogan">Diagnósticos Precisos com Compaixão</h2>
+          <p class="branding-description">
+            Cuidando da saúde dos seus pets queridos com tecnologia moderna e expertise veterinária.
+          </p>
+        </div>
+
+        <div class="branding-features">
+          <div class="feature">
+            <span class="feature-icon">✓</span>
+            <span class="feature-text">Análises precisas</span>
+          </div>
+          <div class="feature">
+            <span class="feature-icon">✓</span>
+            <span class="feature-text">Resultados rápidos</span>
+          </div>
+          <div class="feature">
+            <span class="feature-icon">✓</span>
+            <span class="feature-text">Profissionais qualificados</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Painel Direito: Formulário -->
+    <section class="form-panel">
+      <div class="form-wrapper">
+        <!-- Indicador de Abas -->
+        <div class="form-tabs">
+          <button
+            class="tab-button tab-login active"
+            data-tab="login"
+            aria-selected="true"
+            aria-controls="login-content"
+          >
+            Entrar
+          </button>
+          <button
+            class="tab-button tab-register"
+            data-tab="register"
+            aria-selected="false"
+            aria-controls="register-content"
+          >
+            Criar Conta
+          </button>
+        </div>
+
+        <!-- Conteúdo do Formulário -->
+        <div class="form-content">
+          <!-- Login Form -->
+          <article id="login-content" class="form-section active" role="tabpanel" aria-labelledby="tab-login">
+            <h2 class="form-title">Bem-vindo de Volta</h2>
+            <p class="form-subtitle">Acesse sua conta para consultar seus resultados</p>
+
+            <form id="login-form" class="auth-form" novalidate>
+              <!-- Email Input -->
+              <div class="form-group">
+                <div class="form-input-wrapper">
+                  <input
+                    type="email"
+                    id="login-email"
+                    class="form-input"
+                    placeholder=" "
+                    required
+                    aria-label="Email"
+                  />
+                  <label for="login-email" class="form-label">Email</label>
+                  <div class="input-underline"></div>
+                </div>
+                <span class="form-error" id="login-email-error"></span>
+              </div>
+
+              <!-- Password Input -->
+              <div class="form-group">
+                <div class="form-input-wrapper">
+                  <input
+                    type="password"
+                    id="login-password"
+                    class="form-input"
+                    placeholder=" "
+                    required
+                    aria-label="Senha"
+                  />
+                  <label for="login-password" class="form-label">Senha</label>
+                  <div class="input-underline"></div>
+                </div>
+                <span class="form-error" id="login-password-error"></span>
+              </div>
+
+              <!-- Remember & Forgot -->
+              <div class="form-options">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="login-remember" class="checkbox-input" />
+                  <span class="checkbox-text">Manter conectado</span>
+                </label>
+                <a href="#" class="forgot-link">Esqueci minha senha</a>
+              </div>
+
+              <!-- Submit Button -->
+              <button type="submit" class="btn-primary">Entrar</button>
+
+              <!-- Signup Link -->
+              <div class="form-footer">
+                <p class="form-footer-text">
+                  Não tem conta?
+                  <button type="button" class="tab-switch" data-tab="register">Cadastre-se</button>
+                </p>
+              </div>
+            </form>
+
+            <!-- Alert Messages -->
+            <div id="login-alert" class="alert-message" role="alert" hidden></div>
+          </article>
+
+          <!-- Register Form -->
+          <article id="register-content" class="form-section" role="tabpanel" aria-labelledby="tab-register">
+            <h2 class="form-title">Criar Conta</h2>
+            <p class="form-subtitle">Junte-se a nós e acompanhe a saúde do seu pet</p>
+
+            <form id="register-form" class="auth-form" novalidate>
+              <!-- Name Input -->
+              <div class="form-group">
+                <div class="form-input-wrapper">
+                  <input
+                    type="text"
+                    id="register-name"
+                    class="form-input"
+                    placeholder=" "
+                    required
+                    aria-label="Nome completo"
+                  />
+                  <label for="register-name" class="form-label">Nome Completo</label>
+                  <div class="input-underline"></div>
+                </div>
+                <span class="form-error" id="register-name-error"></span>
+              </div>
+
+              <!-- Email Input -->
+              <div class="form-group">
+                <div class="form-input-wrapper">
+                  <input
+                    type="email"
+                    id="register-email"
+                    class="form-input"
+                    placeholder=" "
+                    required
+                    aria-label="Email"
+                  />
+                  <label for="register-email" class="form-label">Email</label>
+                  <div class="input-underline"></div>
+                </div>
+                <span class="form-error" id="register-email-error"></span>
+              </div>
+
+              <!-- Password Input -->
+              <div class="form-group">
+                <div class="form-input-wrapper">
+                  <input
+                    type="password"
+                    id="register-password"
+                    class="form-input"
+                    placeholder=" "
+                    required
+                    aria-label="Senha"
+                  />
+                  <label for="register-password" class="form-label">Senha</label>
+                  <div class="input-underline"></div>
+                </div>
+                <span class="form-error" id="register-password-error"></span>
+              </div>
+
+              <!-- Confirm Password Input -->
+              <div class="form-group">
+                <div class="form-input-wrapper">
+                  <input
+                    type="password"
+                    id="register-confirm-password"
+                    class="form-input"
+                    placeholder=" "
+                    required
+                    aria-label="Confirmar senha"
+                  />
+                  <label for="register-confirm-password" class="form-label">Confirmar Senha</label>
+                  <div class="input-underline"></div>
+                </div>
+                <span class="form-error" id="register-confirm-password-error"></span>
+              </div>
+
+              <!-- Terms Checkbox -->
+              <label class="checkbox-label checkbox-terms">
+                <input type="checkbox" id="register-terms" class="checkbox-input" required />
+                <span class="checkbox-text">
+                  Concordo com os
+                  <a href="termos-de-servico.html" class="terms-link">Termos de Serviço</a>
+                  e
+                  <a href="politica-privacidade.html" class="terms-link">Política de Privacidade</a>
+                </span>
+              </label>
+              <span class="form-error" id="register-terms-error"></span>
+
+              <!-- Submit Button -->
+              <button type="submit" class="btn-primary">Criar Conta</button>
+
+              <!-- Login Link -->
+              <div class="form-footer">
+                <p class="form-footer-text">
+                  Já tem conta?
+                  <button type="button" class="tab-switch" data-tab="login">Entre</button>
+                </p>
+              </div>
+            </form>
+
+            <!-- Alert Messages -->
+            <div id="register-alert" class="alert-message" role="alert" hidden></div>
+          </article>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="/assets/js/auth.js"></script>
+</body>
+</html>
