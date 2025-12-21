@@ -186,7 +186,6 @@ footer {
 
   /* Usa uma imagem vertical quando disponível */
   .hero::before {
-    background: url("../images/splash-portrait.png"), url("../images/imagem_pc.png"), url("../images/LPV2.png"), url("https://source.unsplash.com/900x1600/?laboratory");
     background-size: cover;
     background-position: center;
   }

@@ -59,6 +59,7 @@ class AuthManager {
     this.cacheElements();
     this.attachEventListeners();
     this.setupFormInteractions();
+    this.syncInitialInputStates();
     this.adjustFormHeight();
     this.logInit();
   }
@@ -140,6 +141,30 @@ class AuthManager {
         this.registerForm.dispatchEvent(new Event("submit"));
       }
     });
+
+    // Garante que labels flutuam em inputs preenchidos/autofill
+    this.scheduleInputStateSync();
+  }
+
+  /**
+   * Força a sincronização dos estados dos inputs (para autofill/inicial)
+   */
+  syncInitialInputStates() {
+    this.allInputs.forEach((input) => this.updateInputState(input));
+  }
+
+  /**
+   * Reexecuta a sincronização após pequenos delays (captura autofill)
+   */
+  scheduleInputStateSync() {
+    const refresh = () => this.syncInitialInputStates();
+    refresh();
+    requestAnimationFrame(refresh);
+    setTimeout(refresh, 120);
+    setTimeout(refresh, 400);
+    setTimeout(refresh, 1000);
+    setTimeout(refresh, 2000);
+    window.addEventListener("pageshow", refresh);
   }
 
   /**
