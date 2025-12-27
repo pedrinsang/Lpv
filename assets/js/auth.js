@@ -247,18 +247,8 @@ class AuthManager {
    */
   adjustFormHeight() {
     if (!this.formContent) return;
-    // Em telas móveis, deixe a altura automática para evitar jumps
-    if (window.innerWidth <= 768) {
-      this.formContent.style.height = "auto";
-      return;
-    }
-    const activeSection = document.querySelector(".form-section.active");
-    if (!activeSection) return;
-
-    // Mede a altura real do conteúdo ativo
-    const targetHeight = activeSection.scrollHeight;
-    // Aplica com transição suave
-    this.formContent.style.height = `${targetHeight}px`;
+    // Remove altura fixa para permitir que o conteúdo se expanda naturalmente
+    this.formContent.style.height = "auto";
   }
 
   /**

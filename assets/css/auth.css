@@ -107,6 +107,7 @@ body.auth-body {
   display: flex;
   width: 100vw;
   height: 100vh;
+  overflow: hidden;
 }
 
 /* ------- Branding Panel (Left Side) ------- */
@@ -117,8 +118,9 @@ body.auth-body {
   flex: 1;
   background: var(--gradient-primary);
   padding: var(--spacing-1xl);
-  overflow-y: auto;
+  overflow: hidden;
   position: relative;
+  height: 100vh;
 }
 
 .branding-panel::before {
@@ -280,9 +282,13 @@ body.auth-body {
   align-items: flex-start;
   justify-content: center;
   background: var(--color-light-bg);
-  padding: var(--spacing-1xl);
+  padding: var(--spacing-lg);
   overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: var(--spacing-3xl);
+  height: 100vh;
 }
+
 
 .form-wrapper {
   width: 100%;
@@ -290,14 +296,16 @@ body.auth-body {
   background: rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-2xl);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
-  padding: var(--spacing-3xl);
-  margin-top: var(--spacing-xl);
+  padding: var(--spacing-3xl) var(--spacing-3xl) var(--spacing-2xl) var(--spacing-3xl);
   animation: slideInRight 0.6s ease-out;
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   position: relative;
+  overflow: visible;
+  margin: var(--spacing-lg);
 }
+
 
 @keyframes slideInRight {
   from {
@@ -367,20 +375,22 @@ body.auth-body {
 }
 
 .form-section {
-  position: absolute;
+  position: relative;
   width: 100%;
   opacity: 0;
   transform: translateX(50px);
   pointer-events: none;
   transition: all var(--transition-slow);
+  display: none;
 }
 
 .form-section.active {
-  position: static;
+  position: relative;
   opacity: 1;
   transform: translateX(0);
   pointer-events: auto;
   animation: fadeInSlide 0.5s ease-out;
+  display: block;
 }
 
 @keyframes fadeInSlide {
@@ -896,6 +906,8 @@ body.auth-body {
     backdrop-filter: blur(18px) saturate(140%);
     -webkit-backdrop-filter: blur(18px) saturate(140%);
     box-shadow: 0 16px 32px rgba(0, 0, 0, 0.25);
+    max-height: none;
+    overflow-y: visible;
   }
 
   /* Garante alinhamento à esquerda no mobile */
@@ -920,12 +932,11 @@ body.auth-body {
 
   .form-panel {
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
     padding: var(--spacing-lg) var(--spacing-md);
     min-height: 100vh;
     height: auto;
-    padding-top: var(--spacing-xl);
-    overflow-y: auto;
+    overflow: hidden;
     background-image: linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.25)), url("../images/fundo-lab.png");
     background-size: cover;
     background-repeat: no-repeat;
@@ -954,7 +965,6 @@ body.auth-body {
     transform: none;
     pointer-events: auto;
     transition: none;
-    display: none;
   }
 
   .form-section.active {
