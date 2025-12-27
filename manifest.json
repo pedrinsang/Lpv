@@ -1,0 +1,55 @@
+{
+  "name": "Laboratório de Patologia Veterinária",
+  "short_name": "LPV",
+  "description": "Sistema de gestão e diagnóstico do Laboratório de Patologia Veterinária",
+  "start_url": "/pages/auth.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0d0d0d",
+  "theme_color": "#0d47a1",
+  "icons": [
+    {
+      "src": "assets/images/lpvminilogo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/images/LPV2.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/images/lpvminilogo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "assets/images/LPV2.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Entrar no Sistema",
+      "short_name": "Login",
+      "description": "Acesso rápido ao login do sistema",
+      "url": "/pages/auth.html",
+      "icons": [
+        {
+          "src": "assets/images/lpvminilogo.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

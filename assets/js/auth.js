@@ -594,11 +594,201 @@ class AuthManager {
 }
 
 // ================================================================
+// PWA MANAGER - INSTALL PROMPT
+// ================================================================
+
+class PWAManager {
+  constructor() {
+    this.deferredPrompt = null;
+    this.installButton = null;
+    this.init();
+  }
+
+  /**
+   * Inicializa o gerenciador de PWA
+   */
+  init() {
+    this.registerServiceWorker();
+    this.setupInstallPrompt();
+  }
+
+  /**
+   * Registra o Service Worker
+   */
+  registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js', { scope: '/' })
+        .then((registration) => {
+          console.log('%c✓ Service Worker Registrado', 'color: #4caf50; font-weight: bold; font-size: 12px;');
+          
+          // Verifica por atualizações periodicamente
+          setInterval(() => {
+            registration.update();
+          }, 60000); // A cada minuto
+        })
+        .catch((error) => {
+          console.error('[PWA] Falha ao registrar Service Worker:', error);
+        });
+
+      // Listener para atualizações disponíveis
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        console.log('[PWA] Nova versão disponível');
+      });
+    }
+  }
+
+  /**
+   * Configura o prompt de instalação
+   * Apenas mostra na página de login (auth.html)
+   */
+  setupInstallPrompt() {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Previne que o prompt apareça automaticamente
+      e.preventDefault();
+      
+      // Armazena o evento para usar depois
+      this.deferredPrompt = e;
+      
+      // Mostra o botão de instalar
+      this.showInstallButton();
+      
+      console.log('[PWA] Prompt de instalação preparado');
+    });
+
+    // Listener para quando o app é instalado
+    window.addEventListener('appinstalled', () => {
+      console.log('[PWA] App instalado com sucesso');
+      this.deferredPrompt = null;
+      this.hideInstallButton();
+      
+      // Opcional: Mostrar mensagem de sucesso
+      this.showInstallSuccess();
+    });
+  }
+
+  /**
+   * Mostra o botão de instalar no rodapé do formulário
+   */
+  showInstallButton() {
+    const loginForm = document.querySelector('#login-form');
+    
+    if (!loginForm) {
+      console.warn('[PWA] Formulário de login não encontrado');
+      return;
+    }
+
+    // Verifica se o botão já existe
+    if (document.getElementById('install-app-button')) {
+      return;
+    }
+
+    // Cria o container do botão
+    const installContainer = document.createElement('div');
+    installContainer.id = 'install-prompt-container';
+    installContainer.className = 'install-prompt-container';
+    installContainer.innerHTML = `
+      <button id="install-app-button" type="button" class="btn-install-app" title="Instalar como aplicativo">
+        <i class="fas fa-download"></i>
+        <span>Instalar App</span>
+      </button>
+      <p class="install-hint">Instale para acesso rápido e funcionamento offline</p>
+    `;
+
+    // Insere após o botão de submit do formulário
+    const submitButton = loginForm.querySelector('.btn-primary');
+    if (submitButton) {
+      submitButton.parentElement.insertBefore(installContainer, submitButton.nextSibling);
+    } else {
+      loginForm.appendChild(installContainer);
+    }
+
+    // Armazena a referência do botão
+    this.installButton = document.getElementById('install-app-button');
+
+    // Adiciona o listener de clique
+    this.installButton.addEventListener('click', () => this.handleInstallClick());
+
+    // Força recálculo da altura do form-content após adicionar o botão
+    setTimeout(() => {
+      if (this.adjustFormHeight && typeof this.adjustFormHeight === 'function') {
+        this.adjustFormHeight();
+      }
+    }, 100);
+  }
+
+  /**
+   * Esconde o botão de instalar
+   */
+  hideInstallButton() {
+    const container = document.getElementById('install-prompt-container');
+    if (container) {
+      container.style.display = 'none';
+    }
+  }
+
+  /**
+   * Manipula o clique no botão de instalar
+   */
+  handleInstallClick() {
+    if (!this.deferredPrompt) {
+      console.warn('[PWA] Prompt não está disponível');
+      return;
+    }
+
+    // Mostra o prompt de instalação
+    this.deferredPrompt.prompt();
+
+    // Aguarda a resposta do usuário
+    this.deferredPrompt.userChoice
+      .then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('[PWA] Usuário aceitou a instalação');
+        } else {
+          console.log('[PWA] Usuário recusou a instalação');
+        }
+        
+        // Limpa o prompt
+        this.deferredPrompt = null;
+      })
+      .catch((error) => {
+        console.error('[PWA] Erro durante instalação:', error);
+      });
+  }
+
+  /**
+   * Mostra uma mensagem de sucesso após instalação
+   */
+  showInstallSuccess() {
+    const loginForm = document.querySelector('#login-form');
+    if (!loginForm) return;
+
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert-message success';
+    alertDiv.textContent = '✓ App instalado com sucesso!';
+    alertDiv.setAttribute('role', 'alert');
+
+    const container = loginForm.parentElement;
+    container.insertBefore(alertDiv, loginForm);
+
+    // Remove a mensagem após 5 segundos
+    setTimeout(() => {
+      alertDiv.remove();
+    }, 5000);
+  }
+}
+
+// ================================================================
 // INICIALIZAÇÃO
 // ================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
   new AuthManager();
+  
+  // Inicializa PWA apenas em páginas de autenticação
+  const isAuthPage = window.location.pathname.includes('auth.html');
+  if (isAuthPage) {
+    new PWAManager();
+  }
 });
 
 // Exportar para uso em módulos (se necessário)
