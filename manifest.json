@@ -2,8 +2,8 @@
   "name": "Laboratório de Patologia Veterinária",
   "short_name": "LPV",
   "description": "Sistema de gestão e diagnóstico do Laboratório de Patologia Veterinária",
-  "start_url": "/pages/auth.html",
-  "scope": "/",
+  "start_url": "./pages/auth.html",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0d0d0d",
@@ -20,12 +20,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "assets/images/lpvminilogo.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
     }
   ],
   "screenshots": [

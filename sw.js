@@ -7,21 +7,21 @@
 const CACHE_NAME = 'lpv-cache-v1';
 const CRITICAL_ASSETS = [
   // Páginas
-  '/pages/auth.html',
+  './pages/auth.html',
   
   // Estilos
-  '/assets/css/auth.css',
-  '/assets/css/landing.css',
+  './assets/css/auth.css',
+  './assets/css/landing.css',
   
   // Scripts
-  '/assets/js/auth.js',
-  '/assets/js/firebase-config.js',
+  './assets/js/auth.js',
+  './assets/js/firebase-config.js',
   
   // Imagens
-  '/assets/images/LPV2.png',
-  '/assets/images/lpvminilogo.png',
-  '/icons/casa.svg',
-  '/assets/images/fundo-lab.png',
+  './assets/images/LPV2.png',
+  './assets/images/lpvminilogo.png',
+  './icons/casa.svg',
+  './assets/images/fundo-lab.png',
   
   // Fontes - FontAwesome
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
