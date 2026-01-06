@@ -4,7 +4,7 @@
  * Arquivos críticos de autenticação são cacheados automaticamente
  */
 
-const CACHE_NAME = 'lpv-cache-v1';
+const CACHE_NAME = 'lpv-cache-v2';
 const CRITICAL_ASSETS = [
   // Páginas
   './pages/auth.html',
@@ -124,7 +124,7 @@ self.addEventListener('fetch', (event) => {
             
             // Retorna uma página offline genérica se disponível
             if (request.destination === 'document') {
-              return caches.match('/pages/auth.html');
+              return caches.match('./pages/auth.html');
             }
             
             // Para outros tipos de requisição, retorna um erro
