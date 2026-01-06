@@ -4,7 +4,7 @@
  * Arquivos críticos de autenticação são cacheados automaticamente
  */
 
-const CACHE_NAME = 'lpv-cache-v2';
+const CACHE_NAME = 'lpv-cache-v3';
 const CRITICAL_ASSETS = [
   // Páginas
   './pages/auth.html',
@@ -19,7 +19,7 @@ const CRITICAL_ASSETS = [
   
   // Imagens
   './assets/images/LPV2.png',
-  './assets/images/lpvminilogo.png',
+  './assets/images/lpvminilogo2.png',
   './icons/casa.svg',
   './assets/images/fundo-lab.png',
   
