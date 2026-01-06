@@ -4,6 +4,19 @@
  * Responsável por: Troca de abas, validação de formulários, efeitos visuais
  */
 
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { 
+  getAuth, 
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { firebaseConfig } from "./firebase-config.js";
+
+// Inicializa Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
 // ================================================================
 // CONFIGURAÇÃO E CONSTANTES
 // ================================================================
@@ -423,11 +436,11 @@ class AuthManager {
     }
 
     // Obter dados
-    const email = document.getElementById("login-email").value;
+    const email = document.getElementById("login-email").value.trim();
     const password = document.getElementById("login-password").value;
     const remember = document.getElementById("login-remember").checked;
 
-    // Simular requisição ao Firebase (será implementado depois)
+    // Tentar login
     this.handleLoginAttempt(email, password, remember);
   }
 
@@ -459,30 +472,41 @@ class AuthManager {
    * @param {string} password
    * @param {boolean} remember
    */
-  handleLoginAttempt(email, password, remember) {
+  async handleLoginAttempt(email, password, remember) {
     // Desabilitar botão
     const submitButton = this.loginForm.querySelector(".btn-primary");
     const originalText = submitButton.textContent;
     submitButton.disabled = true;
     submitButton.textContent = "Entrando...";
 
-    // Simular delay de rede (será substituído por Firebase)
-    setTimeout(() => {
-      // Aqui será integrado com Firebase
-      console.log("Login attempt:", { email, password, remember });
-
-      // Simulação de sucesso
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // Login bem-sucedido
+      console.log("Login successful:", userCredential.user.email);
+      
       this.showAlert("login-alert", "Login bem-sucedido! Redirecionando...", "success");
 
+      // Redirecionar para o Hub
+      setTimeout(() => {
+        window.location.href = "hub.html";
+      }, 1000);
+
+    } catch (error) {
+      console.error("Login error:", error.code, error.message);
+      
+      let errorMessage = "Falha ao entrar. Verifique suas credenciais.";
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        errorMessage = "Email ou senha incorretos.";
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = "Muitas tentativas. Tente novamente mais tarde.";
+      }
+
+      this.showAlert("login-alert", errorMessage, "error");
+      
       // Restaurar botão
       submitButton.disabled = false;
       submitButton.textContent = originalText;
-
-      // Redirecionar após sucesso (será removido quando integrar Firebase)
-      setTimeout(() => {
-        // window.location.href = '/';
-      }, 1500);
-    }, 800);
+    }
   }
 
   /**
@@ -491,37 +515,49 @@ class AuthManager {
    * @param {string} email
    * @param {string} password
    */
-  handleRegisterAttempt(name, email, password) {
+  async handleRegisterAttempt(name, email, password) {
     // Desabilitar botão
     const submitButton = this.registerForm.querySelector(".btn-primary");
     const originalText = submitButton.textContent;
     submitButton.disabled = true;
     submitButton.textContent = "Criando conta...";
 
-    // Simular delay de rede (será substituído por Firebase)
-    setTimeout(() => {
-      // Aqui será integrado com Firebase
-      console.log("Register attempt:", { name, email, password });
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      console.log("Register successful:", userCredential.user.email);
+      
+      // Atualizar o perfil do usuário com o nome
+      if (name) {
+        await updateProfile(userCredential.user, { displayName: name });
+      }
 
-      // Simulação de sucesso
       this.showAlert(
         "register-alert",
-        "Conta criada com sucesso! Faça login para continuar.",
+        "Conta criada com sucesso! Redirecionando...",
         "success"
       );
 
+      // Redireciona diretamente ou pede login
+      setTimeout(() => {
+         window.location.href = "hub.html";
+      }, 1500);
+
+    } catch (error) {
+      console.error("Register error:", error.code, error.message);
+      
+      let errorMessage = "Erro ao criar conta.";
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "Este email já está cadastrado.";
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "A senha é muito fraca.";
+      }
+
+      this.showAlert("register-alert", errorMessage, "error");
+      
       // Restaurar botão
       submitButton.disabled = false;
       submitButton.textContent = originalText;
-
-      // Resetar formulário
-      this.registerForm.reset();
-
-      // Trocar para login após sucesso
-      setTimeout(() => {
-        this.switchTab(CONFIG.FORM_SECTIONS.LOGIN);
-      }, 1500);
-    }, 800);
+    }
   }
 
   /**

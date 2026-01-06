@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Área Técnica | LPV</title>
+    
+    <!-- Meta tags de controle de cache para garantir segurança -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/hub.css">
+</head>
+<body>
+
+    <!-- Header / Navbar -->
+    <header class="app-header">
+        <div class="header-brand">
+            <img src="../assets/images/lpvminilogo.png" alt="LPV Logo" class="header-logo">
+            <span class="header-title">Área Técnica</span>
+        </div>
+        
+        <div class="header-user-area">
+            <button id="theme-toggle" class="btn-theme-toggle" title="Alternar Modo Escuro/Claro">
+                <i class="fas fa-moon"></i>
+            </button>
+
+            <div class="user-profile">
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <span id="user-name" class="user-name">Carregando...</span>
+            </div>
+            
+            <button id="logout-btn" class="btn-logout" title="Sair do sistema">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="main-container">
+        
+        <!-- Welcome Section -->
+        <section class="welcome-section">
+            <h1 class="welcome-title">Bem-vindo</h1>
+            <p class="welcome-subtitle">Selecione uma ferramenta para começar.</p>
+        </section>
+
+        <!-- Tools Grid -->
+        <div class="tools-grid">
+            
+            <!-- Protocolos -->
+            <a href="protocolos.html" class="tool-card">
+                <div class="card-icon protocols">
+                    <i class="fas fa-book-medical"></i>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">Protocolos</h3>
+                    <p class="card-description">Consulte POPs e métodos laboratoriais padronizados.</p>
+                </div>
+            </a>
+
+            <!-- Coloração -->
+            <a href="coloracao.html" class="tool-card">
+                <div class="card-icon coloracao">
+                    <i class="fas fa-flask"></i>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">Coloração</h3>
+                    <p class="card-description">Calculadoras de diluição e guias de tintura.</p>
+                </div>
+            </a>
+
+            <!-- Mural de Tarefas -->
+            <a href="tarefas.html" class="tool-card">
+                <div class="card-icon mural">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">Mural de Tarefas</h3>
+                    <p class="card-description">Acompanhe e gerencie as atividades diárias da equipe.</p>
+                </div>
+            </a>
+
+            <!-- Lançar Diagnóstico -->
+            <a href="diagnostico.html" class="tool-card">
+                <div class="card-icon diagnostico">
+                    <i class="fas fa-microscope"></i>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">Lançar Diagnóstico</h3>
+                    <p class="card-description">Cadastrar novos laudos e resultados de exames.</p>
+                </div>
+            </a>
+
+            <!-- Administração -->
+            <a href="admin.html" class="tool-card">
+                <div class="card-icon admin">
+                    <i class="fas fa-cog"></i>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">Administração</h3>
+                    <p class="card-description">Gerenciar usuários, permissões e acessos do sistema.</p>
+                </div>
+            </a>
+
+        </div>
+    </main>
+
+    <!-- Logic Script -->
+    <script type="module" src="../assets/js/hub.js"></script>
+
+</body>
+</html>

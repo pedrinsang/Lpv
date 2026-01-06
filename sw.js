@@ -20,7 +20,7 @@ const CRITICAL_ASSETS = [
   // Imagens
   '/assets/images/LPV2.png',
   '/assets/images/lpvminilogo.png',
-  '/assets/images/casa.svg',
+  '/icons/casa.svg',
   '/assets/images/fundo-lab.png',
   
   // Fontes - FontAwesome
