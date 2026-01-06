@@ -643,7 +643,9 @@ class PWAManager {
    */
   registerServiceWorker() {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('../sw.js', { scope: '/' })
+      // Removemos o escopo explícito '/' para permitir que o navegador defina o escopo padrão
+      // baseado na localização do arquivo sw.js (que está na raiz do projeto/repositório)
+      navigator.serviceWorker.register('../sw.js')
         .then((registration) => {
           console.log('%c✓ Service Worker Registrado', 'color: #4caf50; font-weight: bold; font-size: 12px;');
           
