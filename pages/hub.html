@@ -2,117 +2,145 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Área Técnica | LPV</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dashboard | LPV</title>
     
-    <!-- Meta tags de controle de cache para garantir segurança -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
 
-    <!-- CSS -->
+    <link rel="stylesheet" href="../assets/css/global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/hub.css">
+    <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
+
+    <style>
+        /* CORREÇÃO MOBILE ESPECÍFICA */
+        @media (max-width: 480px) {
+            /* Remove margens laterais que causam corte */
+            .main-container {
+                padding: 1rem !important;
+                width: 100% !important;
+                max-width: 100vw !important;
+                overflow-x: hidden; /* Previne scroll lateral */
+            }
+
+            /* Força o grid a caber na tela */
+            .hub-grid {
+                display: grid !important;
+                /* Duas colunas flexíveis, sem largura mínima fixa que quebre */
+                grid-template-columns: 1fr 1fr !important; 
+                gap: 0.8rem !important;
+            }
+
+            /* Ajuste o card para ser menor */
+            .tool-card {
+                padding: 1rem !important;
+                min-height: 120px;
+            }
+
+            .tool-icon {
+                font-size: 1.5rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+
+            .card-title {
+                font-size: 0.9rem !important;
+            }
+            
+            .card-description {
+                font-size: 0.75rem !important;
+                line-height: 1.2;
+            }
+
+            /* Header mais compacto */
+            .app-header {
+                padding: 0 10px !important;
+            }
+            .header-brand span { display: none; } /* Esconde texto da logo */
+            #user-name { display: none; } /* Esconde nome do usuário */
+        }
+    </style>
 </head>
 <body>
-
-    <!-- Header / Navbar -->
+    
     <header class="app-header">
         <div class="header-brand">
-            <img src="../assets/images/lpvminilogo.png" alt="LPV Logo" class="header-logo">
-            <span class="header-title">Área Técnica</span>
+            <img src="../assets/images/lpvminilogo2.png" alt="Logo" class="header-logo" style="filter: brightness(0) invert(1);">
+            <span>Área Técnica</span>
         </div>
         
-        <div class="header-user-area">
-            <button id="theme-toggle" class="btn-theme-toggle" title="Alternar Modo Escuro/Claro">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <button id="theme-toggle" class="btn-icon">
                 <i class="fas fa-moon"></i>
             </button>
-
-            <div class="user-profile">
-                <div class="user-avatar">
-                    <i class="fas fa-user"></i>
-                </div>
-                <span id="user-name" class="user-name">Carregando...</span>
-            </div>
             
-            <button id="logout-btn" class="btn-logout" title="Sair do sistema">
-                <i class="fas fa-sign-out-alt"></i>
-            </button>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span id="user-name" style="font-size: 0.9rem;">Carregando...</span>
+                <button id="logout-btn" class="btn-icon" style="color: #ffcccc;">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
         </div>
     </header>
 
-    <!-- Conteúdo Principal -->
-    <main class="main-container">
+    <main class="main-container" style="padding: 2rem; max-width: 1200px; margin: 0 auto;">
         
-        <!-- Welcome Section -->
-        <section class="welcome-section">
-            <h1 class="welcome-title">Bem-vindo</h1>
-            <p class="welcome-subtitle">Selecione uma ferramenta para começar.</p>
+        <section style="margin-bottom: 1.5rem;">
+            <h1 class="welcome-title" style="font-size: 1.5rem; color: var(--color-primary);">Olá, Doutor(a)</h1>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">Ferramentas disponíveis:</p>
         </section>
 
-        <!-- Tools Grid -->
-        <div class="tools-grid">
+        <div class="hub-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem;">
             
-            <!-- Protocolos -->
-            <a href="protocolos.html" class="tool-card">
-                <div class="card-icon protocols">
+            <a href="protocolos.html" class="tool-card card">
+                <div class="tool-icon" style="color: var(--color-primary); font-size: 2rem; margin-bottom: 0.8rem;">
                     <i class="fas fa-book-medical"></i>
                 </div>
-                <div class="card-content">
-                    <h3 class="card-title">Protocolos</h3>
-                    <p class="card-description">Consulte POPs e métodos laboratoriais padronizados.</p>
-                </div>
+                <h3 class="card-title" style="margin-bottom: 0.3rem;">Protocolos</h3>
+                <p class="card-description" style="color: var(--text-secondary);">Guias e métodos.</p>
             </a>
 
-            <!-- Coloração -->
-            <a href="coloracao.html" class="tool-card">
-                <div class="card-icon coloracao">
-                    <i class="fas fa-flask"></i>
+            <a href="coloracao.html" class="tool-card card">
+                <div class="tool-icon" style="color: #9c27b0; font-size: 2rem; margin-bottom: 0.8rem;">
+                    <i class="fas fa-vial"></i>
                 </div>
-                <div class="card-content">
-                    <h3 class="card-title">Coloração</h3>
-                    <p class="card-description">Calculadoras de diluição e guias de tintura.</p>
-                </div>
+                <h3 class="card-title" style="margin-bottom: 0.3rem;">Coloração</h3>
+                <p class="card-description" style="color: var(--text-secondary);">Assistente de tempo.</p>
             </a>
 
-            <!-- Mural de Tarefas -->
-            <a href="tarefas.html" class="tool-card">
-                <div class="card-icon mural">
+            <a href="tarefas.html" class="tool-card card">
+                <div class="tool-icon" style="color: #ed6c02; font-size: 2rem; margin-bottom: 0.8rem;">
                     <i class="fas fa-clipboard-list"></i>
                 </div>
-                <div class="card-content">
-                    <h3 class="card-title">Mural de Tarefas</h3>
-                    <p class="card-description">Acompanhe e gerencie as atividades diárias da equipe.</p>
-                </div>
+                <h3 class="card-title" style="margin-bottom: 0.3rem;">Mural</h3>
+                <p class="card-description" style="color: var(--text-secondary);">Lista de tarefas.</p>
             </a>
 
-            <!-- Lançar Diagnóstico -->
-            <a href="diagnostico.html" class="tool-card">
-                <div class="card-icon diagnostico">
+            <a href="diagnostico.html" class="tool-card card">
+                <div class="tool-icon" style="color: #2e7d32; font-size: 2rem; margin-bottom: 0.8rem;">
                     <i class="fas fa-microscope"></i>
                 </div>
-                <div class="card-content">
-                    <h3 class="card-title">Lançar Diagnóstico</h3>
-                    <p class="card-description">Cadastrar novos laudos e resultados de exames.</p>
-                </div>
+                <h3 class="card-title" style="margin-bottom: 0.3rem;">Diagnóstico</h3>
+                <p class="card-description" style="color: var(--text-secondary);">Novo laudo.</p>
             </a>
 
-            <!-- Administração -->
-            <a href="admin.html" class="tool-card">
-                <div class="card-icon admin">
-                    <i class="fas fa-cog"></i>
+            <a href="admin.html" id="admin-card" class="tool-card card hidden" style="border: 1px solid #6a11cb;">
+    
+                <div class="tool-icon" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white; border: none; box-shadow: 0 4px 10px rgba(106, 17, 203, 0.3);">
+                    <i class="fas fa-user-shield"></i>
                 </div>
-                <div class="card-content">
-                    <h3 class="card-title">Administração</h3>
-                    <p class="card-description">Gerenciar usuários, permissões e acessos do sistema.</p>
-                </div>
+                
+                <h3 style="margin-bottom: 0.5rem; color: #4a148c; font-weight: 700;">Administração</h3>
+                <p style="font-size: 0.9rem; color: var(--text-secondary);">Painel de gestão e segurança.</p>
             </a>
 
         </div>
     </main>
 
-    <!-- Logic Script -->
-    <script type="module" src="../assets/js/hub.js"></script>
-
+    <script type="module" src="../assets/js/core.js"></script>
+    <script type="module" src="../assets/js/pages/hub.js"></script>
 </body>
 </html>

@@ -1,0 +1,191 @@
+/* ================================================================
+   LPV - GLOBAL STYLESHEET (CORE)
+   Design System Unificado: Landing, Auth, Hub, Mural
+   ================================================================ */
+
+/* 1. DESIGN TOKENS (VARIÁVEIS) */
+:root {
+  /* Paleta de Cores (Brand) */
+  --color-primary: #0d47a1;
+  --color-primary-dark: #002171;
+  --color-primary-light: #5472d3;
+  --color-accent: #00d2ff;
+  --color-success: #00b894;
+  --color-error: #d32f2f;
+  --color-warning: #f57c00;
+
+  /* Cores de Fundo e Texto */
+  --bg-color: #f5f7fa;
+  --bg-card: #ffffff;
+  --bg-glass: rgba(255, 255, 255, 0.8);
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --border-color: #e0e0e0;
+
+  /* Gradientes */
+  --gradient-primary: linear-gradient(135deg, #0d47a1 0%, #1565c0 100%);
+  
+  /* Layout */
+  --header-height: 64px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  
+  /* Sombras */
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
+
+  /* Fontes */
+  --font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+}
+
+/* 2. DARK MODE OVERRIDES */
+[data-theme="dark"] {
+  --color-primary: #42a5f5;
+  --color-primary-dark: #0d47a1;
+  --bg-color: #0b0b0c;
+  --bg-card: #1e1e1e;
+  --text-primary: #e6eef8;
+  --text-secondary: #b0b0b0;
+  --border-color: #333333;
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* 3. RESET & BASE */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+a { text-decoration: none; color: inherit; transition: color 0.2s; }
+ul { list-style: none; }
+.hidden { display: none !important; }
+
+/* 4. COMPONENTES GLOBAIS */
+
+/* Botões */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 12px 24px; border-radius: 8px;
+  font-weight: 500; cursor: pointer; border: none; transition: 0.2s;
+  font-size: 1rem;
+}
+.btn-primary { background: var(--color-primary); color: white; box-shadow: var(--shadow-sm); }
+.btn-primary:hover { transform: translateY(-1px); filter: brightness(1.1); box-shadow: var(--shadow-md); }
+.btn-secondary { background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); }
+.btn-secondary:hover { background: rgba(128,128,128,0.1); }
+.btn-icon { background: none; border: none; font-size: 1.2rem; padding: 8px; cursor: pointer; border-radius: 50%; color: inherit; }
+.btn-icon:hover { background: rgba(255,255,255,0.1); }
+
+/* Inputs e Forms */
+.form-group { margin-bottom: 1rem; display: flex; flex-direction: column; }
+.form-input {
+  width: 100%; padding: 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color); background: var(--bg-card);
+  color: var(--text-primary); font-size: 1rem; outline: none;
+}
+.form-input:focus { border-color: var(--color-primary); }
+
+/* Cards */
+.card { background: var(--bg-card); border-radius: var(--radius-md); padding: 1.5rem; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); }
+.glass-card {
+  background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2); border-radius: var(--radius-lg);
+}
+
+/* Alerts */
+.alert-message { padding: 12px; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; text-align: center; }
+.alert-message.error { background: #ffebee; color: #c62828; }
+.alert-message.success { background: #e8f5e9; color: #2e7d32; }
+
+/* 5. HEADER GLOBAL */
+.app-header {
+  height: var(--header-height); background: var(--color-primary); color: white;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1.5rem; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow-md);
+}
+.header-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; }
+.header-logo { height: 32px; width: auto; }
+
+/* 6. PÁGINA: LANDING */
+.landing-body { background: url('../images/fundo-lab.png') center/cover fixed; }
+.landing-hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; position: relative; }
+.landing-hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0,20,40,0.8), rgba(0,30,60,0.9)); z-index: 0; }
+.landing-content { position: relative; z-index: 1; max-width: 800px; width: 100%; display: flex; flex-direction: column; gap: 2rem; padding: 2rem; border-radius: var(--radius-xl); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); backdrop-filter: blur(10px); color: white; text-align: center; }
+.landing-cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+.landing-card-item { background: rgba(255,255,255,0.95); padding: 1.5rem; border-radius: var(--radius-md); color: #333; display: flex; align-items: center; gap: 1rem; transition: transform 0.2s; }
+.landing-card-item:hover { transform: translateY(-5px); }
+
+/* 7. PÁGINA: AUTH (NOVO DESIGN SPLIT) */
+.auth-split-layout { display: flex; min-height: 100vh; background: var(--bg-color); }
+.auth-brand-side {
+    flex: 1; background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: white; padding: 3rem; position: relative; overflow: hidden;
+}
+.auth-brand-side::before {
+    content: ""; position: absolute; inset: 0; background: url('../images/fundo-lab.png') center/cover;
+    opacity: 0.15; mix-blend-mode: overlay;
+}
+.brand-content { position: relative; z-index: 2; text-align: center; }
+.auth-form-side { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2rem; background: var(--bg-card); position: relative; }
+.form-wrapper { width: 100%; max-width: 420px; }
+
+/* Abas Auth */
+.auth-tabs { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 2rem; }
+.tab-btn { flex: 1; padding: 1rem; background: none; border: none; font-size: 1rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; position: relative; }
+.tab-btn.active { color: var(--color-primary); }
+.tab-btn.active::after { content: ""; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background: var(--color-primary); }
+
+/* Inputs Modernos Auth */
+.input-group { position: relative; margin-bottom: 1.5rem; }
+.input-field { width: 100%; padding: 14px 14px 14px 45px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; background: var(--bg-color); color: var(--text-primary); transition: 0.2s; }
+.input-field:focus { border-color: var(--color-primary); box-shadow: 0 0 0 4px rgba(13, 71, 161, 0.1); outline: none; }
+.input-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-size: 1.1rem; }
+
+/* Mobile Auth */
+.mobile-header { display: none; }
+@media (max-width: 900px) {
+    .auth-split-layout { flex-direction: column; }
+    .auth-brand-side { display: none; }
+    .auth-form-side { justify-content: flex-start; padding-top: 3rem; }
+    .mobile-header { display: block !important; text-align: center; margin-bottom: 2rem; }
+    .desktop-only { display: none; }
+}
+
+/* 8. PÁGINA: HUB */
+.hub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; padding: 2rem; max-width: 1200px; margin: 0 auto; }
+.tool-card { display: flex; flex-direction: column; padding: 1.5rem; background: var(--bg-card); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); transition: transform 0.2s; height: 100%; border: 1px solid var(--border-color); }
+.tool-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); border-color: var(--color-primary); }
+.tool-icon { font-size: 2rem; color: var(--color-primary); margin-bottom: 1rem; background: rgba(13,71,161,0.05); width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); }
+
+/* 9. PÁGINA: MURAL */
+.mural-body { background: url('../images/LPV.png') center/cover fixed; }
+.mural-overlay { position: fixed; inset: 0; background: linear-gradient(135deg, rgba(3,153,72,0.85), rgba(13,71,161,0.85)); z-index: -1; }
+.mural-container { max-width: 800px; margin: 0 auto; padding: 2rem; position: relative; z-index: 1; }
+.result-card { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: var(--radius-md); padding: 1.5rem; margin-bottom: 1rem; color: white; }
+
+/* 10. MODAL PWA & INSTALL (Plano B) */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+.modal-overlay.open { opacity: 1; visibility: visible; }
+.modal-card { background: var(--bg-card); width: 90%; max-width: 400px; padding: 2rem; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); text-align: center; transform: translateY(20px); transition: transform 0.3s ease; border: 1px solid var(--border-color); position: relative; }
+.modal-overlay.open .modal-card { transform: translateY(0); }
+.ios-tutorial-steps { text-align: left; margin: 1.5rem 0; display: flex; flex-direction: column; gap: 15px; }
+.ios-step { display: flex; align-items: center; gap: 15px; font-size: 0.95rem; color: var(--text-primary); padding: 10px; background: rgba(125,125,125,0.1); border-radius: 12px; }
+.btn-close-modal { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.2rem; color: var(--text-secondary); cursor: pointer; }
+
+/* Botão PWA */
+.pwa-install-container { display: block !important; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); text-align: center; }
+.btn-pwa { background: transparent; border: 1px dashed var(--text-secondary); color: var(--text-secondary); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; display: inline-flex; gap: 8px; transition: 0.2s; }
+.btn-pwa:hover { border-color: var(--color-primary); color: var(--color-primary); background: rgba(13,71,161,0.05); }
+
+/* 11. ANIMAÇÕES */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.5s ease-out forwards; }

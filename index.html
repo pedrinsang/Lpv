@@ -1,51 +1,66 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>LPV | Laboratório de Patologia Veterinária</title>
-		<link rel="manifest" href="manifest.json" />
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-		<link rel="stylesheet" href="assets/css/landing.css" />
-	</head>
-	<body>
-		<section class="hero">
-			<div class="content">
-				<header>
-					<img src="assets/images/LPV2.png" alt="Logotipo do Laboratório de Patologia Veterinária" class="logo" />
-					<div class="title">Bem-vindo ao LPV</div>
-					<p class="subtitle">Laboratório de Patologia Veterinária</p>
-					<p class="subtitle">Selecione o tipo de acesso desejado.</p>
-				</header>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistema LPV - Laboratório de Patologia Veterinária">
+    <meta name="theme-color" content="#0d47a1">
+    <title>LPV - Patologia Veterinária</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
 
-				<div class="cards" aria-label="Opções de acesso">
-					<a class="card-link" href="pages/auth.html">
-						<div class="card access" role="button" aria-label="Acesso Administrativo ou Equipe">
-							<div class="icon" aria-hidden="true"><i class="fas fa-user-shield"></i></div>
-							<div class="card-content">
-								<div class="card-title">Acesso Administrativo/Equipe</div>
-								<div class="card-desc">Entrar na área restrita para gestão, operação e acompanhamento interno.</div>
-							</div>
-						</div>
-					</a>
+    <link rel="stylesheet" href="assets/css/global.css">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="assets/images/lpvminilogo2.png">
 
-					<a class="card-link" href="pages/mural.html">
-						<div class="card public" role="button" aria-label="Consulta de Resultados">
-							<div class="icon alt" aria-hidden="true"><i class="fas fa-file-medical-alt"></i></div>
-							<div class="card-content">
-								<div class="card-title">Consulta de Resultados</div>
-								<div class="card-desc">Acesse diagnósticos e laudos disponibilizados publicamente pelo laboratório.</div>
-							</div>
-						</div>
-					</a>
-				</div>
-			</div>
-		</section>
+    <link rel="manifest" href="manifest.json">
+</head>
+<body class="landing-body">
 
-		<footer>
-			© LPV - Laboratório de Patologia Veterinária
-		</footer>
-	</body>
+    <div class="landing-hero">
+        <div class="landing-content fade-in">
+            <header>
+                <img src="assets/images/LPV2.png" alt="Logo LPV" class="header-logo" style="height: 120px; width: auto;">
+                <h1 style="font-size: 2rem; font-weight: 700;">Bem-vindo ao LPV</h1>
+                <p style="opacity: 0.9;">Excelência em Diagnóstico Veterinário</p>
+            </header>
+
+            <div class="landing-cards-grid">
+                <a href="pages/auth.html" class="landing-card-item">
+                    <div class="tool-icon" style="background: var(--color-primary); color: white;">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <div style="text-align: left;">
+                        <h3 style="font-weight: 600; margin-bottom: 4px;">Área Restrita</h3>
+                        <p style="font-size: 0.9rem; color: #666;">Acesso para equipe técnica</p>
+                    </div>
+                    <i class="fas fa-arrow-right" style="margin-left: auto; color: #ccc;"></i>
+                </a>
+
+                <a href="pages/mural.html" class="landing-card-item">
+                    <div class="tool-icon" style="background: var(--color-success); color: white;">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <div style="text-align: left;">
+                        <h3 style="font-weight: 600; margin-bottom: 4px;">Resultados</h3>
+                        <p style="font-size: 0.9rem; color: #666;">Consulta pública de laudos</p>
+                    </div>
+                    <i class="fas fa-arrow-right" style="margin-left: auto; color: #ccc;"></i>
+                </a>
+            </div>
+
+            <footer style="margin-top: 2rem; font-size: 0.8rem; opacity: 0.7;">
+                &copy; 2026 Laboratório de Patologia Veterinária
+            </footer>
+        </div>
+    </div>
+
+    <script type="module" src="assets/js/core.js"></script>
+</body>
 </html>

@@ -1,0 +1,325 @@
+/* =========================================
+   LPV - ASSISTENTE DE COLORAÇÃO (Estilos Específicos)
+   ========================================= */
+
+/* --- Lista de Protocolos --- */
+.protocol-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.protocol-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    box-shadow: var(--shadow-sm);
+    position: relative; /* Para posicionamento seguro */
+}
+
+.protocol-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-md);
+}
+
+.protocol-card.disabled-look {
+    opacity: 0.6;
+    filter: grayscale(1);
+    cursor: not-allowed;
+}
+
+.card-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 1.1rem;
+    flex-shrink: 0; /* Impede o ícone de esmagar */
+}
+
+/* CORREÇÃO DA SETA: Empurrar para a ponta */
+.card-info {
+    flex: 1; /* Ocupa todo o espaço disponível no meio */
+    padding: 0 1rem; /* Dá espaço entre o ícone e a seta */
+    overflow: hidden; /* Previne que texto gigante quebre o layout */
+}
+
+.card-info h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-info p {
+    margin: 4px 0 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.card-arrow {
+    margin-left: auto; /* Força a ida para a direita */
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+/* --- Modo Execução (Overlay) --- */
+.overlay-mode {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-color);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto; /* Permite scroll se a tela for pequena */
+}
+
+.execution-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+    min-height: 100vh; /* Garante altura total */
+}
+
+.execution-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-top: 1rem;
+}
+
+/* CORREÇÃO DO BOTÃO SAIR: Adicionar textura/forma */
+.btn-text {
+    background: var(--bg-card); /* Fundo sólido para destacar */
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 30px; /* Formato pílula */
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-text:hover {
+    background: #ffebee; /* Vermelho bem claro */
+    color: #d32f2f;
+    border-color: #ef9a9a;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.protocol-tag {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    background: rgba(13, 71, 161, 0.08);
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+
+/* --- Timer Card --- */
+.timer-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: var(--bg-card);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
+    margin-bottom: 2rem;
+}
+
+/* Timer SVG Circular */
+.timer-wrapper {
+    position: relative;
+    width: 280px;
+    height: 280px;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.progress-ring__circle-bg {
+    stroke: var(--border-color);
+    stroke-width: 12;
+}
+
+.progress-ring__circle {
+    stroke: var(--color-primary);
+    stroke-width: 12;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+}
+
+.timer-digital {
+    position: absolute;
+    font-size: 3.5rem;
+    font-weight: bold;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.step-title {
+    font-size: 1.5rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: var(--color-primary);
+    line-height: 1.3;
+}
+
+/* Controles */
+.controls {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.btn-round {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: none;
+    background: var(--color-primary);
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s, background 0.2s;
+}
+
+.btn-round:hover {
+    background: var(--color-primary-dark);
+    transform: scale(1.05);
+}
+
+.btn-round:active {
+    transform: scale(0.95);
+}
+
+.btn-pill {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 10px 20px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-pill:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: rgba(13, 71, 161, 0.05);
+}
+
+/* Ícones e Textos de Estado */
+.manual-icon {
+    font-size: 4rem;
+    color: var(--color-primary);
+    margin-bottom: 1.5rem;
+}
+
+.instruction-text {
+    font-size: 1.2rem;
+    text-align: center;
+    margin-bottom: 2rem;
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+.success-icon {
+    font-size: 5rem;
+    color: var(--color-success);
+    margin-bottom: 1.5rem;
+}
+
+/* Animações */
+.pulse-effect {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(13, 71, 161, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(13, 71, 161, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(13, 71, 161, 0); }
+}
+
+/* Utilitários */
+.hidden { display: none !important; }
+
+/* Ajustes Mobile */
+@media (max-width: 480px) {
+    .execution-content {
+        padding: 10px;
+    }
+    
+    .timer-card {
+        padding: 1.5rem;
+    }
+
+    .timer-wrapper {
+        width: 220px;
+        height: 220px;
+    }
+    
+    .progress-ring {
+        width: 220px;
+        height: 220px;
+    }
+    
+    .progress-ring__circle-bg, .progress-ring__circle {
+        r: 90;
+        cx: 110;
+        cy: 110;
+    }
+    
+    .timer-digital {
+        font-size: 2.5rem;
+    }
+
+    .controls {
+        gap: 1.5rem;
+    }
+
+    .btn-round {
+        width: 60px;
+        height: 60px;
+        font-size: 1.2rem;
+    }
+}

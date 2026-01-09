@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assistente de Coloração | LPV</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="../assets/css/pages/coloracao.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
+</head>
+<body>
+
+    <div id="menu-state" class="state-container fade-in">
+        <header class="app-header">
+            <div class="header-brand">
+                <a href="hub.html" class="btn-icon" style="color: white; margin-right: 10px;">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <span>Protocolos</span>
+            </div>
+            
+            <button id="theme-toggle" class="btn-icon">
+                <i class="fas fa-moon"></i>
+            </button>
+        </header>
+
+        <main class="main-container" style="max-width: 800px; margin: 0 auto; padding: 2rem;">
+            <div class="protocol-list">
+                
+                <div class="protocol-card" data-protocol="he">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);">
+                        <span class="initials">HE</span>
+                    </div>
+                    <div class="card-info">
+                        <h3>Hematoxilina e Eosina</h3>
+                        <p>Rotina Histopatológica</p>
+                    </div>
+                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
+                </div>
+
+                <div class="protocol-card" data-protocol="toluidina">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);">
+                        <span class="initials">AT</span>
+                    </div>
+                    <div class="card-info">
+                        <h3>Azul de Toluidina</h3>
+                        <p>Mastócitos</p>
+                    </div>
+                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
+                </div>
+
+                <div class="protocol-card" data-protocol="grocott">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #434343 0%, #000000 100%);">
+                        <span class="initials">GR</span>
+                    </div>
+                    <div class="card-info">
+                        <h3>Grocott</h3>
+                        <p>Fungos (Prata)</p>
+                    </div>
+                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
+                </div>
+
+                <div class="protocol-card" data-protocol="pas">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #ec008c 0%, #fc6767 100%);">
+                        <span class="initials">PAS</span>
+                    </div>
+                    <div class="card-info">
+                        <h3>PAS</h3>
+                        <p>Glicogênio</p>
+                    </div>
+                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
+                </div>
+
+                <div class="protocol-card" data-protocol="fontana">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #bdc3c7 0%, #2c3e50 100%);">
+                        <span class="initials">FM</span>
+                    </div>
+                    <div class="card-info">
+                        <h3>Fontana Masson</h3>
+                        <p>Melanina</p>
+                    </div>
+                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
+                </div>
+
+                <div class="protocol-card" data-protocol="perls">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
+                        <span class="initials">PE</span>
+                    </div>
+                    <div class="card-info">
+                        <h3>Perls</h3>
+                        <p>Ferro (Hemossiderina)</p>
+                    </div>
+                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
+                </div>
+
+                <div class="protocol-card" data-protocol="tricromico">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                        <span class="initials">TM</span>
+                    </div>
+                    <div class="card-info">
+                        <h3>Tricrômico</h3>
+                        <p>Colágeno</p>
+                    </div>
+                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
+                </div>
+
+                <div class="protocol-card" data-protocol="ziehl">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #cb2d3e 0%, #ef473a 100%);">
+                        <span class="initials">ZN</span>
+                    </div>
+                    <div class="card-info">
+                        <h3>Ziehl-Neelsen</h3>
+                        <p>Bacilos Álcool-Ácido</p>
+                    </div>
+                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
+                </div>
+
+                <div class="protocol-card" data-protocol="gram">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #833ab4 0%, #fd1d1d 100%);">
+                        <span class="initials">GR</span>
+                    </div>
+                    <div class="card-info">
+                        <h3>Gram</h3>
+                        <p>Bactérias</p>
+                    </div>
+                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
+                </div>
+
+                <div class="protocol-card" data-protocol="alciano">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #00f260 0%, #0575e6 100%);">
+                        <span class="initials">AA</span>
+                    </div>
+                    <div class="card-info">
+                        <h3>Azul Alciano</h3>
+                        <p>Mucinas Ácidas</p>
+                    </div>
+                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="execution-state" class="overlay-mode hidden">
+        <div class="execution-content">
+            <header class="execution-header">
+                <button id="btn-back-menu" class="btn-text">
+                    <i class="fas fa-times"></i> Sair
+                </button>
+                <span class="protocol-tag">
+                    <span id="protocol-name-display">HE</span> • Passo <span id="step-counter">1</span>
+                </span>
+            </header>
+
+            <div class="glass-card timer-card">
+                
+                <div id="timed-step" class="step-content hidden">
+                    <h2 id="step-title" class="step-title">Carregando...</h2>
+                    
+                    <div class="timer-wrapper">
+                        <svg class="progress-ring" width="280" height="280">
+                            <circle class="progress-ring__circle-bg" stroke-width="12" fill="transparent" r="120" cx="140" cy="140"/>
+                            <circle class="progress-ring__circle" stroke-width="12" fill="transparent" r="120" cx="140" cy="140"/>
+                        </svg>
+                        <div class="timer-digital">
+                            <span id="timer-minutes">00</span>:<span id="timer-seconds">00</span>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+                        <button id="btn-pause" class="btn-round large"><i class="fas fa-play"></i></button>
+                        <button id="btn-next" class="btn-pill">Pular <i class="fas fa-forward"></i></button>
+                    </div>
+                </div>
+
+                <div id="manual-step" class="step-content hidden">
+                    <div class="manual-icon"><i class="fas fa-hand-holding-water"></i></div>
+                    <h2 id="manual-title" class="step-title">Etapa Manual</h2>
+                    <p id="manual-instruction" class="instruction-text">Instrução...</p>
+                    <button id="btn-manual-next" class="btn btn-primary pulse-effect" style="width: 100%;">
+                        Próximo Passo <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <div id="completion-state" class="step-content hidden">
+                    <div class="success-icon"><i class="fas fa-check-circle"></i></div>
+                    <h2 class="step-title">Finalizado!</h2>
+                    <p class="instruction-text">Protocolo concluído com sucesso.</p>
+                    <button id="btn-finish" class="btn btn-primary" style="width: 100%;">Voltar ao Menu</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="../assets/js/core.js"></script>
+    <script type="module" src="../assets/js/pages/coloracao.js"></script>
+</body>
+</html>

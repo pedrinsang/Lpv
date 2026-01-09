@@ -1,259 +1,217 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Autenticação - Patologia Veterinária" />
-  <title>Login | Patologia Veterinária</title>
-  <link rel="manifest" href="../manifest.json" />
-  <link rel="stylesheet" href="../assets/css/auth.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso ao Sistema | LPV</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
+
+    <style>
+        /* Layout Split Screen */
+        .auth-split-layout { display: flex; min-height: 100vh; background: var(--bg-color); }
+        
+        .auth-brand-side {
+            flex: 1; background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white; padding: 3rem; position: relative; overflow: hidden;
+        }
+        .auth-brand-side::before {
+            content: ""; position: absolute; inset: 0; background: url('../assets/images/fundo-lab.png') center/cover;
+            opacity: 0.15; mix-blend-mode: overlay;
+        }
+        .brand-content { position: relative; z-index: 2; text-align: center; }
+
+        .auth-form-side {
+            flex: 1; display: flex; flex-direction: column; justify-content: center;
+            align-items: center; padding: 2rem; background: var(--bg-card); position: relative;
+        }
+        .form-wrapper { width: 100%; max-width: 420px; }
+
+        /* Abas */
+        .auth-tabs { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 2rem; }
+        .tab-btn {
+            flex: 1; padding: 1rem; background: none; border: none; font-size: 1rem;
+            font-weight: 600; color: var(--text-secondary); cursor: pointer; position: relative;
+        }
+        .tab-btn.active { color: var(--color-primary); }
+        .tab-btn.active::after {
+            content: ""; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px;
+            background: var(--color-primary);
+        }
+
+        /* Inputs */
+        .input-group { position: relative; margin-bottom: 1.5rem; }
+        .input-field {
+            width: 100%; padding: 14px 14px 14px 45px; border: 1px solid var(--border-color);
+            border-radius: 8px; font-size: 1rem; background: var(--bg-color); color: var(--text-primary);
+        }
+        .input-field:focus { border-color: var(--color-primary); outline: none; }
+        .input-icon {
+            position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        /* Mobile */
+        @media (max-width: 900px) {
+            .auth-brand-side { display: none; }
+            .mobile-header { display: block !important; text-align: center; margin-bottom: 2rem; }
+            .desktop-only { display: none; }
+        }
+        .mobile-header { display: none; }
+    </style>
 </head>
-<body class="auth-body">
-  <div class="auth-container">
-    <!-- Painel Esquerdo: Branding -->
-    <aside class="branding-panel">
-      <a href="../index.html" class="btn-back btn-back-desktop">
-        <span class="btn-back-icon">←</span>
-        <img src="../icons/casa.svg" alt="Home" class="btn-back-home" />
-      </a>
-      <div class="branding-content">
-        <div class="branding-logo">
-          <img src="../assets/images/lpvminilogo.png" alt="Logo LPV" class="logo-icon" />
-          <h1 class="branding-title">Laboratório de Patologia Veterinária</h1>
+<body>
+
+    <a href="../index.html" class="btn-icon floating-back-btn">
+        <i class="fas fa-arrow-left"></i>
+    </a>
+
+    <button id="theme-toggle" class="btn-icon" style="position: absolute; top: 20px; right: 20px; z-index: 100; color: var(--text-primary);" title="Mudar Tema">
+        <i class="fas fa-moon"></i>
+    </button>
+
+    <style>
+        /* Estilo do Botão Voltar */
+        .floating-back-btn {
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            z-index: 100;
+            /* Padrão Mobile (Light Mode = Escuro, Dark Mode = Claro) */
+            color: var(--text-primary); 
+        }
+
+        /* Override para Desktop (Onde o fundo é sempre escuro na esquerda) */
+        @media (min-width: 901px) {
+            .floating-back-btn {
+                color: white !important; /* Força branco no lado azul */
+            }
+        }
+    </style>
+
+    <div class="auth-split-layout">
+        <div class="auth-brand-side">
+            <div class="brand-content fade-in">
+                <img id="brand-logo" src="../assets/images/LPV2.png" alt="Logo" style="width: 180px; margin-bottom: 2rem;">
+                <h1>Excelência em Diagnóstico</h1>
+                <p>Sistema de gestão laboratorial unificado.</p>
+            </div>
         </div>
 
-        <div class="branding-hero">
-          <img
-            src="../assets/images/LPV2.png"
-            alt="Laboratório de patologia veterinária"
-            class="hero-image"
-          />
+        <div class="auth-form-side">
+            <div class="form-wrapper fade-in">
+                
+                <div class="mobile-header">
+                    <img src="../assets/images/lpvminilogo2.png" alt="Logo" style="width: 60px; margin-bottom: 1rem;">
+                    <h2 style="color: var(--color-primary);">Acesso LPV</h2>
+                </div>
+
+                <div class="desktop-only" style="text-align: center; margin-bottom: 2rem;">
+                    <h2>Acesse sua Conta</h2>
+                </div>
+
+                <div class="auth-tabs">
+                    <button class="tab-btn active" data-target="login">Login</button>
+                    <button class="tab-btn" data-target="register">Criar Conta</button>
+                </div>
+
+                <form id="login-form" class="auth-section">
+                    <div class="input-group">
+                        <i class="fas fa-envelope input-icon"></i>
+                        <input type="email" id="login-email" class="input-field" placeholder="Seu email" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input type="password" id="login-password" class="input-field" placeholder="Sua senha" required>
+                    </div>
+                    <div id="login-alert" class="alert-message hidden"></div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Entrar</button>
+                </form>
+
+                <form id="register-form" class="auth-section hidden">
+                    <div class="input-group">
+                        <i class="fas fa-user input-icon"></i>
+                        <input type="text" id="register-name" class="input-field" placeholder="Nome Completo" required>
+                    </div>
+
+                    <div class="input-group">
+                        <i class="fas fa-envelope input-icon"></i>
+                        <input type="email" id="register-email" class="input-field" placeholder="Email" required>
+                    </div>
+
+                    <div class="input-group">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input type="password" id="register-password" class="input-field" placeholder="Senha (min 6 chars)" required minlength="6">
+                    </div>
+
+                    <div class="input-group">
+                        <i class="fas fa-check-double input-icon"></i>
+                        <input type="password" id="register-confirm-password" class="input-field" placeholder="Repita a Senha" required>
+                    </div>
+
+                    <div class="input-group">
+                        <i class="fas fa-key input-icon"></i>
+                        <input type="text" id="register-code" class="input-field" placeholder="Código de Acesso (Ex: LAB2024)" required>
+                    </div>
+
+                    <div id="register-alert" class="alert-message hidden"></div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        Solicitar Acesso
+                    </button>
+                </form>
+
+                <div id="pwa-install-area" class="pwa-install-container">
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px;">Instale o App para melhor experiência</p>
+                    <button id="btn-install" class="btn-pwa"><i class="fas fa-download"></i> Instalar LPV Mobile</button>
+                </div>
+            </div>
         </div>
+    </div>
 
-        <div class="branding-text">
-          <h2 class="branding-slogan">Diagnósticos Precisos com Compaixão</h2>
-          <p class="branding-description">
-            Cuidando da saúde dos seus pets queridos com tecnologia moderna e expertise veterinária.
-          </p>
+    <div id="pwa-modal" class="modal-overlay">
+        <div class="modal-card">
+            <button id="close-modal" class="btn-close-modal"><i class="fas fa-times"></i></button>
+            <div id="modal-content-ios" class="hidden">
+                <i class="fab fa-apple" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                <h3>Instalar no iPhone</h3>
+                <div class="ios-tutorial-steps">
+                    <div class="ios-step"><i class="fas fa-share-square"></i> 1. Toque em <strong>Compartilhar</strong>.</div>
+                    <div class="ios-step"><i class="fas fa-plus-square"></i> 2. Toque em <strong>Adicionar à Tela de Início</strong>.</div>
+                    <div class="ios-step"><span>Add</span> 3. Toque em <strong>Adicionar</strong>.</div>
+                </div>
+            </div>
+            <div id="modal-content-error" class="hidden">
+                <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: var(--color-warning); margin-bottom: 1rem;"></i>
+                <h3>Navegador Incompatível</h3>
+                <p>Use o <strong>Google Chrome</strong> (Android) ou <strong>Safari</strong> (iOS).</p>
+            </div>
+            <button id="btn-modal-ok" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Entendi</button>
         </div>
+    </div>
 
-        <div class="branding-features">
-          <div class="feature">
-            <span class="feature-icon">✓</span>
-            <span class="feature-text">Análises precisas</span>
-          </div>
-          <div class="feature">
-            <span class="feature-icon">✓</span>
-            <span class="feature-text">Resultados rápidos</span>
-          </div>
-          <div class="feature">
-            <span class="feature-icon">✓</span>
-            <span class="feature-text">Profissionais qualificados</span>
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    <!-- Painel Direito: Formulário -->
-    <section class="form-panel">
-      <div class="form-wrapper">
-        <a href="../index.html" class="btn-back btn-back-mobile">
-          <img src="../icons/casa.svg" alt="Home" class="btn-back-home" />
-        </a>
-        <!-- Indicador de Abas -->
-        <div class="form-tabs">
-          <button
-            class="tab-button tab-login active"
-            data-tab="login"
-            aria-selected="true"
-            aria-controls="login-content"
-          >
-            Entrar
-          </button>
-          <button
-            class="tab-button tab-register"
-            data-tab="register"
-            aria-selected="false"
-            aria-controls="register-content"
-          >
-            Criar Conta
-          </button>
-        </div>
-
-        <!-- Conteúdo do Formulário -->
-        <div class="form-content">
-          <!-- Login Form -->
-          <article id="login-content" class="form-section active" role="tabpanel" aria-labelledby="tab-login">
-            <h2 class="form-title">Bem-vindo de Volta</h2>
-            <p class="form-subtitle"> </p>
-
-            <form id="login-form" class="auth-form" novalidate>
-              <!-- Email Input -->
-              <div class="form-group">
-                <div class="form-input-wrapper">
-                  <input
-                    type="email"
-                    id="login-email"
-                    class="form-input"
-                    placeholder=" "
-                    required
-                    aria-label="Email"
-                  />
-                  <label for="login-email" class="form-label">Email</label>
-                  <div class="input-underline"></div>
-                </div>
-                <span class="form-error" id="login-email-error"></span>
-              </div>
-
-              <!-- Password Input -->
-              <div class="form-group">
-                <div class="form-input-wrapper">
-                  <input
-                    type="password"
-                    id="login-password"
-                    class="form-input"
-                    placeholder=" "
-                    required
-                    aria-label="Senha"
-                  />
-                  <label for="login-password" class="form-label">Senha</label>
-                  <div class="input-underline"></div>
-                </div>
-                <span class="form-error" id="login-password-error"></span>
-              </div>
-
-              <!-- Remember & Forgot -->
-              <div class="form-options">
-                <label class="checkbox-label">
-                  <input type="checkbox" id="login-remember" class="checkbox-input" />
-                  <span class="checkbox-text">Manter conectado</span>
-                </label>
-                <a href="#" class="forgot-link">Esqueci minha senha</a>
-              </div>
-
-              <!-- Submit Button -->
-              <button type="submit" class="btn-primary">Entrar</button>
-
-              <!-- Signup Link -->
-              <div class="form-footer">
-                <p class="form-footer-text">
-                  Não tem conta?
-                  <button type="button" class="tab-switch" data-tab="register">Cadastre-se</button>
-                </p>
-              </div>
-            </form>
-
-            <!-- Alert Messages -->
-            <div id="login-alert" class="alert-message" role="alert" hidden></div>
-          </article>
-
-          <!-- Register Form -->
-          <article id="register-content" class="form-section" role="tabpanel" aria-labelledby="tab-register">
-            <h2 class="form-title">Criar Conta</h2>
-            <p class="form-subtitle"></p>
-
-            <form id="register-form" class="auth-form" novalidate>
-              <!-- Name Input -->
-              <div class="form-group">
-                <div class="form-input-wrapper">
-                  <input
-                    type="text"
-                    id="register-name"
-                    class="form-input"
-                    placeholder=" "
-                    required
-                    aria-label="Nome completo"
-                  />
-                  <label for="register-name" class="form-label">Nome Completo</label>
-                  <div class="input-underline"></div>
-                </div>
-                <span class="form-error" id="register-name-error"></span>
-              </div>
-
-              <!-- Email Input -->
-              <div class="form-group">
-                <div class="form-input-wrapper">
-                  <input
-                    type="email"
-                    id="register-email"
-                    class="form-input"
-                    placeholder=" "
-                    required
-                    aria-label="Email"
-                  />
-                  <label for="register-email" class="form-label">Email</label>
-                  <div class="input-underline"></div>
-                </div>
-                <span class="form-error" id="register-email-error"></span>
-              </div>
-
-              <!-- Password Input -->
-              <div class="form-group">
-                <div class="form-input-wrapper">
-                  <input
-                    type="password"
-                    id="register-password"
-                    class="form-input"
-                    placeholder=" "
-                    required
-                    aria-label="Senha"
-                  />
-                  <label for="register-password" class="form-label">Senha</label>
-                  <div class="input-underline"></div>
-                </div>
-                <span class="form-error" id="register-password-error"></span>
-              </div>
-
-              <!-- Confirm Password Input -->
-              <div class="form-group">
-                <div class="form-input-wrapper">
-                  <input
-                    type="password"
-                    id="register-confirm-password"
-                    class="form-input"
-                    placeholder=" "
-                    required
-                    aria-label="Confirmar senha"
-                  />
-                  <label for="register-confirm-password" class="form-label">Confirmar Senha</label>
-                  <div class="input-underline"></div>
-                </div>
-                <span class="form-error" id="register-confirm-password-error"></span>
-              </div>
-
-              <!-- Terms Checkbox -->
-              <label class="checkbox-label checkbox-terms">
-                <input type="checkbox" id="register-terms" class="checkbox-input" required />
-                <span class="checkbox-text">
-                  Concordo com os
-                  <a href="termos-de-servico.html" class="terms-link">Termos de Serviço</a>
-                  e
-                  <a href="politica-privacidade.html" class="terms-link">Política de Privacidade</a>
-                </span>
-              </label>
-              <span class="form-error" id="register-terms-error"></span>
-
-              <!-- Submit Button -->
-              <button type="submit" class="btn-primary">Criar Conta</button>
-
-              <!-- Login Link -->
-              <div class="form-footer">
-                <p class="form-footer-text">
-                  Já tem conta?
-                  <button type="button" class="tab-switch" data-tab="login">Entre</button>
-                </p>
-              </div>
-            </form>
-
-            <!-- Alert Messages -->
-            <div id="register-alert" class="alert-message" role="alert" hidden></div>
-          </article>
-        </div>
-      </div>
-    </section>
-  </div>
-
-  <!-- Scripts -->
-  <script type="module" src="../assets/js/auth.js"></script>
+    <script type="module" src="../assets/js/core.js"></script>
+    <script type="module" src="../assets/js/pages/auth.js"></script>
+    <script>
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.auth-section').forEach(s => s.classList.add('hidden'));
+                btn.classList.add('active');
+                if(btn.dataset.target === 'login') document.getElementById('login-form').classList.remove('hidden');
+                else document.getElementById('register-form').classList.remove('hidden');
+            });
+        });
+    </script>
 </body>
 </html>

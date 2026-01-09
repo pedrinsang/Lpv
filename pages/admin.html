@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Admin | LPV</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
+</head>
+<body>
+    
+    <header class="app-header">
+        <div class="header-brand">
+            <a href="hub.html" class="btn-icon"><i class="fas fa-arrow-left"></i></a>
+            <span>Administração</span>
+        </div>
+        <button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button>
+    </header>
+
+    <main class="main-container" style="padding: 2rem; max-width: 800px; margin: 0 auto;">
+        
+        <section class="card" style="margin-bottom: 2rem;">
+            <h2 style="font-size: 1.2rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-key" style="color: var(--color-primary);"></i> Código de Cadastro
+            </h2>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="admin-secret-code" class="form-input" placeholder="Carregando...">
+                <button id="btn-save-code" class="btn btn-primary">Salvar</button>
+            </div>
+        </section>
+
+        <section>
+            <h2 style="font-size: 1.2rem; margin-bottom: 1rem;">Gerenciar Usuários</h2>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 1rem; overflow-x: auto;">
+                <button class="filter-btn active btn btn-secondary" data-filter="all">Todos</button>
+                <button class="filter-btn btn btn-secondary" data-filter="pendente">Pendentes</button>
+                <button class="filter-btn btn btn-secondary" data-filter="aprovado">Aprovados</button>
+            </div>
+
+            <div id="users-list" style="display: flex; flex-direction: column; gap: 1rem;">
+                <p style="text-align: center; color: var(--text-secondary);">Carregando usuários...</p>
+            </div>
+        </section>
+
+    </main>
+
+    <script type="module" src="../assets/js/core.js"></script>
+    <script type="module" src="../assets/js/pages/admin.js"></script>
+</body>
+</html>
