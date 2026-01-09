@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lpv-app-v4'; // Mudei a versão para forçar atualização
+const CACHE_NAME = 'lpv-app-v5'; // Mudei a versão para forçar atualização
 const ASSETS_TO_CACHE = [
   // Raiz
   './',

@@ -12,14 +12,16 @@
         })();
     </script>
 
+    <link rel="manifest" href="../manifest.json">
     <link rel="stylesheet" href="../assets/css/global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
 
     <style>
-        /* Layout Split Screen */
+        /* Layout Split Screen (Específico desta página) */
         .auth-split-layout { display: flex; min-height: 100vh; background: var(--bg-color); }
         
+        /* Lado Esquerdo (Branding) */
         .auth-brand-side {
             flex: 1; background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -31,13 +33,14 @@
         }
         .brand-content { position: relative; z-index: 2; text-align: center; }
 
+        /* Lado Direito (Formulário) */
         .auth-form-side {
             flex: 1; display: flex; flex-direction: column; justify-content: center;
             align-items: center; padding: 2rem; background: var(--bg-card); position: relative;
         }
         .form-wrapper { width: 100%; max-width: 420px; }
 
-        /* Abas */
+        /* Abas de Navegação */
         .auth-tabs { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 2rem; }
         .tab-btn {
             flex: 1; padding: 1rem; background: none; border: none; font-size: 1rem;
@@ -49,19 +52,16 @@
             background: var(--color-primary);
         }
 
-        /* Inputs */
-        .input-group { position: relative; margin-bottom: 1.5rem; }
-        .input-field {
-            width: 100%; padding: 14px 14px 14px 45px; border: 1px solid var(--border-color);
-            border-radius: 8px; font-size: 1rem; background: var(--bg-color); color: var(--text-primary);
+        /* Botão Voltar Inteligente */
+        .floating-back-btn {
+            position: absolute; top: 20px; left: 20px; z-index: 100;
+            color: var(--text-primary); /* Mobile: segue o tema */
         }
-        .input-field:focus { border-color: var(--color-primary); outline: none; }
-        .input-icon {
-            position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
-            color: var(--text-secondary);
+        @media (min-width: 901px) {
+            .floating-back-btn { color: white !important; } /* Desktop: sempre branco sobre o azul */
         }
 
-        /* Mobile */
+        /* Mobile Adjustments */
         @media (max-width: 900px) {
             .auth-brand-side { display: none; }
             .mobile-header { display: block !important; text-align: center; margin-bottom: 2rem; }
@@ -80,26 +80,8 @@
         <i class="fas fa-moon"></i>
     </button>
 
-    <style>
-        /* Estilo do Botão Voltar */
-        .floating-back-btn {
-            position: absolute; 
-            top: 20px; 
-            left: 20px; 
-            z-index: 100;
-            /* Padrão Mobile (Light Mode = Escuro, Dark Mode = Claro) */
-            color: var(--text-primary); 
-        }
-
-        /* Override para Desktop (Onde o fundo é sempre escuro na esquerda) */
-        @media (min-width: 901px) {
-            .floating-back-btn {
-                color: white !important; /* Força branco no lado azul */
-            }
-        }
-    </style>
-
     <div class="auth-split-layout">
+        
         <div class="auth-brand-side">
             <div class="brand-content fade-in">
                 <img id="brand-logo" src="../assets/images/LPV2.png" alt="Logo" style="width: 180px; margin-bottom: 2rem;">
@@ -126,42 +108,35 @@
                 </div>
 
                 <form id="login-form" class="auth-section">
-                    <div class="input-group">
-                        <i class="fas fa-envelope input-icon"></i>
-                        <input type="email" id="login-email" class="input-field" placeholder="Seu email" required>
+                    <div class="form-group">
+                        <input type="email" id="login-email" class="form-input" placeholder="Seu email" required>
                     </div>
-                    <div class="input-group">
-                        <i class="fas fa-lock input-icon"></i>
-                        <input type="password" id="login-password" class="input-field" placeholder="Sua senha" required>
+                    <div class="form-group">
+                        <input type="password" id="login-password" class="form-input" placeholder="Sua senha" required>
                     </div>
                     <div id="login-alert" class="alert-message hidden"></div>
                     <button type="submit" class="btn btn-primary" style="width: 100%;">Entrar</button>
                 </form>
 
                 <form id="register-form" class="auth-section hidden">
-                    <div class="input-group">
-                        <i class="fas fa-user input-icon"></i>
-                        <input type="text" id="register-name" class="input-field" placeholder="Nome Completo" required>
+                    <div class="form-group">
+                        <input type="text" id="register-name" class="form-input" placeholder="Nome Completo" required>
                     </div>
 
-                    <div class="input-group">
-                        <i class="fas fa-envelope input-icon"></i>
-                        <input type="email" id="register-email" class="input-field" placeholder="Email" required>
+                    <div class="form-group">
+                        <input type="email" id="register-email" class="form-input" placeholder="Email" required>
                     </div>
 
-                    <div class="input-group">
-                        <i class="fas fa-lock input-icon"></i>
-                        <input type="password" id="register-password" class="input-field" placeholder="Senha (min 6 chars)" required minlength="6">
+                    <div class="form-group">
+                        <input type="password" id="register-password" class="form-input" placeholder="Senha (min 6 chars)" required minlength="6">
                     </div>
 
-                    <div class="input-group">
-                        <i class="fas fa-check-double input-icon"></i>
-                        <input type="password" id="register-confirm-password" class="input-field" placeholder="Repita a Senha" required>
+                    <div class="form-group">
+                        <input type="password" id="register-confirm-password" class="form-input" placeholder="Repita a Senha" required>
                     </div>
 
-                    <div class="input-group">
-                        <i class="fas fa-key input-icon"></i>
-                        <input type="text" id="register-code" class="input-field" placeholder="Código de Acesso (Ex: LAB2024)" required>
+                    <div class="form-group">
+                        <input type="text" id="register-code" class="form-input" placeholder="Código de Acesso (Ex: LAB2024)" required>
                     </div>
 
                     <div id="register-alert" class="alert-message hidden"></div>
@@ -175,38 +150,46 @@
                     <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px;">Instale o App para melhor experiência</p>
                     <button id="btn-install" class="btn-pwa"><i class="fas fa-download"></i> Instalar LPV Mobile</button>
                 </div>
+
             </div>
         </div>
     </div>
 
     <div id="pwa-modal" class="modal-overlay">
         <div class="modal-card">
-            <button id="close-modal" class="btn-close-modal"><i class="fas fa-times"></i></button>
+            <button id="close-modal" class="btn-close-modal">&times;</button>
+            
             <div id="modal-content-ios" class="hidden">
                 <i class="fab fa-apple" style="font-size: 3rem; margin-bottom: 1rem;"></i>
                 <h3>Instalar no iPhone</h3>
                 <div class="ios-tutorial-steps">
                     <div class="ios-step"><i class="fas fa-share-square"></i> 1. Toque em <strong>Compartilhar</strong>.</div>
-                    <div class="ios-step"><i class="fas fa-plus-square"></i> 2. Toque em <strong>Adicionar à Tela de Início</strong>.</div>
+                    <div class="ios-step"><i class="fas fa-plus-square"></i> 2. Role e toque em <strong>Adicionar à Tela de Início</strong>.</div>
                     <div class="ios-step"><span>Add</span> 3. Toque em <strong>Adicionar</strong>.</div>
                 </div>
             </div>
+
             <div id="modal-content-error" class="hidden">
                 <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: var(--color-warning); margin-bottom: 1rem;"></i>
                 <h3>Navegador Incompatível</h3>
-                <p>Use o <strong>Google Chrome</strong> (Android) ou <strong>Safari</strong> (iOS).</p>
+                <p>Use o <strong>Google Chrome</strong> (Android) ou <strong>Safari</strong> (iOS) para instalar.</p>
             </div>
+            
             <button id="btn-modal-ok" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Entendi</button>
         </div>
     </div>
 
     <script type="module" src="../assets/js/core.js"></script>
     <script type="module" src="../assets/js/pages/auth.js"></script>
+    
     <script>
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                // Tira active de todos e esconde forms
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 document.querySelectorAll('.auth-section').forEach(s => s.classList.add('hidden'));
+                
+                // Ativa o atual
                 btn.classList.add('active');
                 if(btn.dataset.target === 'login') document.getElementById('login-form').classList.remove('hidden');
                 else document.getElementById('register-form').classList.remove('hidden');

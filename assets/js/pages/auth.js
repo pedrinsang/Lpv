@@ -1,3 +1,8 @@
+/**
+ * LPV - AUTHENTICATION SCRIPT
+ * Gerencia: Login, Cadastro (com validação de código), PWA e Tema.
+ */
+
 import { auth, db } from '../core.js'; 
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
@@ -14,7 +19,42 @@ const modalError = document.getElementById('modal-content-error');
 let deferredPrompt; 
 
 // ================================================================
-// 1. LOGIN (Com Verificação de Aprovação)
+// 0. LOGO SWITCHER (Troca logo Branco/Escuro conforme tema)
+// ================================================================
+function initLogoSwitcher() {
+    const brandLogo = document.getElementById('brand-logo');
+    if (!brandLogo) return;
+
+    const updateLogo = () => {
+        // Verifica se tem o atributo data-theme="dark" no HTML
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        
+        // Se for Dark Mode -> Logo Original (LPV.png)
+        // Se for Light Mode -> Logo Branco (LPV2.png) para contrastar com fundo azul
+        if (isDark) {
+            brandLogo.src = '../assets/images/LPV.png';
+        } else {
+            brandLogo.src = '../assets/images/LPV2.png';
+        }
+    };
+
+    // Executa ao carregar
+    updateLogo();
+
+    // Observa mudanças no tema em tempo real
+    const observer = new MutationObserver(updateLogo);
+    observer.observe(document.documentElement, { 
+        attributes: true, 
+        attributeFilter: ['data-theme'] 
+    });
+}
+
+// Inicializa assim que o DOM carregar
+document.addEventListener('DOMContentLoaded', initLogoSwitcher);
+
+
+// ================================================================
+// 1. LOGIN (Com Verificação de Status: Pendente/Bloqueado)
 // ================================================================
 if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
@@ -24,7 +64,7 @@ if (loginForm) {
         const btn = loginForm.querySelector('button');
         const alert = document.getElementById('login-alert');
 
-        setLoading(btn, true, 'Verificando...');
+        setLoading(btn, true, 'Verificando permissões...');
         alert.classList.add('hidden');
 
         try {
@@ -32,7 +72,7 @@ if (loginForm) {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // 2. Verifica status no Firestore
+            // 2. Verifica status no Firestore (Banco de Dados)
             const userDocRef = doc(db, "users", user.uid);
             const userDoc = await getDoc(userDocRef);
 
@@ -41,29 +81,29 @@ if (loginForm) {
                 
                 if (userData.status === 'bloqueado') {
                     await signOut(auth);
-                    throw new Error("Sua conta foi bloqueada pelo administrador.");
+                    throw new Error("Acesso negado: Sua conta foi bloqueada.");
                 }
                 
                 if (userData.status === 'pendente') {
                     await signOut(auth);
-                    throw new Error("Sua conta aguarda aprovação do administrador.");
+                    throw new Error("Acesso em análise: Aguarde aprovação do administrador.");
                 }
             } else {
-                // Se o usuário existe no Auth mas não no Firestore (caso antigo ou erro), criamos o doc básico
-                // mas mantemos pendente por segurança.
+                // Se o usuário existe no Auth mas não no Firestore (caso raro/antigo)
+                // Criamos o doc básico como 'pendente' por segurança
                 await setDoc(userDocRef, {
                     email: user.email,
                     name: user.displayName || "Sem Nome",
                     role: "user",
                     status: "pendente",
-                    createdAt: new Date()
+                    createdAt: new Date().toISOString()
                 });
                 await signOut(auth);
                 throw new Error("Cadastro atualizado. Aguarde aprovação.");
             }
 
             // 3. Sucesso - Redireciona
-            alert.textContent = 'Acesso Autorizado! Redirecionando...';
+            alert.textContent = 'Acesso Autorizado! Entrando...';
             alert.className = 'alert-message success';
             alert.classList.remove('hidden');
             setTimeout(() => window.location.href = 'hub.html', 1000);
@@ -71,27 +111,26 @@ if (loginForm) {
         } catch (error) {
             console.error(error);
             let msg = error.message;
-            // Traduções de erro do Firebase
+            // Traduções amigáveis
             if (error.code === 'auth/invalid-credential') msg = 'Email ou senha incorretos.';
             if (error.code === 'auth/user-not-found') msg = 'Usuário não encontrado.';
             if (error.code === 'auth/wrong-password') msg = 'Senha incorreta.';
 
-            alert.textContent = msg;
-            alert.className = 'alert-message error';
-            alert.classList.remove('hidden');
+            showAlert(alert, msg, 'error');
             setLoading(btn, false, 'Entrar');
         }
     });
 }
 
+
 // ================================================================
-// 2. CADASTRO (Com Validação de Código e Senha)
+// 2. CADASTRO (Com Código Secreto + Confirmação de Senha)
 // ================================================================
 if (registerForm) {
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // Campos
+        // Coleta valores
         const name = document.getElementById('register-name').value.trim();
         const email = document.getElementById('register-email').value.trim();
         const password = document.getElementById('register-password').value;
@@ -101,7 +140,7 @@ if (registerForm) {
         const btn = registerForm.querySelector('button');
         const alert = document.getElementById('register-alert');
 
-        // Validações Básicas
+        // Validação Local: Senhas iguais
         if (password !== confirmPassword) {
             showAlert(alert, 'As senhas não coincidem.', 'error');
             return;
@@ -112,44 +151,45 @@ if (registerForm) {
 
         try {
             // 1. Busca o Código Secreto no Firestore
-            // A coleção será "config" e o documento "registration"
             const configRef = doc(db, "config", "registration");
             const configSnap = await getDoc(configRef);
 
-            let serverCode = "LPV2024"; // Fallback se não existir configuração ainda
+            let serverCode = "LPV2024"; // Fallback padrão
             
             if (configSnap.exists()) {
                 serverCode = configSnap.data().secretCode || "LPV2024";
             } else {
-                // Cria a configuração inicial se não existir
+                // Cria doc inicial se não existir (Bootstrap)
                 await setDoc(configRef, { secretCode: "LPV2024" });
             }
 
             // 2. Compara Código
             if (inputCode !== serverCode) {
-                throw new Error("Código de acesso incorreto.");
+                throw new Error("Código de acesso inválido. Contate o administrador.");
             }
 
             // 3. Cria Usuário no Auth
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
+            
+            // Atualiza Nome
             await updateProfile(user, { displayName: name });
 
             // 4. Salva no Firestore como PENDENTE
             await setDoc(doc(db, "users", user.uid), {
                 name: name,
                 email: email,
-                role: "user",      // Padrão é usuário comum
-                status: "pendente", // Padrão é bloqueado até aprovação
+                role: "user",      // Todo mundo nasce user
+                status: "pendente", // Todo mundo nasce pendente
                 createdAt: new Date().toISOString()
             });
             
-            // 5. Desloga (para ele não entrar direto) e Avisa
+            // 5. Desloga imediatamente (segurança)
             await signOut(auth);
 
             showAlert(alert, 'Solicitação enviada! Aguarde a liberação do administrador.', 'success');
             
-            // Limpa form
+            // Limpa o formulário
             registerForm.reset();
             setLoading(btn, false, 'Solicitar Acesso');
 
@@ -157,7 +197,7 @@ if (registerForm) {
             console.error(error);
             let msg = error.message;
             if (error.code === 'auth/email-already-in-use') msg = 'Este email já está cadastrado.';
-            if (error.code === 'auth/weak-password') msg = 'Senha muito fraca (min 6).';
+            if (error.code === 'auth/weak-password') msg = 'A senha deve ter pelo menos 6 caracteres.';
             
             showAlert(alert, msg, 'error');
             setLoading(btn, false, 'Solicitar Acesso');
@@ -165,23 +205,30 @@ if (registerForm) {
     });
 }
 
+
 // ================================================================
-// 3. PWA & UTILS (Mantidos)
+// 3. PWA & MODAIS (Lógica de Instalação)
 // ================================================================
+
+// Utilitários de detecção
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
+// Se já estiver instalado, esconde a área de instalação
 if (isStandalone()) {
     if (installArea) installArea.style.display = 'none';
 }
 
+// Captura evento nativo do Chrome/Android
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
 });
 
+// Listener do Botão
 if (installBtn) {
     installBtn.addEventListener('click', async () => {
+        // Caso 1: Android/Chrome (Nativo)
         if (deferredPrompt) {
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
@@ -189,25 +236,45 @@ if (installBtn) {
             if (outcome === 'accepted') installArea.style.display = 'none';
             return;
         }
+        
+        // Caso 2: iPhone (Tutorial)
         if (isIOS()) {
             openModal('ios');
             return;
         }
+        
+        // Caso 3: Desktop/Incompatível (Aviso)
         openModal('error');
     });
 }
 
+// Helpers de Modal
 function openModal(type) {
     modalIOS.classList.add('hidden');
     modalError.classList.add('hidden');
+    
     if (type === 'ios') modalIOS.classList.remove('hidden');
     else modalError.classList.remove('hidden');
+    
     pwaModal.classList.add('open');
 }
 
+// Fechar Modal (X ou Botão OK)
 [document.getElementById('close-modal'), document.getElementById('btn-modal-ok')].forEach(btn => {
     if(btn) btn.addEventListener('click', () => pwaModal.classList.remove('open'));
 });
+
+// Fechar clicando fora
+if (pwaModal) {
+    pwaModal.addEventListener('click', (e) => {
+        if (e.target === pwaModal) pwaModal.classList.remove('open');
+    });
+}
+
+
+// ================================================================
+// 4. HELPERS DE UI
+// ================================================================
 
 function setLoading(btn, loading, text) {
     btn.disabled = loading;
