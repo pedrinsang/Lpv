@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lpv-app-v5'; // Mudei a versão para forçar atualização
+const CACHE_NAME = 'lpv-app-v6'; // Mudei a versão para forçar atualização
 const ASSETS_TO_CACHE = [
   // Raiz
   './',
@@ -21,6 +21,7 @@ const ASSETS_TO_CACHE = [
   './assets/js/pages/hub.js',
   './assets/js/pages/mural.js',
   './assets/js/pages/coloracao.js',
+  './assets/js/birthdays.js',
 
   // Imagens Essenciais (Adicione outras se precisar offline)
   './assets/images/lpvminilogo2.png',

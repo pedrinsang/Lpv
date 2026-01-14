@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aniversariantes | LPV</title>
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
+
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
+
+    <style>
+        .month-section { margin-bottom: 2rem; }
+        .month-title { 
+            font-size: 1.2rem; color: var(--color-primary); margin-bottom: 1rem; 
+            border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .bday-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+        
+        .bday-card {
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); padding: 1rem;
+            display: flex; align-items: center; justify-content: space-between; /* Espaço entre info e botão delete */
+            transition: transform 0.2s; position: relative;
+        }
+        .bday-card:hover { transform: translateY(-3px); border-color: var(--color-primary); }
+        
+        .bday-left { display: flex; align-items: center; gap: 1rem; }
+        .bday-date {
+            background: var(--color-primary-light); color: white; padding: 8px 12px;
+            border-radius: 8px; font-weight: bold; font-size: 1.1rem; text-align: center; min-width: 50px;
+        }
+        .bday-info h4 { margin: 0; font-size: 1rem; color: var(--text-primary); }
+        .bday-info p { margin: 0; font-size: 0.8rem; color: var(--text-secondary); }
+        
+        .is-today { border: 2px solid var(--color-warning); background: rgba(245, 124, 0, 0.05); }
+        .is-today .bday-date { background: var(--color-warning); }
+
+        /* Botão Deletar (Só aparece se admin via JS) */
+        .btn-delete {
+            color: var(--color-error); background: none; border: none;
+            cursor: pointer; padding: 5px; font-size: 1.1rem; opacity: 0.7; transition: 0.2s;
+        }
+        .btn-delete:hover { opacity: 1; transform: scale(1.1); }
+
+        /* FAB (Botão Flutuante de Adicionar) */
+        .fab-add {
+            position: fixed; bottom: 30px; right: 30px;
+            width: 60px; height: 60px; border-radius: 50%;
+            background: var(--color-primary); color: white;
+            border: none; box-shadow: 0 4px 15px rgba(13, 71, 161, 0.4);
+            font-size: 1.5rem; cursor: pointer; display: flex;
+            align-items: center; justify-content: center; z-index: 100;
+            transition: transform 0.2s;
+        }
+        .fab-add:hover { transform: scale(1.1); }
+    </style>
+</head>
+<body>
+
+    <header class="app-header">
+        <div class="header-brand">
+            <a href="hub.html" class="btn-icon"><i class="fas fa-arrow-left"></i></a>
+            <span>Aniversariantes</span>
+        </div>
+        <button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button>
+    </header>
+
+    <main class="main-container" style="padding: 2rem; max-width: 800px; margin: 0 auto; padding-bottom: 100px;">
+        <div id="loading-msg" style="text-align: center; color: var(--text-secondary); margin-top: 2rem;">
+            <i class="fas fa-spinner fa-spin"></i> Carregando lista...
+        </div>
+        <div id="birthdays-container"></div>
+    </main>
+
+    <button id="btn-add-bday" class="fab-add hidden">
+        <i class="fas fa-plus"></i>
+    </button>
+
+    <div id="add-modal" class="modal-overlay">
+        <div class="modal-card">
+            <button id="close-add-modal" class="btn-close-modal">&times;</button>
+            <h3 style="margin-bottom: 1.5rem;">Novo Aniversariante</h3>
+            
+            <form id="form-add-bday">
+                <div class="form-group">
+                    <input type="text" id="new-name" class="form-input" placeholder="Nome da Pessoa" required>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex: 1;">
+                        <input type="number" id="new-day" class="form-input" placeholder="Dia" min="1" max="31" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <select id="new-month" class="form-input" required>
+                            <option value="" disabled selected>Mês</option>
+                            <option value="1">Janeiro</option>
+                            <option value="2">Fevereiro</option>
+                            <option value="3">Março</option>
+                            <option value="4">Abril</option>
+                            <option value="5">Maio</option>
+                            <option value="6">Junho</option>
+                            <option value="7">Julho</option>
+                            <option value="8">Agosto</option>
+                            <option value="9">Setembro</option>
+                            <option value="10">Outubro</option>
+                            <option value="11">Novembro</option>
+                            <option value="12">Dezembro</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Salvar</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="../assets/js/core.js"></script>
+    <script type="module" src="../assets/js/pages/aniversarios.js"></script>
+</body>
+</html>
