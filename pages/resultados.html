@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Consulta de Resultados | LPV</title>
+    
+    <script>
+        (function() {
+            try {
+                const localTheme = localStorage.getItem('theme');
+                const sysTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (localTheme === 'dark' || (!localTheme && sysTheme)) document.documentElement.setAttribute('data-theme', 'dark');
+            } catch (e) {}
+        })();
+    </script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
+
+    <style>
+        /* Layout Centralizado para Público */
+        body {
+            display: flex; flex-direction: column; min-height: 100vh;
+            justify-content: center; align-items: center;
+            background-image: url('../assets/images/fundo-lab.png'); /* Opcional: usar o fundo do login */
+            background-size: cover; background-position: center;
+        }
+        /* Overlay Escuro para leitura */
+        body::before {
+            content: ''; position: absolute; inset: 0;
+            background: rgba(15, 23, 42, 0.85); z-index: -1;
+        }
+
+        .public-container {
+            width: 100%; max-width: 480px; padding: 1rem;
+            z-index: 10;
+        }
+
+        .search-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-glass);
+            border-radius: 24px;
+            padding: 2.5rem 2rem;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.5s ease;
+        }
+
+        .result-card {
+            background: var(--bg-glass-heavy);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            border: 1px solid var(--border-glass);
+            text-align: left;
+        }
+
+        .status-badge-large {
+            display: inline-block; padding: 6px 14px; border-radius: 50px;
+            font-size: 0.9rem; font-weight: 700; text-transform: uppercase; margin-bottom: 10px;
+        }
+        .st-pending { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+        .st-done { background: rgba(16, 185, 129, 0.15); color: #059669; }
+
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <a href="../index.html" class="btn-icon" style="position: absolute; top: 20px; left: 20px; color: white; border-color: rgba(255,255,255,0.2);">
+        <i class="fas fa-arrow-left"></i>
+    </a>
+
+    <div class="public-container">
+        
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <img src="../assets/images/LPV2.png" alt="LPV" style="height: 60px; margin: 0 auto 1rem auto; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
+            <h1 style="color: white; font-size: 1.8rem; font-weight: 800;">Resultados de Exames</h1>
+            <p style="color: rgba(255,255,255,0.7);">Digite o código de acesso fornecido pelo laboratório.</p>
+        </div>
+
+        <div class="search-card">
+            <div class="form-group">
+                <label style="display: block; text-align: left; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600;">
+                    Código do Protocolo
+                </label>
+                <div style="position: relative;">
+                    <i class="fas fa-lock" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--color-primary);"></i>
+                    <input type="text" id="access-code" class="input-field" 
+                           placeholder="Ex: LPV-8X29A" 
+                           style="padding-left: 45px; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">
+                </div>
+            </div>
+            
+            <button id="btn-search" class="btn btn-primary" style="width: 100%; margin-top: 1rem; padding: 16px;">
+                <i class="fas fa-search"></i> CONSULTAR
+            </button>
+
+            <div id="search-feedback" style="margin-top: 1rem; min-height: 20px; font-size: 0.9rem;"></div>
+        </div>
+
+        <div id="result-display" class="result-card hidden">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                <div>
+                    <span id="res-status-badge" class="status-badge-large st-pending">Processando</span>
+                    <h3 id="res-pet-name" style="margin: 0; font-size: 1.3rem;">Pet: Thor</h3>
+                    <p id="res-owner" style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">Tutor: Gabriel S.</p>
+                </div>
+                <div style="text-align: right; font-size: 0.8rem; color: var(--text-secondary);">
+                    <div>Entrada:</div>
+                    <div id="res-date" style="font-weight: 600;">12/05/2026</div>
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border-glass); margin: 1rem 0;">
+
+            <div style="margin-bottom: 1.5rem;">
+                <p style="font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;">Descrição do Exame</p>
+                <p id="res-desc" style="color: var(--text-primary); line-height: 1.5;">Histopatológico Completo...</p>
+            </div>
+
+            <div id="download-area" class="hidden">
+                <a href="#" id="btn-download-pdf" target="_blank" class="btn btn-primary" style="width: 100%; background: var(--color-success);">
+                    <i class="fas fa-file-pdf"></i> BAIXAR LAUDO (PDF)
+                </a>
+            </div>
+            
+            <div id="pending-msg" class="hidden" style="text-align: center; padding: 10px; background: rgba(245, 158, 11, 0.1); border-radius: 8px; color: var(--color-warning); font-size: 0.9rem;">
+                <i class="fas fa-clock"></i> O laudo ainda está em análise.
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module" src="../assets/js/pages/public-results.js"></script>
+</body>
+</html>

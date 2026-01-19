@@ -2,64 +2,155 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Admin | LPV</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gestão de Equipe | LPV</title>
     
     <script>
         (function() {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+            try {
+                const localTheme = localStorage.getItem('theme');
+                const sysTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (localTheme === 'dark' || (!localTheme && sysTheme)) document.documentElement.setAttribute('data-theme', 'dark');
+            } catch (e) {}
         })();
     </script>
-
-    <style>
-        .main-content {
-            padding-top: 1rem !important;
-        }
-    </style>
-
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
+
+    <style>
+        /* Estilos específicos do Admin */
+        .admin-section-title {
+            font-size: 1.1rem; font-weight: 700; color: var(--text-secondary);
+            margin: 2rem 0 1rem 0; display: flex; align-items: center; gap: 10px;
+        }
+        
+        /* Card de Usuário Pendente */
+        .user-card-pending {
+            background: var(--bg-glass);
+            border: 1px solid var(--color-warning); /* Borda amarela */
+            border-left: 4px solid var(--color-warning);
+            padding: 1.5rem; border-radius: 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;
+        }
+
+        /* Card de Usuário Ativo */
+        .user-card {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            padding: 1.2rem; border-radius: 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 0.8rem; transition: 0.2s;
+        }
+        .user-card:hover { transform: translateY(-2px); background: var(--bg-glass-heavy); }
+
+        .user-info h3 { margin: 0; font-size: 1rem; color: var(--text-primary); }
+        .user-info p { margin: 2px 0 0; font-size: 0.85rem; color: var(--text-secondary); }
+        .user-badge { 
+            font-size: 0.75rem; padding: 4px 10px; border-radius: 50px; 
+            background: rgba(0,0,0,0.05); color: var(--text-secondary); border: 1px solid var(--border-glass);
+        }
+
+        /* Botões de Ação */
+        .action-group { display: flex; gap: 8px; }
+        .btn-sm { padding: 8px 12px; font-size: 0.85rem; border-radius: 8px; cursor: pointer; border: none; font-weight: 600; transition: 0.2s; }
+        
+        .btn-approve { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+        .btn-approve:hover { background: #10b981; color: white; }
+        
+        .btn-reject { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .btn-reject:hover { background: #ef4444; color: white; }
+
+        .role-select {
+            padding: 6px; border-radius: 6px; border: 1px solid var(--border-glass);
+            background: var(--bg-body); color: var(--text-primary); font-size: 0.85rem;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .user-card-pending, .user-card { flex-direction: column; align-items: flex-start; }
+            .action-group { width: 100%; justify-content: flex-end; margin-top: 10px; }
+        }
+    </style>
 </head>
 <body>
-    
-    <header class="app-header">
-        <div class="header-brand">
-            <a href="hub.html" class="btn-icon"><i class="fas fa-arrow-left"></i></a>
-            <span>Administração</span>
+
+    <aside class="desktop-sidebar">
+        <div class="sidebar-header">
+            <img src="../assets/images/lpvminilogo2.png" class="light-mode-only" style="height: 40px;">
+            <img src="../assets/images/lpvminilogo.png" class="dark-mode-only" style="height: 40px;">
+            <div style="line-height: 1;">
+                <div class="sidebar-brand-text">LPV Digital</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">Gestão</div>
+            </div>
         </div>
-        <button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button>
-    </header>
+        <nav class="sidebar-nav">
+            <a href="hub.html" class="sidebar-link"><i class="fas fa-home"></i> <span>Visão Geral</span></a>
+            <a href="admin.html" class="sidebar-link active"><i class="fas fa-users-cog"></i> <span>Gestão de Equipe</span></a>
+            <a href="mural.html" class="sidebar-link"><i class="fas fa-columns"></i> <span>Mural</span></a>
+            <a href="coloracao.html" class="sidebar-link"><i class="fas fa-stopwatch"></i> <span>Timers</span></a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="sidebar-user-avatar"><i class="fas fa-user"></i></div>
+            <div class="sidebar-user-info">
+                <div id="sidebar-user-name" class="user-name-text">...</div>
+                <div id="sidebar-user-role" class="user-role-text">...</div>
+            </div>
+        </div>
+    </aside>
 
-    <main class="main-container" style="padding: 2rem; max-width: 800px; margin: 0 auto;">
-        
-        <section class="card" style="margin-bottom: 2rem;">
-            <h2 style="font-size: 1.2rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-key" style="color: var(--color-primary);"></i> Código de Cadastro
-            </h2>
+    <div class="layout-wrapper">
+        <header class="app-header">
+            <div class="header-brand">
+                <div class="header-text-column">
+                    <span class="brand-title">Administração</span>
+                    <span class="brand-subtitle">Controle de acessos e cargos</span>
+                </div>
+            </div>
             <div style="display: flex; gap: 10px;">
-                <input type="text" id="admin-secret-code" class="form-input" placeholder="Carregando...">
-                <button id="btn-save-code" class="btn btn-primary">Salvar</button>
+                <button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button>
             </div>
-        </section>
+        </header>
 
-        <section>
-            <h2 style="font-size: 1.2rem; margin-bottom: 1rem;">Gerenciar Usuários</h2>
+        <main class="main-container">
             
-            <div style="display: flex; gap: 10px; margin-bottom: 1rem; overflow-x: auto;">
-                <button class="filter-btn active btn btn-secondary" data-filter="all">Todos</button>
-                <button class="filter-btn btn btn-secondary" data-filter="pendente">Pendentes</button>
-                <button class="filter-btn btn btn-secondary" data-filter="aprovado">Aprovados</button>
+            <div id="pending-section" class="hidden">
+                <div class="admin-section-title" style="color: var(--color-warning);">
+                    <i class="fas fa-exclamation-circle"></i> Aprovações Pendentes
+                </div>
+                <div id="pending-list">
+                    </div>
             </div>
 
-            <div id="users-list" style="display: flex; flex-direction: column; gap: 1rem;">
-                <p style="text-align: center; color: var(--text-secondary);">Carregando usuários...</p>
+            <div class="admin-section-title">
+                <i class="fas fa-users"></i> Membros Ativos
             </div>
-        </section>
+            
+            <div style="margin-bottom: 1rem;">
+                <input type="text" id="search-users" placeholder="Buscar por nome ou email..." 
+                       class="input-field" style="max-width: 400px; padding: 10px 15px;">
+            </div>
 
-    </main>
+            <div id="active-list">
+                <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                    <i class="fas fa-spinner fa-spin"></i> Carregando equipe...
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="hub.html" class="nav-item"><i class="fas fa-home"></i><span>Início</span></a>
+        <a href="admin.html" class="nav-item active"><i class="fas fa-users-cog"></i><span>Admin</span></a>
+        <a href="mural.html" class="nav-item"><i class="fas fa-columns"></i><span>Mural</span></a>
+        <a href="perfil.html" class="nav-item">
+            <i class="fas fa-user-circle"></i><span id="mobile-user-name">Perfil</span>
+        </a>
+    </nav>
 
     <script type="module" src="../assets/js/core.js"></script>
     <script type="module" src="../assets/js/pages/admin.js"></script>

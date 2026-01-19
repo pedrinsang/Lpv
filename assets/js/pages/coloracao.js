@@ -1,251 +1,304 @@
 /**
- * LPV - ASSISTENTE DE COLORAÇÃO
+ * LPV - MOTOR DE COLORAÇÃO
+ * Lógica de Timer, Background e UI.
  */
 
-import { auth, onAuthStateChanged } from '../core.js';
+import { auth, initThemeSystem } from '../core.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { PROTOCOLS_DATA } from '../lib/timers.js'; 
 
-// Verifica Login (Segurança)
+initThemeSystem();
+
+// Verificação de Segurança
 onAuthStateChanged(auth, (user) => {
-    if (!user) {
-        // Opcional: Redirecionar se tentar acessar direto sem login
-        // window.location.href = "auth.html";
-    }
+    if (!user) window.location.href = "../pages/auth.html";
 });
 
 // =========================================
-// DADOS DOS PROTOCOLOS
-// =========================================
-
-// Placeholder para protocolos ainda não cadastrados
-const EM_BREVE = [
-    { 
-        nome: 'Em Desenvolvimento', 
-        tipo: 'manual', 
-        instrucao: 'Os passos detalhados para esta coloração serão adicionados em breve.' 
-    }
-];
-
-// Protocolo HE (Exemplo Completo)
-const HE_STEPS = [
-    { nome: 'Desparafinização', tipo: 'timer', tempo: 40, unidade: 'min' },
-    { nome: 'Xilol Frio 1', tipo: 'timer', tempo: 20, unidade: 'min' },
-    { nome: 'Xilol Frio 2', tipo: 'timer', tempo: 5, unidade: 'min' },
-    { nome: 'Álcool Absoluto 1', tipo: 'timer', tempo: 1, unidade: 'min' },
-    { nome: 'Álcool Absoluto 2', tipo: 'timer', tempo: 30, unidade: 'seg' },
-    { nome: 'Álcool 96º', tipo: 'timer', tempo: 30, unidade: 'seg' },
-    { nome: 'Álcool 70º', tipo: 'timer', tempo: 1, unidade: 'min' },
-    { nome: 'Água Corrente', tipo: 'timer', tempo: 1, unidade: 'min' },
-    { nome: 'Hematoxilina', tipo: 'timer', tempo: 90, unidade: 'seg' },
-    { nome: 'Água Corrente', tipo: 'timer', tempo: 6, unidade: 'min' },
-    { nome: 'Aviso Importante', tipo: 'manual', instrucao: 'Esgotar bem a água.\n(Bater o carrinho sobre papel toalha)' },
-    { nome: 'Eosina', tipo: 'timer', tempo: 90, unidade: 'seg' },
-    { nome: 'Lavagem Final', tipo: 'manual', instrucao: 'Álcool Absoluto: 3 séries de 10 mergulhos.' },
-    { nome: 'Clarificação', tipo: 'timer', tempo: 2, unidade: 'min' },
-    { nome: 'Finalização', tipo: 'manual', instrucao: 'Aplicar Xilol de Montagem e cobrir com lamínula.' }
-];
-
-// MAPA DE PROTOCOLOS
-// Mapeia o atributo 'data-protocol' do HTML para a lista de passos
-const PROTOCOLS = {
-    'he': HE_STEPS,
-    'toluidina': EM_BREVE,
-    'grocott': EM_BREVE,
-    'pas': EM_BREVE,
-    'fontana': EM_BREVE,
-    'perls': EM_BREVE,
-    'tricromico': EM_BREVE,
-    'ziehl': EM_BREVE,
-    'gram': EM_BREVE,
-    'alciano': EM_BREVE
-};
-
-// =========================================
-// ESTADO E UI
+// ESTADO DO SISTEMA
 // =========================================
 let currentSteps = [];
 let currentStepIndex = 0;
 let remainingTime = 0;
-let totalTime = 0;
+let endTime = 0; 
 let timerInterval = null;
-let isPaused = false;
+let isPaused = true;
+let isAlarmRinging = false; // NOVO: Estado do alarme
+let wakeLock = null;
 
-// Elementos DOM
-const menuState = document.getElementById('menu-state');
-const executionState = document.getElementById('execution-state');
+// Configuração de Áudio
+const audioAlert = new Audio('../assets/audio/alarm.mp3'); 
+audioAlert.volume = 1.0; 
+
+// Elementos UI
+const menuView = document.getElementById('menu-view');
+const execView = document.getElementById('execution-view');
 const progressCircle = document.querySelector('.progress-ring__circle');
+const listContainer = document.getElementById('protocol-list');
 
-// =========================================
-// FUNÇÕES DE FLUXO
-// =========================================
-
-function startProtocol(key) {
-    currentSteps = PROTOCOLS[key] || EM_BREVE;
-    document.getElementById('protocol-name-display').textContent = key.toUpperCase();
-    
-    // Troca de Tela
-    menuState.classList.add('hidden');
-    executionState.classList.remove('hidden');
-    
-    // Inicializa SVG (Círculo Cheio)
+// Configuração SVG
+if (progressCircle) {
     const radius = progressCircle.r.baseVal.value;
     const circumference = radius * 2 * Math.PI;
     progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
     progressCircle.style.strokeDashoffset = 0;
-    
-    currentStepIndex = 0;
-    loadStep(0);
 }
 
+// =========================================
+// INICIALIZAÇÃO
+// =========================================
+document.addEventListener('DOMContentLoaded', () => {
+    renderMenu();
+
+    if ("Notification" in window && Notification.permission !== "granted") {
+        Notification.requestPermission();
+    }
+
+    // Expor controles
+    window.closeExecution = closeExecution;
+    window.toggleTimer = toggleTimer;
+    window.nextStep = nextStep;
+    window.prevStep = prevStep;
+});
+
+function renderMenu() {
+    if (!listContainer) return;
+    listContainer.innerHTML = '';
+    
+    Object.entries(PROTOCOLS_DATA).forEach(([key, data]) => {
+        const stepCount = data.steps.length;
+        const html = `
+            <div class="protocol-card" onclick="startProtocol('${key}')">
+                <div class="protocol-icon" style="background: ${data.color}">
+                    ${key.substring(0,2).toUpperCase()}
+                </div>
+                <div>
+                    <h3 style="margin:0; font-size:1rem; color:var(--text-primary);">${data.name}</h3>
+                    <p style="margin:0; font-size:0.8rem; color:var(--text-secondary);">
+                        ${stepCount === 1 ? 'Em breve' : stepCount + ' etapas'}
+                    </p>
+                </div>
+                <div style="margin-left:auto; opacity:0.3;"><i class="fas fa-chevron-right"></i></div>
+            </div>
+        `;
+        listContainer.insertAdjacentHTML('beforeend', html);
+    });
+}
+
+// =========================================
+// LÓGICA DE CONTROLE
+// =========================================
+
+window.startProtocol = (key) => {
+    const protocolData = PROTOCOLS_DATA[key];
+    currentSteps = protocolData.steps;
+    
+    document.getElementById('exec-title').textContent = protocolData.name.toUpperCase();
+    
+    menuView.classList.add('hidden');
+    execView.classList.remove('hidden');
+    
+    requestWakeLock();
+    currentStepIndex = 0;
+    loadStep(0);
+};
+
 function loadStep(index) {
-    if (index >= currentSteps.length) {
-        showCompletion();
+    stopAlarm(); // Garante que o alarme pare ao trocar de passo
+    currentStepIndex = index;
+    const step = currentSteps[index];
+    
+    document.getElementById('exec-step-count').textContent = `Passo ${index + 1}/${currentSteps.length}`;
+    document.getElementById('step-name').textContent = step.nome;
+
+    document.getElementById('timer-container').classList.add('hidden');
+    document.getElementById('manual-container').classList.add('hidden');
+    document.getElementById('completion-container').classList.add('hidden');
+    document.getElementById('control-bar').classList.remove('hidden');
+
+    const btn = document.getElementById('btn-main-action');
+
+    // PASSO MANUAL
+    if (step.tipo === 'manual') {
+        document.getElementById('manual-container').classList.remove('hidden');
+        document.getElementById('manual-instruction').innerText = step.instrucao;
+        
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+        btn.className = 'btn-round-large btn-play';
+        btn.style.background = 'var(--color-success)';
+        
+        isPaused = true;
+        clearInterval(timerInterval);
+    } 
+    // PASSO TIMER
+    else {
+        document.getElementById('timer-container').classList.remove('hidden');
+        
+        remainingTime = step.tempo;
+        updateTimerDisplay();
+        
+        btn.innerHTML = '<i class="fas fa-play"></i>';
+        btn.className = 'btn-round-large btn-play';
+        btn.style.background = 'var(--color-primary)';
+        
+        isPaused = true;
+        clearInterval(timerInterval);
+        
+        if (progressCircle) progressCircle.style.strokeDashoffset = 0;
+    }
+}
+
+function toggleTimer() {
+    const step = currentSteps[currentStepIndex];
+
+    // 1. SE O ALARME ESTIVER TOCANDO (Ação: Parar Som)
+    if (isAlarmRinging) {
+        stopAlarm();
+        return; // Não avança, apenas para o som
+    }
+    
+    // 2. SE FOR MANUAL OU O TEMPO JÁ ACABOU (Ação: Avançar)
+    // Se o tempo acabou (remainingTime <= 0) e o alarme já foi parado, o botão serve para ir pro próximo
+    if (step.tipo === 'manual' || remainingTime <= 0) {
+        nextStep();
         return;
     }
 
-    const step = currentSteps[index];
-    document.getElementById('step-counter').textContent = `${index + 1}/${currentSteps.length}`;
+    // 3. PLAY / PAUSE DO TIMER
+    const btn = document.getElementById('btn-main-action');
 
-    // Reset visual
-    document.getElementById('timed-step').classList.add('hidden');
-    document.getElementById('manual-step').classList.add('hidden');
-    document.getElementById('completion-state').classList.add('hidden');
-
-    if (step.tipo === 'timer') {
-        setupTimer(step);
-    } else {
-        setupManual(step);
-    }
-}
-
-function setupTimer(step) {
-    document.getElementById('timed-step').classList.remove('hidden');
-    document.getElementById('step-title').textContent = step.nome;
-    
-    remainingTime = step.unidade === 'min' ? step.tempo * 60 : step.tempo;
-    totalTime = remainingTime;
-    
-    updateTimerDisplay();
-    // Reseta círculo visualmente para cheio
-    progressCircle.style.strokeDashoffset = 0; 
-    
-    isPaused = true;
-    togglePause(); // Inicia automaticamente
-}
-
-function setupManual(step) {
-    document.getElementById('manual-step').classList.remove('hidden');
-    document.getElementById('manual-title').textContent = step.nome;
-    document.getElementById('manual-instruction').textContent = step.instrucao;
-    clearInterval(timerInterval);
-}
-
-function showCompletion() {
-    document.getElementById('completion-state').classList.remove('hidden');
-    clearInterval(timerInterval);
-}
-
-// =========================================
-// TIMER ENGINE
-// =========================================
-
-function togglePause() {
-    const btn = document.getElementById('btn-pause');
-    const icon = btn.querySelector('i');
-    
     if (isPaused) {
+        // PLAY
         isPaused = false;
-        icon.className = 'fas fa-pause';
+        endTime = Date.now() + (remainingTime * 1000);
+        
+        btn.innerHTML = '<i class="fas fa-pause"></i>';
+        btn.style.background = 'var(--color-warning)';
+        
         timerInterval = setInterval(tick, 1000);
     } else {
+        // PAUSE
         isPaused = true;
-        icon.className = 'fas fa-play';
         clearInterval(timerInterval);
+        btn.innerHTML = '<i class="fas fa-play"></i>';
+        btn.style.background = 'var(--color-primary)';
     }
 }
 
 function tick() {
+    const now = Date.now();
+    const distance = endTime - now;
+    remainingTime = Math.ceil(distance / 1000);
+
     if (remainingTime > 0) {
-        remainingTime--;
         updateTimerDisplay();
-        
-        // Atualiza SVG
-        const radius = progressCircle.r.baseVal.value;
-        const circumference = radius * 2 * Math.PI;
-        // Calcula quanto "falta" para esvaziar
-        const offset = circumference - (remainingTime / totalTime) * circumference;
-        progressCircle.style.strokeDashoffset = offset;
+        if (progressCircle) {
+            const radius = progressCircle.r.baseVal.value;
+            const circumference = radius * 2 * Math.PI;
+            const totalTime = currentSteps[currentStepIndex].tempo;
+            const displayTime = Math.max(0, remainingTime);
+            const offset = circumference - (displayTime / totalTime) * circumference;
+            progressCircle.style.strokeDashoffset = offset;
+        }
     } else {
+        remainingTime = 0;
+        updateTimerDisplay();
         clearInterval(timerInterval);
-        playAlarm();
+        finishStep();
     }
 }
 
+function finishStep() {
+    isPaused = true;
+    playAlarm(); // Toca som e vibra
+    sendNotification("LPV Timer", `Etapa ${currentSteps[currentStepIndex].nome} concluída!`);
+    
+    // Configura botão para PARAR ALARME (Vermelho)
+    const btn = document.getElementById('btn-main-action');
+    btn.innerHTML = '<i class="fas fa-bell-slash"></i>';
+    btn.style.background = 'var(--color-error)';
+    // Animação CSS inline para chamar atenção
+    btn.style.animation = "pulse 1s infinite";
+}
+
+function stopAlarm() {
+    isAlarmRinging = false;
+    
+    // Para o som
+    audioAlert.pause();
+    audioAlert.currentTime = 0;
+
+    // Configura botão para PRÓXIMO (Verde)
+    const btn = document.getElementById('btn-main-action');
+    btn.innerHTML = '<i class="fas fa-arrow-right"></i>'; // Seta para direita indicando próximo
+    btn.style.background = 'var(--color-success)';
+    btn.style.animation = "none";
+}
+
+// --- NAVEGAÇÃO ---
+
+function nextStep() {
+    stopAlarm(); // Garante segurança
+    clearInterval(timerInterval);
+    if (currentStepIndex < currentSteps.length - 1) {
+        loadStep(currentStepIndex + 1);
+    } else {
+        showCompletion();
+    }
+}
+
+function prevStep() {
+    stopAlarm();
+    clearInterval(timerInterval);
+    if (currentStepIndex > 0) {
+        loadStep(currentStepIndex - 1);
+    }
+}
+
+function showCompletion() {
+    stopAlarm();
+    document.getElementById('timer-container').classList.add('hidden');
+    document.getElementById('manual-container').classList.add('hidden');
+    document.getElementById('completion-container').classList.remove('hidden');
+    document.getElementById('control-bar').classList.add('hidden');
+    if (wakeLock) wakeLock.release();
+}
+
+function closeExecution() {
+    stopAlarm();
+    clearInterval(timerInterval);
+    menuView.classList.remove('hidden');
+    execView.classList.add('hidden');
+    if (wakeLock) wakeLock.release();
+}
+
+// --- UTILITÁRIOS ---
+
 function updateTimerDisplay() {
-    const m = Math.floor(remainingTime / 60);
-    const s = remainingTime % 60;
-    document.getElementById('timer-minutes').textContent = String(m).padStart(2, '0');
-    document.getElementById('timer-seconds').textContent = String(s).padStart(2, '0');
+    const safeTime = Math.max(0, remainingTime);
+    const m = Math.floor(safeTime / 60).toString().padStart(2, '0');
+    const s = (safeTime % 60).toString().padStart(2, '0');
+    document.getElementById('timer-text').textContent = `${m}:${s}`;
 }
 
 function playAlarm() {
-    // Tenta tocar um som simples
+    isAlarmRinging = true;
     try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
+        if(navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
         
-        // Configuração do som (Beep)
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
-        
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-        
-        osc.start();
-        osc.stop(ctx.currentTime + 0.5);
-    } catch(e) { 
-        console.log('Alarme visual ativado (som bloqueado pelo navegador)'); 
+        audioAlert.loop = true; // Garante que toca até alguém parar
+        audioAlert.play().catch(e => console.log("Interaja com a página para tocar o som."));
+    } catch(e) {}
+}
+
+function sendNotification(title, body) {
+    if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(title, { body, icon: '../assets/images/lpvminilogo2.png' });
     }
 }
 
-function returnToMenu() {
-    clearInterval(timerInterval);
-    executionState.classList.add('hidden');
-    menuState.classList.remove('hidden');
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+    } catch (err) { console.log(err); }
 }
-
-// =========================================
-// EVENTOS DE INICIALIZAÇÃO
-// =========================================
-document.addEventListener('DOMContentLoaded', () => {
-    // Evento nos cards
-    document.querySelectorAll('.protocol-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const key = card.dataset.protocol;
-            if (PROTOCOLS[key]) {
-                startProtocol(key);
-            } else {
-                alert('Protocolo não reconhecido.');
-            }
-        });
-    });
-
-    // Botões de controle
-    document.getElementById('btn-back-menu').addEventListener('click', returnToMenu);
-    document.getElementById('btn-finish').addEventListener('click', returnToMenu);
-    document.getElementById('btn-pause').addEventListener('click', togglePause);
-    
-    document.getElementById('btn-next').addEventListener('click', () => {
-        clearInterval(timerInterval);
-        loadStep(currentStepIndex + 1);
-        currentStepIndex++;
-    });
-    
-    document.getElementById('btn-manual-next').addEventListener('click', () => {
-        loadStep(currentStepIndex + 1);
-        currentStepIndex++;
-    });
-});

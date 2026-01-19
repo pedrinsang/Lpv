@@ -1,289 +1,190 @@
-/**
- * LPV - AUTHENTICATION SCRIPT
- * Gerencia: Login, Cadastro (com validação de código), PWA e Tema.
- */
+import { auth, db } from '../core.js';
+import { 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword,
+    signOut 
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { 
+    doc, 
+    setDoc,
+    getDoc 
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-import { auth, db } from '../core.js'; 
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+console.log(">>> Auth.js carregado!");
 
-// DOM Elements
 const loginForm = document.getElementById('login-form');
 const registerForm = document.getElementById('register-form');
-const installArea = document.getElementById('pwa-install-area');
-const installBtn = document.getElementById('btn-install');
-const pwaModal = document.getElementById('pwa-modal');
-const modalIOS = document.getElementById('modal-content-ios');
-const modalError = document.getElementById('modal-content-error');
+const loginContainer = document.getElementById('login-container');
+const registerContainer = document.getElementById('register-container');
+const showRegisterBtn = document.getElementById('show-register');
+const showLoginBtn = document.getElementById('show-login');
 
-let deferredPrompt; 
-
-// ================================================================
-// 0. LOGO SWITCHER (Troca logo Branco/Escuro conforme tema)
-// ================================================================
-function initLogoSwitcher() {
-    const brandLogo = document.getElementById('brand-logo');
-    if (!brandLogo) return;
-
-    const updateLogo = () => {
-        // Verifica se tem o atributo data-theme="dark" no HTML
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        
-        // Se for Dark Mode -> Logo Original (LPV.png)
-        // Se for Light Mode -> Logo Branco (LPV2.png) para contrastar com fundo azul
-        if (isDark) {
-            brandLogo.src = '../assets/images/LPV.png';
-        } else {
-            brandLogo.src = '../assets/images/LPV2.png';
-        }
-    };
-
-    // Executa ao carregar
-    updateLogo();
-
-    // Observa mudanças no tema em tempo real
-    const observer = new MutationObserver(updateLogo);
-    observer.observe(document.documentElement, { 
-        attributes: true, 
-        attributeFilter: ['data-theme'] 
+// Alternância de Telas
+if (showRegisterBtn) {
+    showRegisterBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        loginContainer.classList.add('hidden');
+        registerContainer.classList.remove('hidden');
+    });
+}
+if (showLoginBtn) {
+    showLoginBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        registerContainer.classList.add('hidden');
+        loginContainer.classList.remove('hidden');
     });
 }
 
-// Inicializa assim que o DOM carregar
-document.addEventListener('DOMContentLoaded', initLogoSwitcher);
-
-
-// ================================================================
-// 1. LOGIN (Com Verificação de Status: Pendente/Bloqueado)
-// ================================================================
+// --- LOGIN ---
 if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        console.log(">>> Iniciando Login...");
+        
         const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
+        const pass = document.getElementById('login-password').value;
+        const alertBox = document.getElementById('login-alert');
         const btn = loginForm.querySelector('button');
-        const alert = document.getElementById('login-alert');
 
-        setLoading(btn, true, 'Verificando permissões...');
-        alert.classList.add('hidden');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+        btn.disabled = true;
+        alertBox.classList.add('hidden');
 
         try {
-            // 1. Autentica no Firebase Auth
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            console.log("1. Autenticando...");
+            const userCredential = await signInWithEmailAndPassword(auth, email, pass);
             const user = userCredential.user;
+            console.log("2. Logado no Auth:", user.uid);
 
-            // 2. Verifica status no Firestore (Banco de Dados)
-            const userDocRef = doc(db, "users", user.uid);
-            const userDoc = await getDoc(userDocRef);
-
+            console.log("3. Verificando Status no Firestore...");
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            
             if (userDoc.exists()) {
                 const userData = userDoc.data();
+                console.log("4. Dados do usuário:", userData);
                 
-                if (userData.status === 'bloqueado') {
+                if (userData.status === 'pending') {
+                    console.warn("BLOQUEIO: Usuário pendente.");
                     await signOut(auth);
-                    throw new Error("Acesso negado: Sua conta foi bloqueada.");
-                }
-                
-                if (userData.status === 'pendente') {
-                    await signOut(auth);
-                    throw new Error("Acesso em análise: Aguarde aprovação do administrador.");
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    showAlert(alertBox, "Cadastro aguardando aprovação do Professor.", "warning");
+                    return;
                 }
             } else {
-                // Se o usuário existe no Auth mas não no Firestore (caso raro/antigo)
-                // Criamos o doc básico como 'pendente' por segurança
-                await setDoc(userDocRef, {
-                    email: user.email,
-                    name: user.displayName || "Sem Nome",
-                    role: "user",
-                    status: "pendente",
-                    createdAt: new Date().toISOString()
-                });
-                await signOut(auth);
-                throw new Error("Cadastro atualizado. Aguarde aprovação.");
+                console.log("4. Usuário sem documento no banco (pode ser admin manual).");
             }
 
-            // 3. Sucesso - Redireciona
-            alert.textContent = 'Acesso Autorizado! Entrando...';
-            alert.className = 'alert-message success';
-            alert.classList.remove('hidden');
-            setTimeout(() => window.location.href = 'hub.html', 1000);
+            console.log("5. Redirecionando...");
+            window.location.href = '../pages/hub.html';
 
         } catch (error) {
-            console.error(error);
-            let msg = error.message;
-            // Traduções amigáveis
-            if (error.code === 'auth/invalid-credential') msg = 'Email ou senha incorretos.';
-            if (error.code === 'auth/user-not-found') msg = 'Usuário não encontrado.';
-            if (error.code === 'auth/wrong-password') msg = 'Senha incorreta.';
-
-            showAlert(alert, msg, 'error');
-            setLoading(btn, false, 'Entrar');
+            console.error("!!! ERRO NO LOGIN:", error);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            showAlert(alertBox, "Erro: " + error.message, 'error');
         }
     });
 }
 
-
-// ================================================================
-// 2. CADASTRO (Com Código Secreto + Confirmação de Senha)
-// ================================================================
+// --- CADASTRO ---
 if (registerForm) {
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        console.log(">>> Iniciando Cadastro...");
         
-        // Coleta valores
-        const name = document.getElementById('register-name').value.trim();
-        const email = document.getElementById('register-email').value.trim();
-        const password = document.getElementById('register-password').value;
-        const confirmPassword = document.getElementById('register-confirm-password').value;
-        const inputCode = document.getElementById('register-code').value.trim();
-        
+        const name = document.getElementById('reg-name').value;
+        const email = document.getElementById('reg-email').value;
+        const inputCode = document.getElementById('reg-access-code').value.trim();
+        const pass = document.getElementById('reg-pass').value;
+        const confirm = document.getElementById('reg-confirm').value;
+        const alertBox = document.getElementById('register-alert');
         const btn = registerForm.querySelector('button');
-        const alert = document.getElementById('register-alert');
 
-        // Validação Local: Senhas iguais
-        if (password !== confirmPassword) {
-            showAlert(alert, 'As senhas não coincidem.', 'error');
+        alertBox.classList.add('hidden');
+
+        if (pass !== confirm) {
+            showAlert(alertBox, "As senhas não coincidem.", 'error');
             return;
         }
 
-        setLoading(btn, true, 'Validando Código...');
-        alert.classList.add('hidden');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando código...';
+        btn.disabled = true;
 
         try {
-            // 1. Busca o Código Secreto no Firestore
-            const configRef = doc(db, "config", "registration");
-            const configSnap = await getDoc(configRef);
+            // 1. Valida Código
+            console.log("1. Buscando config/registration...");
+            const codeRef = doc(db, "config", "registration");
+            const codeSnap = await getDoc(codeRef);
 
-            let serverCode = "LPV2024"; // Fallback padrão
+            if (!codeSnap.exists()) {
+                throw new Error("Documento de configuração não encontrado no banco! Verifique se criou a coleção 'config' e o documento 'registration'.");
+            }
+
+            const serverCode = codeSnap.data().access_code;
+            console.log("2. Código do servidor:", serverCode);
+            console.log("3. Código digitado:", inputCode);
+
+            if (serverCode !== inputCode) {
+                console.warn("Código inválido.");
+                showAlert(alertBox, "Código de acesso inválido.", 'error');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                return;
+            }
+
+            // 2. Cria Usuário
+            console.log("4. Código aceito. Criando usuário no Auth...");
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando conta...';
             
-            if (configSnap.exists()) {
-                serverCode = configSnap.data().secretCode || "LPV2024";
-            } else {
-                // Cria doc inicial se não existir (Bootstrap)
-                await setDoc(configRef, { secretCode: "LPV2024" });
-            }
-
-            // 2. Compara Código
-            if (inputCode !== serverCode) {
-                throw new Error("Código de acesso inválido. Contate o administrador.");
-            }
-
-            // 3. Cria Usuário no Auth
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            // AQUI É ONDE GERALMENTE TRAVA SE TIVER PROBLEMA DE KEY
+            const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
             const user = userCredential.user;
-            
-            // Atualiza Nome
-            await updateProfile(user, { displayName: name });
+            console.log("5. Usuário Auth criado! UID:", user.uid);
 
-            // 4. Salva no Firestore como PENDENTE
+            // 3. Salva no Firestore
+            console.log("6. Salvando dados no Firestore...");
             await setDoc(doc(db, "users", user.uid), {
                 name: name,
                 email: email,
-                role: "user",      // Todo mundo nasce user
-                status: "pendente", // Todo mundo nasce pendente
-                createdAt: new Date().toISOString()
+                role: 'estagiario', 
+                status: 'pending',
+                createdAt: new Date()
             });
-            
-            // 5. Desloga imediatamente (segurança)
+            console.log("7. Dados salvos com sucesso!");
+
+            // 4. Desloga
+            console.log("8. Deslogando para exigir aprovação...");
             await signOut(auth);
 
-            showAlert(alert, 'Solicitação enviada! Aguarde a liberação do administrador.', 'success');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
             
-            // Limpa o formulário
-            registerForm.reset();
-            setLoading(btn, false, 'Solicitar Acesso');
+            console.log("9. Finalizado. Voltando ao login.");
+            registerContainer.classList.add('hidden');
+            loginContainer.classList.remove('hidden');
+            const loginAlert = document.getElementById('login-alert');
+            showAlert(loginAlert, "Conta criada! Aguarde aprovação do Professor.", "warning");
 
         } catch (error) {
-            console.error(error);
-            let msg = error.message;
-            if (error.code === 'auth/email-already-in-use') msg = 'Este email já está cadastrado.';
-            if (error.code === 'auth/weak-password') msg = 'A senha deve ter pelo menos 6 caracteres.';
+            console.error("!!! ERRO NO CADASTRO:", error);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
             
-            showAlert(alert, msg, 'error');
-            setLoading(btn, false, 'Solicitar Acesso');
+            let msg = error.message;
+            if (error.code === 'auth/email-already-in-use') msg = "Email já cadastrado.";
+            if (error.code === 'permission-denied') msg = "Erro de permissão no banco de dados.";
+            
+            showAlert(alertBox, "Erro: " + msg, 'error');
         }
     });
 }
 
-
-// ================================================================
-// 3. PWA & MODAIS (Lógica de Instalação)
-// ================================================================
-
-// Utilitários de detecção
-const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-
-// Se já estiver instalado, esconde a área de instalação
-if (isStandalone()) {
-    if (installArea) installArea.style.display = 'none';
-}
-
-// Captura evento nativo do Chrome/Android
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-});
-
-// Listener do Botão
-if (installBtn) {
-    installBtn.addEventListener('click', async () => {
-        // Caso 1: Android/Chrome (Nativo)
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            deferredPrompt = null;
-            if (outcome === 'accepted') installArea.style.display = 'none';
-            return;
-        }
-        
-        // Caso 2: iPhone (Tutorial)
-        if (isIOS()) {
-            openModal('ios');
-            return;
-        }
-        
-        // Caso 3: Desktop/Incompatível (Aviso)
-        openModal('error');
-    });
-}
-
-// Helpers de Modal
-function openModal(type) {
-    modalIOS.classList.add('hidden');
-    modalError.classList.add('hidden');
-    
-    if (type === 'ios') modalIOS.classList.remove('hidden');
-    else modalError.classList.remove('hidden');
-    
-    pwaModal.classList.add('open');
-}
-
-// Fechar Modal (X ou Botão OK)
-[document.getElementById('close-modal'), document.getElementById('btn-modal-ok')].forEach(btn => {
-    if(btn) btn.addEventListener('click', () => pwaModal.classList.remove('open'));
-});
-
-// Fechar clicando fora
-if (pwaModal) {
-    pwaModal.addEventListener('click', (e) => {
-        if (e.target === pwaModal) pwaModal.classList.remove('open');
-    });
-}
-
-
-// ================================================================
-// 4. HELPERS DE UI
-// ================================================================
-
-function setLoading(btn, loading, text) {
-    btn.disabled = loading;
-    btn.textContent = text;
-    if(loading) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + text;
-}
-
-function showAlert(el, msg, type) {
-    el.textContent = msg;
-    el.className = `alert-message ${type}`;
-    el.classList.remove('hidden');
+function showAlert(element, message, type) {
+    if (!element) return;
+    element.innerHTML = message;
+    element.className = `alert-message ${type}`; 
+    element.classList.remove('hidden');
 }

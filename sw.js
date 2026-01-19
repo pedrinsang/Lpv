@@ -1,99 +1,72 @@
-const CACHE_NAME = 'lpv-app-v6'; // Mudei a versão para forçar atualização
+const CACHE_NAME = 'lpv-ultra-fast-v1';
 const ASSETS_TO_CACHE = [
-  // Raiz
-  './',
-  './index.html',
-  './manifest.json',
-
-  // Páginas HTML
-  './pages/auth.html',
-  './pages/hub.html',
-  './pages/mural.html',
-  './pages/coloracao.html',
-
-  // Estilos (Apenas os que existem agora)
-  './assets/css/global.css',
-  './assets/css/pages/coloracao.css',
-
-  // Scripts (Nova estrutura)
-  './assets/js/core.js',
-  './assets/js/pages/auth.js',
-  './assets/js/pages/hub.js',
-  './assets/js/pages/mural.js',
-  './assets/js/pages/coloracao.js',
-  './assets/js/birthdays.js',
-
-  // Imagens Essenciais (Adicione outras se precisar offline)
-  './assets/images/lpvminilogo2.png',
-  './assets/images/LPV.png',
-  './assets/images/fundo-lab.png',
-  
-  // FontAwesome (CDN - Opcional, cacheia se a rede permitir)
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+  '/',
+  '/index.html',
+  '/pages/auth.html',
+  '/pages/hub.html',
+  '/pages/mural.html',
+  '/pages/coloracao.html',
+  '/assets/css/global.css',
+  '/assets/js/core.js',
+  '/assets/js/lib/timers.js',
+  '/assets/images/lpvminilogo2.png',
+  '/manifest.json'
 ];
 
-// 1. Instalação: Cacheia os arquivos estáticos
+// 1. INSTALAÇÃO: Cacheia o essencial sem bloquear
 self.addEventListener('install', (event) => {
-  console.log('[SW] Instalando Service Worker...');
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('[SW] Cacheando arquivos essenciais...');
-        return cache.addAll(ASSETS_TO_CACHE);
-      })
-      .catch((err) => {
-        console.error('[SW] Falha no cache:', err);
-      })
-  );
   self.skipWaiting(); // Força o SW a ativar imediatamente
-});
-
-// 2. Ativação: Limpa caches antigos
-self.addEventListener('activate', (event) => {
-  console.log('[SW] Ativando e limpando caches antigos...');
   event.waitUntil(
-    caches.keys().then((keyList) => {
-      return Promise.all(keyList.map((key) => {
-        if (key !== CACHE_NAME) {
-          console.log('[SW] Removendo cache antigo:', key);
-          return caches.delete(key);
-        }
-      }));
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS_TO_CACHE);
     })
   );
-  self.clients.claim(); // Controla as páginas abertas imediatamente
 });
 
-// 3. Fetch: Serve do Cache, se não tiver, busca na Rede (Offline First)
-self.addEventListener('fetch', (event) => {
-  // Ignora requisições que não sejam GET ou sejam para o Firebase/Google
-  if (event.request.method !== 'GET') return;
-  if (event.request.url.includes('firestore') || event.request.url.includes('googleapis')) return;
-
-  event.respondWith(
-    caches.match(event.request)
-      .then((cachedResponse) => {
-        // Retorna do cache se existir
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        
-        // Se não, busca na rede
-        return fetch(event.request).then((response) => {
-          // Verifica se a resposta é válida
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
+// 2. ATIVAÇÃO: Limpa caches antigos e assume controle da página na hora
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
           }
-
-          // Clona a resposta para salvar no cache dinamicamente
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-
-          return response;
-        });
-      })
+        })
+      );
+    }).then(() => self.clients.claim()) // Controla a página imediatamente
   );
+});
+
+// 3. INTERCEPTAÇÃO (FETCH): Estratégia Híbrida de Alta Velocidade
+self.addEventListener('fetch', (event) => {
+  
+  // Ignora requisições que não sejam GET (ex: POST para Firebase)
+  if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+
+  // A. ESTRATÉGIA PARA ARQUIVOS ESTÁTICOS (Imagens, CSS, JS, Fontes)
+  // Cache First (Mais rápido: pega do disco, nem vai na internet)
+  if (url.pathname.match(/\.(css|js|png|jpg|jpeg|svg|woff2)$/)) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        return cachedResponse || fetch(event.request);
+      })
+    );
+    return;
+  }
+
+  // B. ESTRATÉGIA PARA NAVEGAÇÃO (HTML - Mudança de Página)
+  // Network First (Garante que você veja a versão atualizada, cai pro cache se estiver offline)
+  // Isso remove a sensação de "atraso" pois o navegador vai direto buscar a página nova.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .catch(() => {
+          return caches.match(event.request) || caches.match('/index.html');
+        })
+    );
+    return;
+  }
 });

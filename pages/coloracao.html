@@ -2,205 +2,235 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Assistente de Coloração | LPV</title>
     
     <script>
         (function() {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+            try {
+                const localTheme = localStorage.getItem('theme');
+                const sysTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (localTheme === 'dark' || (!localTheme && sysTheme)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch (e) {}
         })();
     </script>
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/global.css">
-    <link rel="stylesheet" href="../assets/css/pages/coloracao.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="../manifest.json">
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
+
+    <style>
+        /* --- ESTILOS ESPECÍFICOS DESTA PÁGINA --- */
+
+        /* TIMER VISUAL (Círculo SVG) */
+        .timer-wrapper {
+            position: relative; width: 260px; height: 260px; margin: 2rem auto;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.1s linear;
+            transform: rotate(-90deg); transform-origin: 50% 50%;
+            stroke: var(--color-primary);
+        }
+        .timer-digital {
+            position: absolute; font-size: 3.5rem; font-weight: 800;
+            color: var(--text-primary); font-variant-numeric: tabular-nums;
+        }
+
+        /* OVERLAY (Modo Execução) */
+        .overlay-mode {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-body); z-index: 2000;
+            display: flex; flex-direction: column;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        /* LISTA DE PROTOCOLOS (Cards) */
+        .protocol-card {
+            display: flex; align-items: center; gap: 15px;
+            padding: 16px; margin-bottom: 12px;
+            background: var(--bg-glass); border: 1px solid var(--border-glass);
+            border-radius: 18px; cursor: pointer; transition: 0.2s;
+        }
+        .protocol-card:hover { transform: translateY(-3px); border-color: var(--color-primary); }
+        
+        .protocol-icon {
+            width: 50px; height: 50px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; color: white; font-size: 1.1rem; flex-shrink: 0;
+        }
+
+        /* BARRA DE CONTROLE (Footer do Timer) */
+        .control-bar {
+            position: fixed; bottom: 0; width: 100%;
+            padding: 2rem; background: var(--bg-glass-heavy);
+            border-top-left-radius: 30px; border-top-right-radius: 30px;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
+            display: flex; justify-content: center; gap: 20px;
+        }
+        .btn-round-large {
+            width: 70px; height: 70px; border-radius: 50%; border: none;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; color: white; cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2); transition: transform 0.1s;
+        }
+        .btn-round-large:active { transform: scale(0.95); }
+        .btn-play { background: var(--color-primary); }
+        .btn-skip { background: transparent; border: 2px solid var(--border-glass); color: var(--text-secondary); width: 50px; height: 50px; font-size: 1rem; }
+
+        /* --- CORREÇÕES PARA DESKTOP (GRID LAYOUT) --- */
+        @media (min-width: 1024px) {
+            /* Transforma a lista vertical em Grade (Grid) */
+            #protocol-list {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); /* Colunas automáticas */
+                gap: 20px;
+            }
+            
+            .protocol-card {
+                margin-bottom: 0; /* Remove margem pois o grid usa gap */
+                height: 100%; /* Altura uniforme */
+                padding: 1.5rem;
+            }
+
+            /* Sobrescreve o título "Dashboard" do CSS Global para "Timers" nesta página */
+            .header-brand::after {
+                content: "Timers de Coloração" !important;
+            }
+        }
+    </style>
 </head>
 <body>
 
-    <div id="menu-state" class="state-container fade-in">
-        <header class="app-header">
-            <div class="header-brand">
-                <a href="hub.html" class="btn-icon" style="color: white; margin-right: 10px;">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <span>Protocolos</span>
-            </div>
-            
-            <button id="theme-toggle" class="btn-icon">
-                <i class="fas fa-moon"></i>
-            </button>
-        </header>
-
-        <main class="main-container" style="max-width: 800px; margin: 0 auto; padding: 2rem;">
-            <div class="protocol-list">
-                
-                <div class="protocol-card" data-protocol="he">
-                    <div class="card-icon" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);">
-                        <span class="initials">HE</span>
-                    </div>
-                    <div class="card-info">
-                        <h3>Hematoxilina e Eosina</h3>
-                        <p>Rotina Histopatológica</p>
-                    </div>
-                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
-                </div>
-
-                <div class="protocol-card" data-protocol="toluidina">
-                    <div class="card-icon" style="background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);">
-                        <span class="initials">AT</span>
-                    </div>
-                    <div class="card-info">
-                        <h3>Azul de Toluidina</h3>
-                        <p>Mastócitos</p>
-                    </div>
-                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
-                </div>
-
-                <div class="protocol-card" data-protocol="grocott">
-                    <div class="card-icon" style="background: linear-gradient(135deg, #434343 0%, #000000 100%);">
-                        <span class="initials">GR</span>
-                    </div>
-                    <div class="card-info">
-                        <h3>Grocott</h3>
-                        <p>Fungos (Prata)</p>
-                    </div>
-                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
-                </div>
-
-                <div class="protocol-card" data-protocol="pas">
-                    <div class="card-icon" style="background: linear-gradient(135deg, #ec008c 0%, #fc6767 100%);">
-                        <span class="initials">PAS</span>
-                    </div>
-                    <div class="card-info">
-                        <h3>PAS</h3>
-                        <p>Glicogênio</p>
-                    </div>
-                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
-                </div>
-
-                <div class="protocol-card" data-protocol="fontana">
-                    <div class="card-icon" style="background: linear-gradient(135deg, #bdc3c7 0%, #2c3e50 100%);">
-                        <span class="initials">FM</span>
-                    </div>
-                    <div class="card-info">
-                        <h3>Fontana Masson</h3>
-                        <p>Melanina</p>
-                    </div>
-                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
-                </div>
-
-                <div class="protocol-card" data-protocol="perls">
-                    <div class="card-icon" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
-                        <span class="initials">PE</span>
-                    </div>
-                    <div class="card-info">
-                        <h3>Perls</h3>
-                        <p>Ferro (Hemossiderina)</p>
-                    </div>
-                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
-                </div>
-
-                <div class="protocol-card" data-protocol="tricromico">
-                    <div class="card-icon" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
-                        <span class="initials">TM</span>
-                    </div>
-                    <div class="card-info">
-                        <h3>Tricrômico</h3>
-                        <p>Colágeno</p>
-                    </div>
-                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
-                </div>
-
-                <div class="protocol-card" data-protocol="ziehl">
-                    <div class="card-icon" style="background: linear-gradient(135deg, #cb2d3e 0%, #ef473a 100%);">
-                        <span class="initials">ZN</span>
-                    </div>
-                    <div class="card-info">
-                        <h3>Ziehl-Neelsen</h3>
-                        <p>Bacilos Álcool-Ácido</p>
-                    </div>
-                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
-                </div>
-
-                <div class="protocol-card" data-protocol="gram">
-                    <div class="card-icon" style="background: linear-gradient(135deg, #833ab4 0%, #fd1d1d 100%);">
-                        <span class="initials">GR</span>
-                    </div>
-                    <div class="card-info">
-                        <h3>Gram</h3>
-                        <p>Bactérias</p>
-                    </div>
-                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
-                </div>
-
-                <div class="protocol-card" data-protocol="alciano">
-                    <div class="card-icon" style="background: linear-gradient(135deg, #00f260 0%, #0575e6 100%);">
-                        <span class="initials">AA</span>
-                    </div>
-                    <div class="card-info">
-                        <h3>Azul Alciano</h3>
-                        <p>Mucinas Ácidas</p>
-                    </div>
-                    <div class="card-arrow"><i class="fas fa-chevron-right"></i></div>
-                </div>
-
-            </div>
-        </main>
-    </div>
-
-    <div id="execution-state" class="overlay-mode hidden">
-        <div class="execution-content">
-            <header class="execution-header">
-                <button id="btn-back-menu" class="btn-text">
-                    <i class="fas fa-times"></i> Sair
-                </button>
-                <span class="protocol-tag">
-                    <span id="protocol-name-display">HE</span> • Passo <span id="step-counter">1</span>
-                </span>
-            </header>
-
-            <div class="glass-card timer-card">
-                
-                <div id="timed-step" class="step-content hidden">
-                    <h2 id="step-title" class="step-title">Carregando...</h2>
-                    
-                    <div class="timer-wrapper">
-                        <svg class="progress-ring" width="280" height="280">
-                            <circle class="progress-ring__circle-bg" stroke-width="12" fill="transparent" r="120" cx="140" cy="140"/>
-                            <circle class="progress-ring__circle" stroke-width="12" fill="transparent" r="120" cx="140" cy="140"/>
-                        </svg>
-                        <div class="timer-digital">
-                            <span id="timer-minutes">00</span>:<span id="timer-seconds">00</span>
-                        </div>
-                    </div>
-
-                    <div class="controls">
-                        <button id="btn-pause" class="btn-round large"><i class="fas fa-play"></i></button>
-                        <button id="btn-next" class="btn-pill">Pular <i class="fas fa-forward"></i></button>
-                    </div>
-                </div>
-
-                <div id="manual-step" class="step-content hidden">
-                    <div class="manual-icon"><i class="fas fa-hand-holding-water"></i></div>
-                    <h2 id="manual-title" class="step-title">Etapa Manual</h2>
-                    <p id="manual-instruction" class="instruction-text">Instrução...</p>
-                    <button id="btn-manual-next" class="btn btn-primary pulse-effect" style="width: 100%;">
-                        Próximo Passo <i class="fas fa-arrow-right"></i>
-                    </button>
-                </div>
-
-                <div id="completion-state" class="step-content hidden">
-                    <div class="success-icon"><i class="fas fa-check-circle"></i></div>
-                    <h2 class="step-title">Finalizado!</h2>
-                    <p class="instruction-text">Protocolo concluído com sucesso.</p>
-                    <button id="btn-finish" class="btn btn-primary" style="width: 100%;">Voltar ao Menu</button>
-                </div>
-
+    <aside class="desktop-sidebar">
+        <div class="sidebar-header">
+            <img src="../assets/images/lpvminilogo2.png" alt="LPV" class="light-mode-only" style="height: 40px;">
+            <img src="../assets/images/lpvminilogo.png" alt="LPV" class="dark-mode-only" style="height: 40px;">
+            <div style="line-height: 1;">
+                <div class="sidebar-brand-text">LPV Digital</div>   
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">Patologia Veterinária</div>
             </div>
         </div>
-    </div>
+
+        <nav class="sidebar-nav">
+            <a href="hub.html" class="sidebar-link">
+                <i class="fas fa-home"></i> <span>Visão Geral</span>
+            </a>
+            <a href="mural.html" class="sidebar-link">
+                <i class="fas fa-columns"></i> <span>Mural de Tarefas</span>
+            </a>
+            <a href="coloracao.html" class="sidebar-link active"> <i class="fas fa-stopwatch"></i> <span>Timers & Bancada</span>
+            </a>
+            <a href="protocolos.html" class="sidebar-link">
+                <i class="fas fa-book-medical"></i> <span>Protocolos</span>
+            </a>
+            
+            <button class="sidebar-link btn-sidebar-new" onclick="alert('Nova Tarefa')">
+                <i class="fas fa-plus"></i> <span>Nova Entrada</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="sidebar-user-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            
+            <div class="sidebar-user-info">
+                <div id="sidebar-user-name" class="user-name-text">Carregando...</div>
+                <div id="sidebar-user-role" class="user-role-text">...</div>
+            </div>
+
+            <button class="btn-sidebar-settings" title="Configurações" onclick="window.location.href='perfil.html'">
+                <i class="fas fa-cog"></i>
+            </button>
+        </div>
+    </aside>
+
+    <div class="layout-wrapper">
+
+        <div id="menu-view">
+            <header class="app-header">
+                <div class="header-brand">
+                    <img src="../assets/images/lpvminilogo2.png" class="header-logo light-mode-only">
+                    <img src="../assets/images/lpvminilogo.png" class="header-logo dark-mode-only">
+                    <div class="header-text-column">
+                        <span class="brand-title">Timers</span>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button>
+                    <a href="hub.html" class="btn-icon desktop-hidden"><i class="fas fa-arrow-left"></i></a>
+                </div>
+            </header>
+
+            <main class="main-container" style="padding-bottom: 100px;">
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem;"></p>
+                
+                <div id="protocol-list"></div>
+            </main>
+        </div>
+
+        <div id="execution-view" class="overlay-mode hidden">
+            
+            <header class="execution-header" style="padding:1.5rem; display:flex; justify-content:space-between; align-items:center; background:var(--bg-glass-heavy);">
+                <button onclick="closeExecution()" class="btn-icon" style="width:40px;height:40px;"><i class="fas fa-times"></i></button>
+                <div style="text-align:center;">
+                    <h3 id="exec-title" style="margin:0; font-size:1rem;">HE</h3>
+                    <span id="exec-step-count" style="font-size:0.8rem; color:var(--text-secondary);">Etapa 1</span>
+                </div>
+                <div style="width:40px;"></div>
+            </header>
+
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:2rem;">
+                
+                <h2 id="step-name" style="font-size:1.8rem; text-align:center; margin-bottom:0.5rem;">Carregando...</h2>
+                
+                <div id="timer-container" class="timer-wrapper hidden">
+                    <svg class="progress-ring" width="260" height="260">
+                        <circle class="progress-ring__bg" stroke="var(--border-glass)" stroke-width="12" fill="transparent" r="120" cx="130" cy="130"/>
+                        <circle class="progress-ring__circle" stroke-width="12" fill="transparent" r="120" cx="130" cy="130"/>
+                    </svg>
+                    <div class="timer-digital" id="timer-text">00:00</div>
+                </div>
+
+                <div id="manual-container" class="hidden" style="text-align:center; margin-top:2rem;">
+                    <i class="fas fa-hand-holding-water" style="font-size:4rem; color:var(--color-primary); opacity:0.5; margin-bottom:1rem;"></i>
+                    <p id="manual-instruction" style="font-size:1.2rem; color:var(--text-primary); max-width:300px; white-space: pre-line;">...</p>
+                </div>
+                
+                <div id="completion-container" class="hidden" style="text-align:center;">
+                    <i class="fas fa-check-circle" style="font-size:5rem; color:var(--color-success); margin-bottom:1rem;"></i>
+                    <h2>Finalizado!</h2>
+                    <button onclick="closeExecution()" class="btn btn-primary" style="margin-top:20px;">Voltar ao Menu</button>
+                </div>
+
+            </div>
+
+            <div class="control-bar" id="control-bar">
+                <button class="btn-round-large btn-skip" onclick="prevStep()"><i class="fas fa-step-backward"></i></button>
+                <button id="btn-main-action" class="btn-round-large btn-play" onclick="toggleTimer()"><i class="fas fa-play"></i></button>
+                <button class="btn-round-large btn-skip" onclick="nextStep()"><i class="fas fa-step-forward"></i></button>
+            </div>
+        </div>
+
+    </div> <nav class="bottom-nav">
+        <a href="hub.html" class="nav-item"><i class="fas fa-home"></i><span>Início</span></a>
+        <a href="mural.html" class="nav-item"><i class="fas fa-columns"></i><span>Mural</span></a>
+        <div class="nav-fab-container">
+            <button class="nav-fab" onclick="alert('Funcionalidade Nova Tarefa em breve!')"><i class="fas fa-plus"></i></button>
+        </div>
+        <a href="coloracao.html" class="nav-item active"><i class="fas fa-stopwatch"></i><span>Timers</span></a>
+        <a href="perfil.html" class="nav-item" id="mobile-profile-link">
+            <i class="fas fa-user-circle" style="font-size: 1.4rem;"></i>
+            
+            <span id="mobile-user-name" style="font-weight: 600;">Perfil</span>
+        </a>
+    </nav>
 
     <script type="module" src="../assets/js/core.js"></script>
     <script type="module" src="../assets/js/pages/coloracao.js"></script>

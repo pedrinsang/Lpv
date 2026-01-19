@@ -2,199 +2,298 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acesso ao Sistema | LPV</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Acesso | LPV</title>
     
     <script>
         (function() {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+            try {
+                const localTheme = localStorage.getItem('theme');
+                const sysTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (localTheme === 'dark' || (!localTheme && sysTheme)) document.documentElement.setAttribute('data-theme', 'dark');
+            } catch (e) {}
         })();
     </script>
-
-    <link rel="manifest" href="../manifest.json">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
 
     <style>
-        /* Layout Split Screen (Específico desta página) */
-        .auth-split-layout { display: flex; min-height: 100vh; background: var(--bg-color); }
+        /* =========================================
+           LOGIN PREMIUM (MOBILE APP STYLE)
+           ========================================= */
         
-        /* Lado Esquerdo (Branding) */
-        .auth-brand-side {
-            flex: 1; background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: white; padding: 3rem; position: relative; overflow: hidden;
-        }
-        .auth-brand-side::before {
-            content: ""; position: absolute; inset: 0; background: url('../assets/images/fundo-lab.png') center/cover;
-            opacity: 0.15; mix-blend-mode: overlay;
-        }
-        .brand-content { position: relative; z-index: 2; text-align: center; }
-
-        /* Lado Direito (Formulário) */
-        .auth-form-side {
-            flex: 1; display: flex; flex-direction: column; justify-content: center;
-            align-items: center; padding: 2rem; background: var(--bg-card); position: relative;
-        }
-        .form-wrapper { width: 100%; max-width: 420px; }
-
-        /* Abas de Navegação */
-        .auth-tabs { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 2rem; }
-        .tab-btn {
-            flex: 1; padding: 1rem; background: none; border: none; font-size: 1rem;
-            font-weight: 600; color: var(--text-secondary); cursor: pointer; position: relative;
-        }
-        .tab-btn.active { color: var(--color-primary); }
-        .tab-btn.active::after {
-            content: ""; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px;
-            background: var(--color-primary);
+        body {
+            /* Garante que o fundo não "vaze" */
+            background-color: var(--bg-body);
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
 
-        /* Botão Voltar Inteligente */
-        .floating-back-btn {
-            position: absolute; top: 20px; left: 20px; z-index: 100;
-            color: var(--text-primary); /* Mobile: segue o tema */
-        }
-        @media (min-width: 901px) {
-            .floating-back-btn { color: white !important; } /* Desktop: sempre branco sobre o azul */
+        /* Container Principal */
+        .auth-wrapper {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
-        /* Mobile Adjustments */
-        @media (max-width: 900px) {
-            .auth-brand-side { display: none; }
-            .mobile-header { display: block !important; text-align: center; margin-bottom: 2rem; }
-            .desktop-only { display: none; }
+        /* --- 1. CABEÇALHO MOBILE (HERO) --- */
+        .mobile-hero {
+            height: 35vh; /* Ocupa 35% do topo */
+            min-height: 250px;
+            background-image: url('../assets/images/fundo-lab.png');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .mobile-header { display: none; }
+        
+        /* Overlay Degradê Bonito */
+        .mobile-hero::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(180deg, rgba(2, 132, 199, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+            z-index: 1;
+        }
+
+        .mobile-brand-container {
+            position: relative; z-index: 5;
+            text-align: center;
+            animation: slideDown 0.8s ease;
+        }
+
+        .mobile-brand-container img {
+            height: 80px; width: auto; 
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3));
+            margin-bottom: 10px;
+        }
+
+        /* --- 2. ÁREA DO FORMULÁRIO (CARD) --- */
+        .form-sheet {
+            flex: 1;
+            background-color: var(--bg-body);
+            margin-top: -30px; /* Sobe por cima do Hero */
+            border-top-left-radius: 30px;
+            border-top-right-radius: 30px;
+            position: relative;
+            z-index: 10;
+            padding: 2.5rem 2rem;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow-y: auto; /* Permite rolar se o celular for pequeno */
+        }
+
+        /* --- AJUSTES DE TEMA DARK --- */
+        [data-theme="dark"] .form-sheet {
+            background-color: #0f172a; /* Azul muito escuro, não preto puro */
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* --- BOTÃO VOLTAR FLUTUANTE --- */
+        .btn-back-clean {
+            position: absolute; top: 20px; left: 20px; z-index: 20;
+            color: white; font-size: 1.2rem; cursor: pointer;
+            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.1); border-radius: 50%;
+            backdrop-filter: blur(4px);
+        }
+
+        .theme-toggle-clean {
+            position: absolute; top: 20px; right: 20px; z-index: 20;
+            color: white; font-size: 1.2rem; cursor: pointer;
+            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.1); border-radius: 50%; border: none;
+            backdrop-filter: blur(4px);
+        }
+
+        /* --- INPUTS MODERNIZADOS --- */
+        .input-group-modern { margin-bottom: 1.2rem; }
+        
+        .input-modern {
+            width: 100%; padding: 16px; 
+            border-radius: 12px;
+            border: 2px solid transparent;
+            background: rgba(0,0,0,0.04); /* Cinza bem leve */
+            color: var(--text-primary);
+            font-size: 1rem; transition: 0.3s;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .input-modern:focus {
+            background: white;
+            border-color: var(--color-primary);
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15);
+            outline: none;
+        }
+
+        [data-theme="dark"] .input-modern {
+            background: rgba(255,255,255,0.05);
+        }
+        [data-theme="dark"] .input-modern:focus {
+            background: rgba(30, 41, 59, 1);
+        }
+
+        /* --- BOTÃO GRANDE --- */
+        .btn-big {
+            width: 100%; padding: 18px; border-radius: 16px;
+            font-size: 1rem; font-weight: 700; letter-spacing: 0.5px;
+            margin-top: 10px;
+            box-shadow: 0 10px 20px rgba(2, 132, 199, 0.25);
+        }
+
+        /* =========================================
+           LAYOUT DESKTOP (PRESERVAR O LADO A LADO)
+           ========================================= */
+        @media (min-width: 1024px) {
+            .mobile-hero { display: none; } /* Esconde o topo mobile */
+            .form-sheet { 
+                margin-top: 0; border-radius: 0; box-shadow: none; 
+                height: 100%; padding: 0; display: flex; 
+                flex-direction: column; justify-content: center; 
+            }
+            .auth-wrapper { flex-direction: row; }
+            
+            /* Lado Esquerdo (Desktop) */
+            .desktop-brand-side {
+                flex: 1; display: flex !important; position: relative;
+                background: url('../assets/images/fundo-lab.png') center/cover;
+            }
+            .desktop-brand-side::after {
+                content: ''; position: absolute; inset: 0;
+                background: linear-gradient(135deg, rgba(2, 132, 199, 0.9), rgba(15, 23, 42, 0.9));
+            }
+            .desktop-content {
+                position: relative; z-index: 5; color: white; padding: 4rem;
+                display: flex; flex-direction: column; justify-content: center; height: 100%;
+            }
+
+            /* Lado Direito (Form) */
+            .desktop-form-container {
+                flex: 1; max-width: 50%;
+                display: flex; align-items: center; justify-content: center;
+                background: var(--bg-body);
+            }
+            
+            .auth-card-desktop {
+                width: 100%; max-width: 420px; padding: 2rem;
+            }
+
+            /* Botões Desktop */
+            .btn-back-clean, .theme-toggle-clean {
+                color: var(--text-secondary); background: transparent;
+            }
+        }
+
+        /* Helper para esconder no mobile o que é do PC */
+        .desktop-brand-side { display: none; } 
+
+        /* Animações */
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <a href="../index.html" class="btn-icon floating-back-btn">
-        <i class="fas fa-arrow-left"></i>
-    </a>
-
-    <button id="theme-toggle" class="btn-icon" style="position: absolute; top: 20px; right: 20px; z-index: 100; color: var(--text-primary);" title="Mudar Tema">
-        <i class="fas fa-moon"></i>
-    </button>
-
-    <div class="auth-split-layout">
+    <div class="auth-wrapper">
         
-        <div class="auth-brand-side">
-            <div class="brand-content fade-in">
-                <img id="brand-logo" src="../assets/images/LPV2.png" alt="Logo" style="width: 180px; margin-bottom: 2rem;">
-                <h1>Excelência em Diagnóstico</h1>
-                <p>Sistema de gestão laboratorial unificado.</p>
+        <div class="mobile-hero">
+            <a href="../index.html" class="btn-back-clean"><i class="fas fa-arrow-left"></i></a>
+            <button id="theme-toggle" class="theme-toggle-clean"><i class="fas fa-moon"></i></button>
+
+            <div class="mobile-brand-container">
+                <img src="../assets/images/LPV2.png" alt="LPV">
+                <div style="color: white; font-weight: 600; font-size: 1.1rem; opacity: 0.9;">Acesso Interno</div>
             </div>
         </div>
 
-        <div class="auth-form-side">
-            <div class="form-wrapper fade-in">
+        <div class="desktop-brand-side">
+             <a href="../index.html" class="btn-back-clean" style="color: white;"><i class="fas fa-arrow-left"></i></a>
+             <div class="desktop-content">
+                 <img src="../assets/images/LPV2.png" style="width: 200px; height: auto; margin-bottom: 2rem;">
+                 <h1 style="font-size: 2.5rem; font-weight: 800; line-height: 1.1;">Gestão<br>Inteligente.</h1>
+                 <p style="font-size: 1.2rem; opacity: 0.8; margin-top: 1rem; max-width: 400px;">
+                      Controle de processos e laudos.
+                 </p>
+             </div>
+        </div>
+
+        <div class="form-sheet desktop-form-container">
+            <div class="auth-card-desktop">
                 
-                <div class="mobile-header">
-                    <img src="../assets/images/lpvminilogo2.png" alt="Logo" style="width: 60px; margin-bottom: 1rem;">
-                    <h2 style="color: var(--color-primary);">Acesso LPV</h2>
+                <div id="login-container" style="animation: slideUp 0.5s ease;">
+                    <div style="margin-bottom: 2rem;">
+                        <h2 style="font-size: 1.8rem; font-weight: 800; color: var(--text-primary);">Bem-vindo</h2>
+                        <p style="color: var(--text-secondary);">Faça login para gerenciar o laboratório.</p>
+                    </div>
+
+                    <form id="login-form">
+                        <div class="input-group-modern">
+                            <label style="font-size:0.85rem; font-weight:600; color:var(--text-secondary); margin-bottom:8px; display:block; margin-left: 4px;">Email</label>
+                            <input type="email" id="login-email" class="input-modern" placeholder="Email Institucional" required>
+                        </div>
+                        <div class="input-group-modern">
+                            <label style="font-size:0.85rem; font-weight:600; color:var(--text-secondary); margin-bottom:8px; display:block; margin-left: 4px;">Senha</label>
+                            <input type="password" id="login-password" class="input-modern" placeholder="••••••••" required>
+                        </div>
+                        
+                        <div id="login-alert" class="alert-message hidden"></div>
+                        
+                        <button type="submit" class="btn btn-primary btn-big">
+                            ACESSAR CONTA <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>
+                        </button>
+                    </form>
+
+                    <div style="margin-top: 2rem; text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
+                        Não possui acesso? <a href="#" id="show-register" style="color: var(--color-primary); font-weight: 700;">Solicitar Cadastro</a>
+                    </div>
                 </div>
 
-                <div class="desktop-only" style="text-align: center; margin-bottom: 2rem;">
-                    <h2>Acesse sua Conta</h2>
-                </div>
-
-                <div class="auth-tabs">
-                    <button class="tab-btn active" data-target="login">Login</button>
-                    <button class="tab-btn" data-target="register">Criar Conta</button>
-                </div>
-
-                <form id="login-form" class="auth-section">
-                    <div class="form-group">
-                        <input type="email" id="login-email" class="form-input" placeholder="Seu email" required>
-                    </div>
-                    <div class="form-group">
-                        <input type="password" id="login-password" class="form-input" placeholder="Sua senha" required>
-                    </div>
-                    <div id="login-alert" class="alert-message hidden"></div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">Entrar</button>
-                </form>
-
-                <form id="register-form" class="auth-section hidden">
-                    <div class="form-group">
-                        <input type="text" id="register-name" class="form-input" placeholder="Nome Completo" required>
+                <div id="register-container" class="hidden" style="animation: slideUp 0.5s ease;">
+                    <div style="margin-bottom: 2rem;">
+                        <h2 style="font-size: 1.8rem; font-weight: 800; color: var(--text-primary);">Nova Conta</h2>
+                        <p style="color: var(--text-secondary);">Insira o código de segurança do laboratório.</p>
                     </div>
 
-                    <div class="form-group">
-                        <input type="email" id="register-email" class="form-input" placeholder="Email" required>
+                    <form id="register-form">
+                        <div class="input-group-modern">
+                            <input type="text" id="reg-name" class="input-modern" placeholder="Nome Completo" required>
+                        </div>
+                        <div class="input-group-modern">
+                            <input type="email" id="reg-email" class="input-modern" placeholder="Email Institucional" required>
+                        </div>
+                        <div class="input-group-modern">
+                            <input type="text" id="reg-access-code" class="input-modern" placeholder="Código de Acesso (Ex: LPV#...)" required 
+                                   style="border-color: var(--color-primary); background: rgba(2, 132, 199, 0.05);">
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="password" id="reg-pass" class="input-modern" placeholder="Senha" required minlength="6">
+                            <input type="password" id="reg-confirm" class="input-modern" placeholder="Confirmar" required>
+                        </div>
+                        
+                        <div id="register-alert" class="alert-message hidden" style="margin-top: 1rem;"></div>
+                        
+                        <button type="submit" class="btn btn-primary btn-big">
+                            CRIAR ACESSO
+                        </button>
+                    </form>
+
+                    <div style="margin-top: 2rem; text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
+                        Já tem conta? <a href="#" id="show-login" style="color: var(--color-primary); font-weight: 700;">Fazer Login</a>
                     </div>
-
-                    <div class="form-group">
-                        <input type="password" id="register-password" class="form-input" placeholder="Senha (min 6 chars)" required minlength="6">
-                    </div>
-
-                    <div class="form-group">
-                        <input type="password" id="register-confirm-password" class="form-input" placeholder="Repita a Senha" required>
-                    </div>
-
-                    <div class="form-group">
-                        <input type="text" id="register-code" class="form-input" placeholder="Código de Acesso (Ex: LAB2024)" required>
-                    </div>
-
-                    <div id="register-alert" class="alert-message hidden"></div>
-
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">
-                        Solicitar Acesso
-                    </button>
-                </form>
-
-                <div id="pwa-install-area" class="pwa-install-container">
-                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px;">Instale o App para melhor experiência</p>
-                    <button id="btn-install" class="btn-pwa"><i class="fas fa-download"></i> Instalar LPV Mobile</button>
                 </div>
 
             </div>
-        </div>
-    </div>
-
-    <div id="pwa-modal" class="modal-overlay">
-        <div class="modal-card">
-            <button id="close-modal" class="btn-close-modal">&times;</button>
-            
-            <div id="modal-content-ios" class="hidden">
-                <i class="fab fa-apple" style="font-size: 3rem; margin-bottom: 1rem;"></i>
-                <h3>Instalar no iPhone</h3>
-                <div class="ios-tutorial-steps">
-                    <div class="ios-step"><i class="fas fa-share-square"></i> 1. Toque em <strong>Compartilhar</strong>.</div>
-                    <div class="ios-step"><i class="fas fa-plus-square"></i> 2. Role e toque em <strong>Adicionar à Tela de Início</strong>.</div>
-                    <div class="ios-step"><span>Add</span> 3. Toque em <strong>Adicionar</strong>.</div>
-                </div>
-            </div>
-
-            <div id="modal-content-error" class="hidden">
-                <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: var(--color-warning); margin-bottom: 1rem;"></i>
-                <h3>Navegador Incompatível</h3>
-                <p>Use o <strong>Google Chrome</strong> (Android) ou <strong>Safari</strong> (iOS) para instalar.</p>
-            </div>
-            
-            <button id="btn-modal-ok" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Entendi</button>
         </div>
     </div>
 
     <script type="module" src="../assets/js/core.js"></script>
     <script type="module" src="../assets/js/pages/auth.js"></script>
-    
-    <script>
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                // Tira active de todos e esconde forms
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('.auth-section').forEach(s => s.classList.add('hidden'));
-                
-                // Ativa o atual
-                btn.classList.add('active');
-                if(btn.dataset.target === 'login') document.getElementById('login-form').classList.remove('hidden');
-                else document.getElementById('register-form').classList.remove('hidden');
-            });
-        });
-    </script>
 </body>
 </html>

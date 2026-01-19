@@ -2,98 +2,156 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hub Principal | LPV</title>
-    
-    <link rel="manifest" href="../manifest.json">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hub Laboratório | LPV</title>
     <script>
         (function() {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+            try {
+                const localTheme = localStorage.getItem('theme');
+                const sysTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (localTheme === 'dark' || (!localTheme && sysTheme)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch (e) {}
         })();
     </script>
-
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="../manifest.json">
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
 </head>
 <body>
 
-    <header class="app-header">
-        <div class="header-brand">
-            <img src="../assets/images/lpvminilogo2.png" alt="LPV Logo" class="header-logo">
-            </div>
-        
-        <div style="display: flex; gap: 15px; align-items: center;">
-            <button id="theme-toggle" class="btn-icon" title="Mudar Tema">
-                <i class="fas fa-moon"></i>
-            </button>
-            <button id="logout-btn" class="btn-icon" title="Sair">
-                <i class="fas fa-sign-out-alt"></i>
-            </button>
-        </div>
-    </header>
-
-    <main class="main-container">
-        
-        <div style="padding: 2rem 2rem 1rem 2rem; max-width: 1200px; margin: 0 auto;">
-            <h1 class="welcome-title" style="font-size: 1.8rem; color: var(--color-primary);">Olá, <span id="user-name">...</span></h1>
-            <p style="color: var(--text-secondary);">Ferramentas disponíveis:</p>
-        </div>
-
-        <div id="birthday-alert-container" style="max-width: 1200px; margin: 0 auto; padding: 0 2rem;"></div>
-
-        <div class="hub-grid">
+    <aside class="desktop-sidebar">
+        <div class="sidebar-header">
+            <img src="../assets/images/lpvminilogo2.png" alt="LPV" class="light-mode-only" style="height: 40px;">
+            <img src="../assets/images/lpvminilogo.png" alt="LPV" class="dark-mode-only" style="height: 40px;">
             
-            <a href="protocolos.html" class="tool-card card"> <div class="tool-icon">
-                    <i class="fas fa-book-medical"></i>
-                </div>
-                <h3 style="margin-bottom: 0.5rem;">Protocolos</h3>
-                <p style="font-size: 0.9rem; color: var(--text-secondary);">Guias e métodos.</p>
-            </a>
-
-            <a href="coloracao.html" class="tool-card card">
-                <div class="tool-icon" style="color: #9c27b0; background: rgba(156, 39, 176, 0.1);">
-                    <i class="fas fa-eye-dropper"></i>
-                </div>
-                <h3 style="margin-bottom: 0.5rem;">Coloração</h3>
-                <p style="font-size: 0.9rem; color: var(--text-secondary);">Assistente de tempo.</p>
-            </a>
-
-            <a href="mural.html" class="tool-card card">
-                <div class="tool-icon" style="color: #ff9800; background: rgba(255, 152, 0, 0.1);">
-                    <i class="fas fa-clipboard-list"></i>
-                </div>
-                <h3 style="margin-bottom: 0.5rem;">Mural</h3>
-                <p style="font-size: 0.9rem; color: var(--text-secondary);">Lista de tarefas.</p>
-            </a>
-
-            <a href="#" class="tool-card card"> <div class="tool-icon" style="color: #4caf50; background: rgba(76, 175, 80, 0.1);">
-                    <i class="fas fa-microscope"></i>
-                </div>
-                <h3 style="margin-bottom: 0.5rem;">Diagnóstico</h3>
-                <p style="font-size: 0.9rem; color: var(--text-secondary);">Novo laudo.</p>
-            </a>
-
-            <a href="aniversarios.html" class="tool-card card">
-                <div class="tool-icon" style="color: #e91e63; background: rgba(233, 30, 99, 0.1);">
-                    <i class="fas fa-birthday-cake"></i>
-                </div>
-                <h3 style="margin-bottom: 0.5rem;">Aniversariantes</h3>
-                <p style="font-size: 0.9rem; color: var(--text-secondary);">Agenda de datas.</p>
-            </a>
-
-            <a href="admin.html" id="admin-card" class="tool-card hidden admin-card-style">
-                <div class="tool-icon admin-icon-style">
-                    <i class="fas fa-user-shield"></i>
-                </div>
-                <h3 class="admin-title-style">Administração</h3>
-                <p style="font-size: 0.9rem; color: var(--text-secondary);">Painel de gestão.</p>
-            </a>
-
+            <div style="line-height: 1;">
+                <div class="sidebar-brand-text">LPV Digital</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">Patologia Veterinária</div>
+            </div>
         </div>
-    </main>
+
+        <nav class="sidebar-nav">
+            <a href="hub.html" class="sidebar-link active">
+                <i class="fas fa-home"></i> <span>Visão Geral</span>
+            </a>
+            <a href="mural.html" class="sidebar-link">
+                <i class="fas fa-columns"></i> <span>Mural de Tarefas</span>
+            </a>
+            <a href="coloracao.html" class="sidebar-link">
+                <i class="fas fa-stopwatch"></i> <span>Timers & Bancada</span>
+            </a>
+            <a href="protocolos.html" class="sidebar-link">
+                <i class="fas fa-book-medical"></i> <span>Protocolos</span>
+            </a>
+            
+            <button class="sidebar-link btn-sidebar-new" onclick="alert('Nova Tarefa')">
+                <i class="fas fa-plus"></i> <span>Nova Entrada</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="sidebar-user-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            
+            <div class="sidebar-user-info">
+                <div id="sidebar-user-name" class="user-name-text">Carregando...</div>
+                <div id="sidebar-user-role" class="user-role-text">...</div>
+            </div>
+
+            <button class="btn-sidebar-settings" onclick="alert('Configurações de Perfil em breve!')" title="Configurações">
+                <i class="fas fa-cog"></i>
+            </button>
+        </div>
+    </aside>
+
+
+    <div class="layout-wrapper">
+
+        <header class="app-header">
+            <div class="header-brand">
+                <img src="../assets/images/lpvminilogo2.png" alt="Logo" class="header-logo light-mode-only">
+                <img src="../assets/images/lpvminilogo.png" alt="Logo" class="header-logo dark-mode-only">
+                
+                <div class="header-text-column">
+                    <span class="brand-title">LPV<span class="brand-subtitle">Lab</span></span>
+                    <span id="user-role-badge" class="user-badge">...</span>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button>
+                <button id="logout-btn" class="btn-icon" style="color: var(--color-error);"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+        </header>
+
+        <main class="main-container">
+            
+            <div class="status-track-container" style="margin-top: 1rem;">
+                <div class="status-card stage-entry">
+                    <span class="status-count" id="count-entry">0</span>
+                    <span class="status-label">Novas<br>Entradas</span>
+                </div>
+                <div class="status-card stage-process">
+                    <span class="status-count" id="count-process">0</span>
+                    <span class="status-label">Para<br>Processar</span>
+                </div>
+                <div class="status-card stage-analysis">
+                    <span class="status-count" id="count-analysis">0</span>
+                    <span class="status-label">Aguard.<br>Análise</span>
+                </div>
+                <div class="status-card stage-report">
+                    <span class="status-count" id="count-report">0</span>
+                    <span class="status-label">Liberar<br>Laudo</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <h3 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px; font-weight: 700; text-transform: uppercase;">
+                    <i class="fas fa-tasks me-2"></i> Minha Fila
+                </h3>
+                <div id="queue-list-container"></div>
+            </div>
+
+            <div>
+                <h3 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px; font-weight: 700; text-transform: uppercase;">
+                    Acesso Rápido
+                </h3>
+                <div class="hub-grid">
+                    <a href="protocolos.html" class="tool-card">
+                        <div class="tool-icon"><i class="fas fa-book-medical"></i></div>
+                        <div><strong>Protocolos</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Guias Técnicos</span></div>
+                    </a>
+                    <a href="coloracao.html" class="tool-card">
+                        <div class="tool-icon" style="background: linear-gradient(135deg, #8b5cf6, #a78bfa);"><i class="fas fa-stopwatch"></i></div>
+                        <div><strong>Timers</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Coloração</span></div>
+                    </a>
+                    <a href="admin.html" class="tool-card hidden" id="admin-card">
+                        <div class="tool-icon" style="background: #333;"><i class="fas fa-shield-alt"></i></div>
+                        <div><strong>Admin</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Gestão</span></div>
+                    </a>
+                </div>
+            </div>
+        </main>
+
+    </div> <nav class="bottom-nav">
+        <a href="hub.html" class="nav-item active"><i class="fas fa-home"></i><span>Início</span></a>
+        <a href="mural.html" class="nav-item"><i class="fas fa-columns"></i><span>Mural</span></a>
+        <div class="nav-fab-container">
+            <button class="nav-fab" onclick="alert('Funcionalidade Nova Tarefa em breve!')"><i class="fas fa-plus"></i></button>
+        </div>
+        <a href="coloracao.html" class="nav-item"><i class="fas fa-stopwatch"></i><span>Timers</span></a>
+        <a href="perfil.html" class="nav-item" id="mobile-profile-link">
+            <i class="fas fa-user-circle" style="font-size: 1.4rem;"></i>
+            
+            <span id="mobile-user-name" style="font-weight: 600;">Perfil</span>
+        </a>
+    </nav>
 
     <script type="module" src="../assets/js/core.js"></script>
     <script type="module" src="../assets/js/pages/hub.js"></script>
