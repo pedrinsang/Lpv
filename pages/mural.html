@@ -2,42 +2,257 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mural LPV</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mural de Tarefas | LPV</title>
+    <script>
+        (function() {
+            try {
+                const localTheme = localStorage.getItem('theme');
+                const sysTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (localTheme === 'dark' || (!localTheme && sysTheme)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
+
+    <style>
+        /* CSS ESPECÍFICO DO MURAL KANBAN */
+        .kanban-board {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            height: calc(100vh - 140px);
+            padding-bottom: 20px;
+        }
+
+        .kanban-column {
+            min-width: 280px;
+            width: 280px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .kanban-header {
+            padding: 15px;
+            font-weight: 800;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--border-glass);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .kanban-body {
+            padding: 10px;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Ajuste do Card no Mural */
+        .mural-card {
+            background: var(--bg-glass);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-glass);
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .mural-card:hover { transform: translateY(-3px); border-color: var(--color-primary); }
+        .mural-tag { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.1); }
+    </style>
 </head>
 <body>
-    <header class="app-header">
-        <div class="header-brand"><span style="font-weight:800;">Mural<span style="font-weight:300;">Tasks</span></span></div>
-        <a href="hub.html" class="btn-icon"><i class="fas fa-arrow-left"></i></a>
-    </header>
 
-    <main class="main-container" style="padding: 1rem 0.5rem;">
-        <div style="display: flex; gap: 10px; margin-bottom: 1rem; overflow-x: auto; padding-bottom: 5px;">
-            <button class="btn btn-primary" style="padding: 8px 16px; font-size: 0.8rem;">Todos</button>
-            <button class="btn btn-secondary" style="padding: 8px 16px; font-size: 0.8rem;">Minhas</button>
-            <button class="btn btn-secondary" style="padding: 8px 16px; font-size: 0.8rem;">Urgentes</button>
+    <aside class="desktop-sidebar">
+        <div class="sidebar-header">
+            <img src="../assets/images/lpvminilogo2.png" alt="LPV" class="light-mode-only" style="height: 40px;">
+            <img src="../assets/images/lpvminilogo.png" alt="LPV" class="dark-mode-only" style="height: 40px;">
+            
+            <div style="line-height: 1;">
+                <div class="sidebar-brand-text">LPV Digital</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">Patologia Veterinária</div>
+            </div>
         </div>
 
-        <div id="mural-list">
-            <div style="text-align: center; padding: 2rem; opacity: 0.6;">Carregando mural...</div>
+        <nav class="sidebar-nav">
+            <a href="hub.html" class="sidebar-link">
+                <i class="fas fa-home"></i> <span>Visão Geral</span>
+            </a>
+            
+            <a href="mural.html" class="sidebar-link active">
+                <i class="fas fa-columns"></i> <span>Mural de Tarefas</span>
+            </a>
+            
+            <a href="coloracao.html" class="sidebar-link">
+                <i class="fas fa-stopwatch"></i> <span>Timers & Bancada</span>
+            </a>
+            <a href="protocolos.html" class="sidebar-link">
+                <i class="fas fa-book-medical"></i> <span>Protocolos</span>
+            </a>
+            
+            <a href="admin.html" class="sidebar-link hidden" id="admin-card">
+                <i class="fas fa-shield-alt"></i> <span>Admin</span>
+            </a>
+            
+            <button class="sidebar-link btn-sidebar-new">
+                <i class="fas fa-plus"></i> <span>Nova Entrada</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="sidebar-user-avatar"><i class="fas fa-user"></i></div>
+            <div class="sidebar-user-info">
+                <div id="sidebar-user-name" class="user-name-text">Carregando...</div>
+                <div id="sidebar-user-role" class="user-role-text">...</div>
+            </div>
+            <button class="btn-sidebar-settings" onclick="alert('Configurações em breve')" title="Configurações">
+                <i class="fas fa-cog"></i>
+            </button>
         </div>
-    </main>
-    
+    </aside>
+
+    <div class="layout-wrapper">
+
+        <header class="app-header">
+            <div class="header-brand">
+                <div class="header-text-column">
+                    <span class="brand-title">Mural<span class="brand-subtitle">Produção</span></span>
+                    
+                    <div id="filter-container" style="display: none; gap: 8px; margin-top: 5px;">
+                        <button class="btn btn-sm btn-primary" id="filter-all" style="padding: 4px 12px; font-size: 0.75rem;">Todos</button>
+                        <button class="btn btn-sm btn-secondary" id="filter-mine" style="padding: 4px 12px; font-size: 0.75rem;">Minhas</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button>
+                <button id="logout-btn" class="btn-icon" style="color: var(--color-error);"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+        </header>
+
+        <main class="main-container" style="max-width: 100%; overflow: hidden; padding-top: 1rem;">
+            
+            <div class="kanban-board">
+                <div class="kanban-column">
+                    <div class="kanban-header">Clivagem <span id="count-clivagem">0</span></div>
+                    <div class="kanban-body" id="col-clivagem"></div>
+                </div>
+
+                <div class="kanban-column">
+                    <div class="kanban-header">Processamento <span id="count-processamento">0</span></div>
+                    <div class="kanban-body" id="col-processamento"></div>
+                </div>
+
+                <div class="kanban-column">
+                    <div class="kanban-header">Emblocamento <span id="count-emblocamento">0</span></div>
+                    <div class="kanban-body" id="col-emblocamento"></div>
+                </div>
+
+                <div class="kanban-column">
+                    <div class="kanban-header">Corte <span id="count-corte">0</span></div>
+                    <div class="kanban-body" id="col-corte"></div>
+                </div>
+
+                <div class="kanban-column">
+                    <div class="kanban-header">Coloração <span id="count-coloracao">0</span></div>
+                    <div class="kanban-body" id="col-coloracao"></div>
+                </div>
+
+                <div class="kanban-column">
+                    <div class="kanban-header">Análise <span id="count-analise">0</span></div>
+                    <div class="kanban-body" id="col-analise"></div>
+                </div>
+
+                <div class="kanban-column">
+                    <div class="kanban-header">Liberar Laudo <span id="count-liberar">0</span></div>
+                    <div class="kanban-body" id="col-liberar"></div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
     <nav class="bottom-nav">
         <a href="hub.html" class="nav-item"><i class="fas fa-home"></i><span>Início</span></a>
-        <a href="#" class="nav-item active"><i class="fas fa-list"></i><span>Mural</span></a>
-        <a href="#" class="nav-fab"><i class="fas fa-plus"></i></a>
-        <a href="aniversarios.html" class="nav-item"><i class="fas fa-calendar"></i><span>Agenda</span></a>
+        <a href="mural.html" class="nav-item active"><i class="fas fa-columns"></i><span>Mural</span></a>
+        <div class="nav-fab-container">
+            <button class="nav-fab"><i class="fas fa-plus"></i></button>
+        </div>
+        <a href="coloracao.html" class="nav-item"><i class="fas fa-stopwatch"></i><span>Timers</span></a>
         <a href="perfil.html" class="nav-item" id="mobile-profile-link">
-            <i class="fas fa-user-circle" style="font-size: 1.4rem;"></i>
-            
-            <span id="mobile-user-name" style="font-weight: 600;">Perfil</span>
+            <i class="fas fa-user-circle"></i><span>Perfil</span>
         </a>
     </nav>
 
+    <div id="task-manager-modal" class="modal-overlay hidden">
+        <div class="modal-glass">
+            <div style="text-align:right;"><button id="close-tm-btn" class="btn-close-modal"><i class="fas fa-times"></i></button></div>
+            <div id="view-details-content"></div> <div id="view-k7-form" class="hidden">
+                 <form id="form-k7">
+                    <div class="form-group">
+                        <label>Quantidade K7</label>
+                        <input type="number" id="k7-quantity" class="input-field" min="1" value="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Cor</label>
+                        <div class="color-selector">
+                            <label class="color-option"><input type="radio" name="k7Color" value="rosa" checked><span class="color-box" style="background:#fce7f3; border-color:#ec4899;"></span>Rosa</label>
+                            <label class="color-option"><input type="radio" name="k7Color" value="azul"><span class="color-box" style="background:#dbeafe; border-color:#3b82f6;"></span>Azul</label>
+                            <label class="color-option"><input type="radio" name="k7Color" value="branco"><span class="color-box" style="background:#f8fafc; border-color:#cbd5e1;"></span>Branco</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" id="btn-cancel-k7" class="btn btn-secondary">Voltar</button>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    </div>
+                 </form>
+            </div>
+            
+            <div id="tm-info-grid"></div>
+        </div>
+    </div>
+
+    <div id="entry-modal" class="modal-overlay hidden">
+        <div class="modal-glass">
+            <div class="modal-header-tabs">
+                <h2 style="margin-bottom: 1rem;">Nova Entrada</h2>
+                <div class="tabs-container">
+                    <button class="tab-btn active" data-tab="tab-v">Novo V</button>
+                    <button class="tab-btn" data-tab="tab-vn">Novo Vn</button>
+                    <button class="tab-btn" data-tab="tab-special">Especial</button>
+                </div>
+                <button id="close-modal-btn" class="btn-close-modal"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div id="tab-v" class="tab-content active">
+                <form id="form-new-v">
+                    <div style="padding: 2rem; text-align: center;">
+                        <p>Copie o formulário completo do Hub para habilitar criação aqui.</p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="../assets/js/core.js"></script>
+    <script type="module" src="../assets/js/components/entry-modal.js"></script>
+    <script type="module" src="../assets/js/components/task-manager.js"></script> 
     <script type="module" src="../assets/js/pages/mural.js"></script>
+
 </body>
 </html>
