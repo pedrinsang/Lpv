@@ -7,28 +7,33 @@ import {
     where 
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// Elementos
+// --- ELEMENTOS DO DOM ---
 const modal = document.getElementById('entry-modal');
 const closeBtn = document.getElementById('close-modal-btn');
+const openBtns = document.querySelectorAll('.btn-sidebar-new, .nav-fab');
+
+// Forms
 const formV = document.getElementById('form-new-v');
-const dateInput = document.getElementById('date-v');
+const formVn = document.getElementById('form-new-vn'); // Se você criar o form Vn no futuro
+
+// Inputs Gerais
+const dateInputV = document.getElementById('date-v');
 const tabs = document.querySelectorAll('.tab-btn');
 const contents = document.querySelectorAll('.tab-content');
 
-// Novos Selects Separados
+// Selects de Equipe
 const selectDocente = document.getElementById('select-docente');
 const selectPos = document.getElementById('select-pos');
 
+// Código Aleatório
 const displayCode = document.getElementById('display-code');
 const hiddenCodeInput = document.getElementById('generated-access-code');
 
-// Botões que abrem o modal
-const openBtns = document.querySelectorAll('.btn-sidebar-new, .nav-fab');
 
 // --- 1. ABRIR E FECHAR MODAL ---
 openBtns.forEach(btn => {
     btn.addEventListener('click', (e) => {
-        e.preventDefault(); // Previne qualquer comportamento padrão
+        e.preventDefault();
         openModal();
     });
 });
@@ -39,38 +44,44 @@ function openModal() {
     if (!modal) return;
     modal.classList.remove('hidden');
     
+    // Define data de hoje
     const today = new Date().toISOString().split('T')[0];
-    if (dateInput) dateInput.value = today;
+    if (dateInputV) dateInputV.value = today;
     
     generateRandomCode();
-    loadTeamData(); // Nova função de carga separada
+    loadTeamData();
 }
 
 function closeModal() {
     if (!modal) return;
     modal.classList.add('hidden');
-    formV.reset();
+    if(formV) formV.reset();
+    if(formVn) formVn.reset();
 }
+
 
 // --- 2. SISTEMA DE ABAS ---
 tabs.forEach(tab => {
     tab.addEventListener('click', () => {
+        // Remove active de tudo
         tabs.forEach(t => t.classList.remove('active'));
         contents.forEach(c => c.classList.remove('active'));
         
+        // Ativa o clicado
         tab.classList.add('active');
         const targetId = tab.getAttribute('data-tab');
-        document.getElementById(targetId).classList.add('active');
+        const targetContent = document.getElementById(targetId);
+        if(targetContent) targetContent.classList.add('active');
     });
 });
 
-// --- 3. CARREGAR EQUIPE (SEPARADA) ---
+
+// --- 3. CARREGAR EQUIPE (DOCENTES E PÓS) ---
 async function loadTeamData() {
-    // Evita recarregar se já tiver opções (considerando o placeholder)
-    if (selectDocente.options.length > 1 && selectPos.options.length > 1) return;
+    // Evita recarregar se já tiver opções carregadas
+    if (selectDocente && selectDocente.options.length > 1) return;
 
     try {
-        // Busca APENAS Professores e Pós-graduandos (Admin fora)
         const q = query(
             collection(db, "users"), 
             where("role", "in", ["professor", "pós graduando"])
@@ -78,34 +89,33 @@ async function loadTeamData() {
         
         const snapshot = await getDocs(q);
         
-        // Limpa e reseta os selects
-        selectDocente.innerHTML = '<option value="" disabled selected>Selecione...</option>';
-        selectPos.innerHTML = '<option value="" disabled selected>Selecione...</option>';
+        // Limpa selects
+        if(selectDocente) selectDocente.innerHTML = '<option value="" disabled selected>Selecione...</option>';
+        if(selectPos) selectPos.innerHTML = '<option value="" disabled selected>Selecione...</option>';
         
-        // Itera e separa
         snapshot.forEach(docSnap => {
             const data = docSnap.data();
             const role = (data.role || "").toLowerCase();
+            
             const option = document.createElement('option');
             option.value = data.name;
             option.textContent = data.name;
 
-            if (role === 'professor') {
+            if (role === 'professor' && selectDocente) {
                 selectDocente.appendChild(option);
-            } else if (role === 'pós graduando') {
+            } else if ((role === 'pós graduando' || role === 'pos-graduando') && selectPos) {
                 selectPos.appendChild(option);
             }
         });
 
     } catch (error) {
         console.error("Erro ao carregar equipe:", error);
-        selectDocente.innerHTML = '<option disabled>Erro</option>';
-        selectPos.innerHTML = '<option disabled>Erro</option>';
     }
 }
 
+
 // --- 4. GERAR CÓDIGO ALEATÓRIO ---
-function generateRandomCode() {
+window.generateRandomCode = function() {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; 
     let code = "LPV-";
     for (let i = 0; i < 4; i++) {
@@ -114,50 +124,75 @@ function generateRandomCode() {
     
     if (displayCode) displayCode.textContent = code;
     if (hiddenCodeInput) hiddenCodeInput.value = code;
+    return code;
 }
 
-// --- 5. SALVAR NO FIRESTORE ---
-if (formV) {
-    formV.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const btn = formV.querySelector('button[type="submit"]');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
-        btn.disabled = true;
 
-        try {
-            const formData = new FormData(formV);
-            const data = Object.fromEntries(formData.entries());
+// --- 5. FUNÇÃO DE SALVAR UNIFICADA (LÓGICA AUTOMÁTICA) ---
+async function saveEntry(e, originType) {
+    e.preventDefault();
+    
+    // Seleciona o formulário correto
+    const form = originType === 'v' ? formV : formVn;
+    if (!form) return;
 
-            // Estrutura final do documento
-            const taskData = {
-                ...data, // Inclui docente e posGraduando automaticamente pelos 'name' dos inputs
-                type: 'biopsia',
-                status: 'clivagem',
-                steps: {
-                    macro: false,
-                    clearing: false,
-                    inclusion: false,
-                    microtomy: false,
-                    staining: false,
-                    microscopy: false
-                },
-                createdBy: auth.currentUser.uid,
-                createdAt: new Date()
-            };
+    const btn = form.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+    
+    // Feedback visual
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+    btn.disabled = true;
 
-            await addDoc(collection(db, "tasks"), taskData);
+    try {
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
 
-            alert("Entrada registrada com sucesso!");
-            closeModal();
+        // --- DEFINIÇÃO AUTOMÁTICA DE TIPO E COR ---
+        let taskType = 'biopsia'; // Padrão
+        let initialColor = 'rosa'; // Padrão
 
-        } catch (error) {
-            console.error("Erro ao salvar:", error);
-            alert("Erro ao salvar entrada: " + error.message);
-        } finally {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
+        if (originType === 'vn') {
+            taskType = 'necropsia';
+            initialColor = 'azul';
         }
-    });
+
+        // Estrutura do Documento
+        const taskData = {
+            ...data,
+            type: taskType,         // Define automaticamente
+            k7Color: initialColor,  // Define automaticamente
+            k7Quantity: 0,          // Será definido na clivagem
+            status: 'clivagem',     // Etapa inicial
+            createdBy: auth.currentUser ? auth.currentUser.uid : 'anon',
+            createdAt: new Date().toISOString() // Formato String ISO para ordenar fácil
+        };
+
+        // Salva no Firestore
+        await addDoc(collection(db, "tasks"), taskData);
+
+        alert(`Entrada de ${taskType.toUpperCase()} registrada com sucesso!`);
+        closeModal();
+        
+        // Gera novo código para a próxima
+        generateRandomCode();
+
+    } catch (error) {
+        console.error("Erro ao salvar:", error);
+        alert("Erro ao salvar entrada: " + error.message);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+// --- 6. LISTENERS DE SUBMIT ---
+
+// Formulário V (Biópsia)
+if (formV) {
+    formV.addEventListener('submit', (e) => saveEntry(e, 'v'));
+}
+
+// Formulário Vn (Necropsia) - Caso você adicione no HTML futuramente
+if (formVn) {
+    formVn.addEventListener('submit', (e) => saveEntry(e, 'vn'));
 }

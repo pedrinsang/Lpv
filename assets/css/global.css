@@ -44,7 +44,7 @@
 }
 
 /* --- RESET & BASE --- */
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html { overflow-x: hidden; scroll-behavior: smooth; touch-action: manipulation; }
 
 /* Remove sublinhado */
@@ -899,4 +899,32 @@ body {
 * {
     scrollbar-width: thin; /* Barra fina */
     scrollbar-color: rgba(120, 120, 120, 0.3) transparent; /* Cor da barra / Cor do fundo */
+}
+
+/* --- ANIMAÇÃO DE ENTRADA DO CARD (Efeito de Movimento) --- */
+
+/* Define a animação */
+@keyframes cardSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Aplica a animação em todos os cards do mural */
+.mural-card {
+    /* ... mantenha suas propriedades existentes ... */
+    
+    /* Adicione esta linha: */
+    animation: cardSlideIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* --- Feedback visual no botão de Próxima Etapa --- */
+#btn-next-stage:active {
+    transform: scale(0.95);
+    background-color: var(--color-success); /* Fica verde rapidinho ao clicar */
 }

@@ -147,7 +147,7 @@
                 </div>
             </div>
 
-            <div style="margin-bottom: 2rem;">
+            <div style="margin-bottom: 2rem; padding: 10px;">
                 <h3 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px; font-weight: 700; text-transform: uppercase;">
                     <i class="fas fa-tasks me-2"></i> Minha Fila
                 </h3>
@@ -155,7 +155,7 @@
             </div>
 
             <div>
-                <h3 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px; font-weight: 700; text-transform: uppercase;">
+                <h3 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px; font-weight: 700; text-transform: uppercase; padding: 10px;">
                     Acesso Rápido
                 </h3>
                 <div class="hub-grid">
@@ -306,68 +306,34 @@
     <div id="task-manager-modal" class="modal-overlay hidden">
         <div class="modal-glass">
             
-            <div class="modal-header-tabs">
-                <h2 id="tm-title" style="margin-bottom: 0;">Detalhes da Amostra</h2>
+            <div style="text-align: right; margin-bottom: 5px;">
                 <button id="close-tm-btn" class="btn-close-modal"><i class="fas fa-times"></i></button>
             </div>
 
             <div id="view-details-content">
-                <div id="tm-info-grid" class="form-grid" style="margin-bottom: 2rem;">
+                <div id="tm-info-grid"></div>
+
+                <div class="modal-footer" style="justify-content: space-between; margin-top: 2rem; gap: 10px;">
+                    
+                    <button id="btn-delete-task" class="btn btn-secondary" style="color: var(--color-error); border-color: var(--color-error); margin-right: auto;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button id="btn-prev-stage" class="btn btn-secondary hidden">
+                            <i class="fas fa-undo"></i> Voltar
+                        </button>
+
+                        <button id="btn-next-stage" class="btn btn-primary">
+                            Próxima <i class="fas fa-arrow-right"></i>
+                        </button>
                     </div>
 
-                <div class="modal-footer" style="justify-content: space-between;">
-                    <div style="display: flex; gap: 10px;">
-                        <button id="btn-delete-task" class="btn btn-secondary" style="color: var(--color-error); border-color: var(--color-error);">
-                            <i class="fas fa-trash"></i> Excluir
-                        </button>
-                        </div>
-                    
-                    <button id="btn-next-stage" class="btn btn-primary">
-                        Próxima Etapa <i class="fas fa-arrow-right"></i>
-                    </button>
                 </div>
             </div>
 
             <div id="view-k7-form" class="hidden">
-                <div style="text-align: center; margin-bottom: 2rem;">
-                    <h3 style="color: var(--color-primary);">Finalizar Clivagem</h3>
-                    <p style="color: var(--text-secondary);">Informe os dados dos cassetes para prosseguir.</p>
-                </div>
-
-                <form id="form-k7">
-                    <div class="form-group">
-                        <label>Quantidade de Cassetes (K7)</label>
-                        <input type="number" id="k7-quantity" class="input-field" min="1" value="1" required>
-                    </div>
-
-                    <div class="form-group" style="margin-top: 15px;">
-                        <label>Cor do Cassete</label>
-                        <div class="color-selector">
-                            <label class="color-option">
-                                <input type="radio" name="k7Color" value="rosa" checked>
-                                <span class="color-box" style="background: #fce7f3; border-color: #ec4899;"></span>
-                                <span>Rosa (Biópsia)</span>
-                            </label>
-                            <label class="color-option">
-                                <input type="radio" name="k7Color" value="azul">
-                                <span class="color-box" style="background: #dbeafe; border-color: #3b82f6;"></span>
-                                <span>Azul (Necropsia)</span>
-                            </label>
-                            <label class="color-option">
-                                <input type="radio" name="k7Color" value="branco">
-                                <span class="color-box" style="background: #f8fafc; border-color: #cbd5e1;"></span>
-                                <span>Branco (Projeto)</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button type="button" id="btn-cancel-k7" class="btn btn-secondary">Voltar</button>
-                        <button type="submit" class="btn btn-primary">
-                            Salvar e Processar <i class="fas fa-flask"></i>
-                        </button>
-                    </div>
-                </form>
+                <form id="form-k7"></form>
             </div>
 
         </div>

@@ -152,41 +152,80 @@ function isTaskRelevant(task, role) {
 
 // 7. RENDERIZAR A LISTA LATERAL (ATUALIZADO COM CORES E CLIQUE)
 function renderQueue(tasks) {
-    if (!els.queueContainer) return;
-    els.queueContainer.innerHTML = '';
+    const container = document.getElementById('queue-list-container');
+    if (!container) return;
     
+    container.innerHTML = '';
+
     if (tasks.length === 0) {
-        els.queueContainer.innerHTML = `<div style="text-align:center; padding:2rem; opacity:0.6;"><p>Sua fila está vazia.</p></div>`;
+        container.innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: var(--text-tertiary);">
+                <i class="far fa-check-circle fa-2x" style="margin-bottom: 10px; opacity: 0.5;"></i>
+                <p>Nenhuma amostra ativa no momento.</p>
+            </div>`;
         return;
     }
 
     tasks.forEach(task => {
-        // Define classe de badge
-        let badgeClass = 'badge-process';
-        if (task.status === 'analise') badgeClass = 'badge-warning'; 
-        if (task.status === 'liberar') badgeClass = 'badge-success'; 
+        // Cria o elemento da lista
+        const div = document.createElement('div');
+        div.className = 'sample-ticket'; // Classe CSS padrão do sistema
+        
+        // Define cor da borda esquerda baseada no status/cor k7
+        if (task.k7Color === 'rosa') div.style.borderLeft = '4px solid #ec4899';
+        else if (task.k7Color === 'azul') div.style.borderLeft = '4px solid #3b82f6';
+        else div.style.borderLeft = '4px solid #cbd5e1';
 
-        // --- LÓGICA DE COR DO CARD (K7) ---
-        // Se tiver cor definida no banco, usa. Senão, fica padrão glass.
-        let k7Class = '';
-        if (task.k7Color) {
-            k7Class = `k7-${task.k7Color}`; // Ex: k7-rosa, k7-azul
-        }
+        div.onclick = () => window.openTaskManager(task.id);
 
-        const displayCode = task.protocolo || task.accessCode || "---";
+        // Define dados
+        const protocol = task.protocolo || task.accessCode || '---';
+        const isNecropsia = (task.type === 'necropsia') || (!task.type && task.k7Color === 'azul');
+        
+        // Configuração do Badge
+        const typeLabel = isNecropsia ? 'NECROPSIA' : 'BIÓPSIA';
+        const typeColor = isNecropsia ? '#3b82f6' : '#ec4899';
+        
+        // Responsável (Pós)
+        const shortPos = getShortName(task.posGraduando || "Sem Pós");
 
-        // ADICIONAMOS onclick="window.openTaskManager(...)"
-        const html = `
-            <div class="sample-ticket fade-in ${k7Class}" onclick="window.openTaskManager('${task.id}')" style="cursor: pointer;">
-                <div>
-                    <span style="font-weight:700; color:var(--text-primary);">#${displayCode}</span>
-                    <br>
-                    <span style="font-size:0.85rem;">${task.animalNome || 'Sem nome'}</span>
-                    ${task.k7Quantity ? `<span style="font-size:0.7rem; opacity:0.8; display:block;">${task.k7Quantity} Cassetes</span>` : ''}
+        // Status formatado
+        const statusMap = {
+            'clivagem': 'Clivagem', 'processamento': 'Processamento', 'emblocamento': 'Emblocamento',
+            'corte': 'Corte', 'coloracao': 'Coloração', 'analise': 'Análise', 'liberar': 'Liberar'
+        };
+        const statusName = statusMap[task.status] || task.status;
+
+        div.innerHTML = `
+            <div style="width: 100%;">
+                <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                     <span style="font-weight: 800; font-size: 1rem; color: var(--text-primary);">
+                        ${protocol}
+                     </span>
+                     <span style="font-size: 0.65rem; font-weight: 800; color: ${typeColor}; background: ${typeColor}15; padding: 2px 8px; border-radius: 4px; border: 1px solid ${typeColor}30;">
+                        ${typeLabel}
+                     </span>
                 </div>
-                <div class="ticket-status-badge ${badgeClass}">${formatStatus(task.status)}</div>
-            </div>`;
-        els.queueContainer.insertAdjacentHTML('beforeend', html);
+
+                <div style="font-size: 0.9rem; color: var(--text-primary); margin-bottom: 2px;">
+                    <strong>${task.animalNome || 'Sem Nome'}</strong>
+                    <span style="opacity: 0.6; font-size: 0.8rem;">(${task.especie || '?'})</span>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; gap: 5px;">
+                        <span style="width: 8px; height: 8px; background: var(--color-primary); border-radius: 50%; display: inline-block;"></span>
+                        ${statusName}
+                    </div>
+                    
+                    <div style="font-size: 0.75rem; color: var(--text-tertiary); display: flex; align-items: center; gap: 4px;">
+                        <i class="fas fa-user-graduate"></i> ${shortPos}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        container.appendChild(div);
     });
 }
 
@@ -203,4 +242,33 @@ function formatStatus(status) {
         liberar: 'Liberar'
     };
     return map[status] || status;
+}
+
+// --- FUNÇÃO EXTRA: SCROLL HORIZONTAL COM MOUSE NA ESTEIRA ---
+const productionWrapper = document.querySelector('.production-wrapper');
+
+if (productionWrapper) {
+    productionWrapper.addEventListener('wheel', (evt) => {
+        // Se o usuário estiver rolando para cima/baixo (deltaY)
+        if (evt.deltaY !== 0) {
+            // Impede a página de descer
+            evt.preventDefault();
+            
+            // Transforma a rolagem vertical em horizontal
+            // O '+= evt.deltaY' faz ir para direita/esquerda
+            productionWrapper.scrollLeft += evt.deltaY;
+        }
+    });
+}
+
+// --- Função Auxiliar para Abreviar Nomes ---
+function getShortName(fullName) {
+    if (!fullName) return '-';
+    // Remove espaços extras e divide
+    const parts = fullName.trim().split(/\s+/);
+    
+    if (parts.length === 1) return parts[0]; // Se só tem um nome (ex: "Bruna")
+    
+    // Retorna Primeiro Nome + Inicial do Segundo (ex: "Bruna K.")
+    return `${parts[0]} ${parts[1][0]}.`;
 }
