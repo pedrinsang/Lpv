@@ -161,35 +161,35 @@ function renderQueue(tasks) {
         container.innerHTML = `
             <div style="text-align: center; padding: 2rem; color: var(--text-tertiary);">
                 <i class="far fa-check-circle fa-2x" style="margin-bottom: 10px; opacity: 0.5;"></i>
-                <p>Nenhuma amostra ativa no momento.</p>
+                <p>Nenhuma amostra na sua fila.</p>
             </div>`;
         return;
     }
 
     tasks.forEach(task => {
-        // Cria o elemento da lista
         const div = document.createElement('div');
-        div.className = 'sample-ticket'; // Classe CSS padrão do sistema
         
-        // Define cor da borda esquerda baseada no status/cor k7
-        if (task.k7Color === 'rosa') div.style.borderLeft = '4px solid #ec4899';
-        else if (task.k7Color === 'azul') div.style.borderLeft = '4px solid #3b82f6';
-        else div.style.borderLeft = '4px solid #cbd5e1';
+        // --- CORREÇÃO AQUI ---
+        // Adiciona a classe de cor (k7-rosa, k7-azul) para o CSS pintar o fundo e a borda automaticamente
+        const colorClass = task.k7Color ? `k7-${task.k7Color}` : '';
+        div.className = `sample-ticket ${colorClass}`;
+        // ---------------------
 
         div.onclick = () => window.openTaskManager(task.id);
 
-        // Define dados
+        // Dados para exibição
         const protocol = task.protocolo || task.accessCode || '---';
+        
+        // Verifica se é necropsia pela cor ou tipo
         const isNecropsia = (task.type === 'necropsia') || (!task.type && task.k7Color === 'azul');
         
         // Configuração do Badge
         const typeLabel = isNecropsia ? 'NECROPSIA' : 'BIÓPSIA';
+        // Ajusta a cor do texto do badge para contrastar bem
         const typeColor = isNecropsia ? '#3b82f6' : '#ec4899';
         
-        // Responsável (Pós)
         const shortPos = getShortName(task.posGraduando || "Sem Pós");
 
-        // Status formatado
         const statusMap = {
             'clivagem': 'Clivagem', 'processamento': 'Processamento', 'emblocamento': 'Emblocamento',
             'corte': 'Corte', 'coloracao': 'Coloração', 'analise': 'Análise', 'liberar': 'Liberar'
@@ -202,7 +202,7 @@ function renderQueue(tasks) {
                      <span style="font-weight: 800; font-size: 1rem; color: var(--text-primary);">
                         ${protocol}
                      </span>
-                     <span style="font-size: 0.65rem; font-weight: 800; color: ${typeColor}; background: ${typeColor}15; padding: 2px 8px; border-radius: 4px; border: 1px solid ${typeColor}30;">
+                     <span style="font-size: 0.65rem; font-weight: 800; color: ${typeColor}; padding: 2px 8px; border-radius: 4px; border: 1px solid ${typeColor}30;">
                         ${typeLabel}
                      </span>
                 </div>
