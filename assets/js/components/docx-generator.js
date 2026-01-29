@@ -40,7 +40,7 @@ export async function generateLaudoWord(task, reportData) {
     const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, ImageRun, WidthType, AlignmentType, VerticalAlign, BorderStyle } = docx;
 
     // --- IMAGENS ---
-    const urlUFSM = "../assets/images/logo-ufsm.png"; 
+    const urlUFSM = "../assets/images/Logo-UFSM.png"
     const urlLPV = "../assets/images/LPV.png"; // Verifique o nome do arquivo
     
     const [base64UFSM, base64LPV] = await Promise.all([
@@ -103,7 +103,7 @@ export async function generateLaudoWord(task, reportData) {
     const headerCells = [];
     if (base64UFSM) {
         headerCells.push(new TableCell({
-            children: [new Paragraph({ children: [new ImageRun({ data: base64UFSM, transformation: { width: 95, height: 95 } })], alignment: AlignmentType.CENTER })],
+            children: [new Paragraph({ children: [new ImageRun({ data: base64UFSM, transformation: { width: 120, height: 120 } })], alignment: AlignmentType.CENTER })],
             width: { size: 20, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER, borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder }
         }));
     } else { headerCells.push(createTextCell("", true, 20, AlignmentType.CENTER)); }
@@ -188,19 +188,56 @@ export async function generateLaudoWord(task, reportData) {
     }));
 
     sections.push(new Paragraph({spacing: { after: 200 }}));
-    sections.push(new Paragraph({ border: { bottom: { color: "000000", space: 1, style: "single", size: 6 } }, spacing: { after: 300 } }));
+    sections.push(new Paragraph({ border: { bottom: { color: "000000", space: 1, style: "single", size: 6 } }, spacing: { after: 200 } }));
+    
+    // 6. ASSINATURAS (COM PROTEÇÃO DE QUEBRA DE PÁGINA)
+    // Usamos 'keepLines: true' e 'cantSplit: true' na tabela para garantir que o bloco
+    // de assinatura nunca seja cortado ao meio. Se não couber, ele vai inteiro para a próxima página.
 
-    // 6. ASSINATURAS
-    sections.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideVertical: noBorder }, rows: [new TableRow({ children: [
-            new TableCell({ children: [
-                new Paragraph({ children: [new TextRun({ text: "Dra. Mariana Martins Flores", bold: true, font: fontName, size: 22 })], alignment: AlignmentType.CENTER }),
-                new Paragraph({ children: [new TextRun({ text: "Patologista / CRMV 14.636", font: fontName, size: 22 })], alignment: AlignmentType.CENTER }),
-            ]}),
-            new TableCell({ children: [
-                new Paragraph({ children: [new TextRun({ text: task.posGraduando || "Pós-Graduando", bold: true, font: fontName, size: 22 })], alignment: AlignmentType.CENTER }),
-                new Paragraph({ children: [new TextRun({ text: "Pós-Graduando(a) / LPV", font: fontName, size: 22 })], alignment: AlignmentType.CENTER }),
-            ]})
-        ]})] }));
+    const signatureRow = new TableRow({
+        cantSplit: true, // PROIBIDO QUEBRAR ESTA LINHA DE TABELA
+        children: [
+            // Coluna Esquerda: Patologista
+            new TableCell({
+                children: [
+                    new Paragraph({
+                        children: [new TextRun({ text: "Dra. Mariana Martins Flores", bold: true, font: fontName, size: 22 })],
+                        alignment: AlignmentType.CENTER,
+                        keepNext: true,
+                        keepLines: true
+                    }),
+                    new Paragraph({
+                        children: [new TextRun({ text: "Patologista / CRMV 14.636", font: fontName, size: 22 })],
+                        alignment: AlignmentType.CENTER,
+                        keepLines: true
+                    }),
+                ]
+            }),
+            
+            // Coluna Direita: Pós-Graduando
+            new TableCell({
+                children: [
+                    new Paragraph({
+                        children: [new TextRun({ text: task.posGraduando || "Pós-Graduando", bold: true, font: fontName, size: 22 })],
+                        alignment: AlignmentType.CENTER,
+                        keepNext: true,
+                        keepLines: true
+                    }),
+                    new Paragraph({
+                        children: [new TextRun({ text: "Pós-Graduando(a) / LPV", font: fontName, size: 22 })],
+                        alignment: AlignmentType.CENTER,
+                        keepLines: true
+                    }),
+                ]
+            })
+        ]
+    });
+
+    sections.push(new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideVertical: noBorder },
+        rows: [signatureRow]
+    }));
 
     // GERA DOWNLOAD
     const doc = new Document({ sections: [{ properties: { page: { margin: { top: 1133, right: 1133, bottom: 1133, left: 1133 } } }, children: sections }] });

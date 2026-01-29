@@ -188,3 +188,47 @@ function showAlert(element, message, type) {
     element.className = `alert-message ${type}`; 
     element.classList.remove('hidden');
 }
+
+/* --- LOGICA DE INSTALAÇÃO PWA (COLE NO FINAL DO ARQUIVO) --- */
+
+let deferredPrompt; 
+const installBtn = document.getElementById('btn-install-pwa');
+
+// 1. Escuta se o navegador aceita instalação
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Previne a barrinha automática do Chrome (para usarmos nosso botão)
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    // Mostra o nosso botão (tira a classe hidden)
+    if (installBtn) {
+        installBtn.classList.remove('hidden');
+        console.log("PWA: Botão de instalação ativado.");
+    }
+});
+
+// 2. Clique no botão
+if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+
+        // Mostra o prompt oficial do navegador
+        deferredPrompt.prompt();
+
+        // Espera a resposta do usuário
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`PWA: Usuário escolheu: ${outcome}`);
+
+        deferredPrompt = null;
+        
+        // Esconde o botão se o usuário aceitou ou cancelou
+        // (Opcional: se quiser que suma apenas se aceitar, coloque dentro de um if)
+        installBtn.classList.add('hidden');
+    });
+}
+
+// 3. Se já instalou, esconde o botão
+window.addEventListener('appinstalled', () => {
+    console.log('PWA: Instalado com sucesso!');
+    if (installBtn) installBtn.classList.add('hidden');
+});

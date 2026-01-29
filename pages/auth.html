@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="../assets/css/global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
+    <link rel="manifest" href="../manifest.json">
 
     <style>
         /* =========================================
@@ -250,9 +251,15 @@
                         </button>
                     </form>
 
+                    <button id="btn-install-pwa" class="btn-install hidden" type="button">
+                        <i class="fas fa-download"></i> Instalar Aplicativo
+                    </button>
+
                     <div style="margin-top: 2rem; text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
                         Não possui acesso? <a href="#" id="show-register" style="color: var(--color-primary); font-weight: 700;">Solicitar Cadastro</a>
                     </div>
+
+                    
                 </div>
 
                 <div id="register-container" class="hidden" style="animation: slideUp 0.5s ease;">
