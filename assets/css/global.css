@@ -1249,3 +1249,132 @@ body {
     color: var(--color-primary);
     transform: translateY(-2px);
 }
+
+/* =========================================
+   MODAL DE TAREFAS (MODERNO)
+   ========================================= */
+
+/* --- 1. CABEÇALHO COLORIDO (HERO) --- */
+.tm-hero-modern {
+    padding: 2rem;
+    border-radius:15px;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Fundo Biópsia (Gradiente Roxo/Rosa) */
+.tm-hero-modern.biopsia {
+    background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+}
+/* Fundo Necropsia (Gradiente Azul) */
+.tm-hero-modern.necropsia {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.tm-hero-content h2 {
+    margin: 0; font-size: 2rem; font-weight: 800; letter-spacing: -1px;
+}
+.tm-hero-content p {
+    margin: 5px 0 0 0; opacity: 0.9; font-size: 1rem; display: flex; align-items: center; gap: 8px;
+}
+.tm-hero-badge {
+    background: rgba(255,255,255,0.25);
+    backdrop-filter: blur(4px);
+    padding: 6px 14px;
+    border-radius: 30px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* --- 2. CÓDIGO PÚBLICO (Barra Copiável) --- */
+.tm-code-section {
+    background: var(--bg-card);
+    border: 1px dashed var(--border-glass);
+    padding: 12px 20px;
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.tm-code-label { font-size: 0.75rem; color: var(--text-tertiary); text-transform: uppercase; font-weight: 700; }
+.tm-code-value { font-size: 1.2rem; font-weight: 800; color: var(--color-primary); letter-spacing: 2px; }
+
+/* --- 3. GRID DE INFORMAÇÕES (Cards) --- */
+.tm-info-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.info-card {
+    background: var(--bg-body);
+    border: 1px solid var(--border-glass);
+    padding: 15px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    transition: transform 0.2s;
+}
+.info-card:hover { transform: translateY(-2px); border-color: var(--color-primary); }
+
+.info-label { font-size: 0.75rem; color: var(--text-tertiary); font-weight: 600; text-transform: uppercase; }
+.info-value { font-size: 1rem; font-weight: 600; color: var(--text-primary); display: flex; gap: 8px; }
+.info-icon { width: 30px; height: 30px; background: rgba(var(--color-primary-rgb), 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--color-primary); margin-bottom: 5px; }
+
+/* --- 4. STATUS FINANCEIRO --- */
+.finance-alert {
+    padding: 15px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    border-left: 5px solid;
+}
+.finance-alert.pending { background: #fff7ed; border-color: #f59e0b; color: #b45309; }
+.finance-alert.paid { background: #f0fdf4; border-color: #10b981; color: #166534; }
+
+/* --- 5. BARRA DE AÇÕES (Rodapé) --- */
+.tm-actions-footer {
+    display: flex;
+    justify-content: flex-end;
+    justify-content: space-evenly;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-glass);
+}
+
+.action-btn {
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+.btn-edit { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-glass); }
+.btn-edit:hover { background: var(--bg-body); border-color: var(--color-primary); }
+
+.btn-word { background: #3b82f6; color: white; }
+.btn-word:hover { background: #2563eb; transform: translateY(-2px); }
+
+.btn-release { background: #10b981; color: white; }
+.btn-release:hover { background: #059669; transform: translateY(-2px); }
+
+.btn-main-action { background: var(--color-primary); color: white; }
+.btn-main-action:hover { opacity: 0.9; transform: translateY(-2px); }

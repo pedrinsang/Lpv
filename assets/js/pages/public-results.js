@@ -1,132 +1,163 @@
 import { db } from '../core.js';
 import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { generateLaudoWord } from '../components/docx-generator.js';
 
-const inputCode = document.getElementById('access-code');
-const btnSearch = document.getElementById('btn-search');
-const feedback = document.getElementById('search-feedback');
-const resultDisplay = document.getElementById('result-display');
+console.log("Public Results Loaded - Fixed ID");
 
-// Elementos do Resultado
-const resStatus = document.getElementById('res-status-badge');
-const resPet = document.getElementById('res-pet-name');
-const resOwner = document.getElementById('res-owner');
-const resDate = document.getElementById('res-date');
-const resDesc = document.getElementById('res-desc');
-const downloadArea = document.getElementById('download-area');
-const pendingMsg = document.getElementById('pending-msg');
-const btnPdf = document.getElementById('btn-download-pdf');
+// CORREÇÃO AQUI: O ID no seu HTML novo é 'access-code', não 'search-code'
+const searchInput = document.getElementById('access-code'); 
+const searchBtn = document.getElementById('btn-search');
+const resultContainer = document.getElementById('result-container');
+const btnDownload = document.getElementById('btn-download-public');
 
-// Formatar Input para Uppercase
-inputCode.addEventListener('input', (e) => {
-    e.target.value = e.target.value.toUpperCase();
-});
+let foundTask = null;
 
-// Ação de Busca
-btnSearch.addEventListener('click', performSearch);
-inputCode.addEventListener('keypress', (e) => {
-    if(e.key === 'Enter') performSearch();
-});
+// --- EVENTOS ---
+if (searchBtn) {
+    searchBtn.addEventListener('click', handleSearch);
+}
 
-async function performSearch() {
-    const code = inputCode.value.trim();
+if (searchInput) {
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleSearch();
+    });
+}
+
+// --- BUSCA ---
+async function handleSearch() {
+    // Agora 'searchInput' existe, então não vai dar erro de null
+    const code = searchInput.value.trim(); 
     
-    // Resetar UI
-    resultDisplay.classList.add('hidden');
-    feedback.textContent = '';
-    feedback.style.color = 'var(--text-secondary)';
+    if (!code) return alert("Por favor, digite o código de acesso.");
 
-    if (!code) {
-        showError('Por favor, digite o código.');
-        return;
-    }
-
-    // Feedback visual
-    btnSearch.innerHTML = '<i class="fas fa-spinner fa-spin"></i> BUSCANDO...';
-    btnSearch.disabled = true;
+    const originalBtnContent = searchBtn.innerHTML;
+    searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    searchBtn.disabled = true;
 
     try {
-        // Busca na coleção 'tasks' onde 'accessCode' é igual ao digitado
         const q = query(collection(db, "tasks"), where("accessCode", "==", code));
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
-            showError('Código não encontrado ou inválido.');
+            alert("Protocolo não encontrado. Verifique o código.");
+            resultContainer.classList.add('hidden');
         } else {
-            // Sucesso - Pega o primeiro documento encontrado
-            const docData = querySnapshot.docs[0].data();
-            renderResult(docData);
+            foundTask = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
+            renderResult(foundTask);
         }
 
     } catch (error) {
-        console.error(error);
-        showError('Erro ao conectar com o servidor.');
+        console.error("Erro busca:", error);
+        alert("Erro ao buscar. Tente novamente.");
     } finally {
-        btnSearch.innerHTML = '<i class="fas fa-search"></i> CONSULTAR';
-        btnSearch.disabled = false;
+        searchBtn.innerHTML = originalBtnContent;
+        searchBtn.disabled = false;
     }
 }
 
-function renderResult(data) {
-    // 1. Preencher Textos
-    resPet.textContent = data.petName || "Pet Sem Nome";
-    resOwner.textContent = `Tutor: ${data.ownerName || "Não informado"}`;
-    resDesc.textContent = data.description || "Sem descrição";
-    
-    // Formatar Data
-    if (data.createdAt) {
-        const date = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-        resDate.textContent = date.toLocaleDateString('pt-BR');
-    }
+// --- RENDERIZAÇÃO ---
+function renderResult(task) {
+    resultContainer.classList.remove('hidden');
 
-    // 2. Lógica de Status
-    const status = data.status || 'pending';
+    // Preenche textos
+    document.getElementById('res-pet-name').innerText = task.animalNome || "Pet";
+    document.getElementById('res-owner').innerText = `Tutor: ${task.proprietario || "---"}`;
     
-    if (status === 'completed' || status === 'released') {
-        resStatus.textContent = "LAUDO DISPONÍVEL";
-        resStatus.className = "status-badge-large st-done";
-        
-        downloadArea.classList.remove('hidden');
-        pendingMsg.classList.add('hidden');
-        
-        // Link do PDF (se existir no banco)
-        if (data.reportUrl) {
-            btnPdf.href = data.reportUrl;
-            btnPdf.classList.remove('disabled');
+    const dateStr = task.dataEntrada 
+        ? new Date(task.dataEntrada + 'T12:00:00').toLocaleDateString('pt-BR') 
+        : new Date(task.createdAt).toLocaleDateString('pt-BR');
+    document.getElementById('res-date').innerText = dateStr;
+
+    // Atualiza Stepper (Timeline)
+    updateStepper(task);
+}
+
+function updateStepper(task) {
+    const status = task.status || 'clivagem'; 
+    const finStatus = task.financialStatus || 'pendente';
+
+    let currentStep = 1;
+    const processingSteps = ['clivagem', 'processamento', 'emblocamento', 'corte', 'coloracao'];
+    const analysisSteps = ['analise', 'liberar'];
+
+    if (processingSteps.includes(status)) currentStep = 2;
+    else if (analysisSteps.includes(status)) currentStep = 3;
+    else if (status === 'concluido') currentStep = 4;
+
+    // Reset Visual
+    document.querySelectorAll('.step-item').forEach(el => el.className = 'step-item');
+    const progressLine = document.getElementById('progress-line');
+    const msgBox = document.getElementById('status-message');
+    const step4Label = document.getElementById('label-step-4');
+    const step4Icon = document.querySelector('#step-4 .step-circle i');
+
+    // Lógica dos Passos
+    if (currentStep === 1) {
+        setStepStatus(1, 'active');
+        progressLine.style.width = '15%';
+        msgBox.innerHTML = "Amostra recebida. Aguardando processamento.";
+        btnDownload.classList.add('hidden');
+        step4Label.innerText = "Laudo";
+    }
+    else if (currentStep === 2) {
+        setStepStatus(1, 'completed'); setStepStatus(2, 'active');
+        progressLine.style.width = '40%';
+        msgBox.innerHTML = "Em processamento técnico (laboratório).";
+        btnDownload.classList.add('hidden');
+        step4Label.innerText = "Laudo";
+    }
+    else if (currentStep === 3) {
+        setStepStatus(1, 'completed'); setStepStatus(2, 'completed'); setStepStatus(3, 'active');
+        progressLine.style.width = '65%';
+        msgBox.innerHTML = "Em análise pelo patologista.";
+        btnDownload.classList.add('hidden');
+        step4Label.innerText = "Laudo";
+    }
+    else if (currentStep === 4) {
+        setStepStatus(1, 'completed'); setStepStatus(2, 'completed'); setStepStatus(3, 'completed');
+        progressLine.style.width = '100%';
+
+        if (finStatus === 'pendente') {
+            setStepStatus(4, 'warning');
+            step4Label.innerText = "Pagamento";
+            step4Icon.className = "fas fa-exclamation-triangle";
+            msgBox.innerHTML = `<span style="color:#f59e0b; font-weight:bold;">Pagamento Pendente.</span> Entre em contato para liberar o laudo.`;
+            btnDownload.classList.add('hidden');
         } else {
-            btnPdf.href = "#";
-            btnPdf.textContent = "PDF Processando...";
-            btnPdf.classList.add('disabled');
+            setStepStatus(4, 'success');
+            step4Label.innerText = "Liberado";
+            step4Icon.className = "fas fa-check";
+            msgBox.innerHTML = `<span style="color:#10b981; font-weight:bold;">Laudo Disponível!</span>`;
+            btnDownload.classList.remove('hidden');
         }
-    } else {
-        resStatus.textContent = "EM ANÁLISE";
-        resStatus.className = "status-badge-large st-pending";
-        
-        downloadArea.classList.add('hidden');
-        pendingMsg.classList.remove('hidden');
     }
-
-    // Mostrar Card
-    resultDisplay.classList.remove('hidden');
 }
 
-function showError(msg) {
-    feedback.textContent = msg;
-    feedback.style.color = 'var(--color-error)';
-    // Efeito de tremer (opcional)
-    const card = document.querySelector('.search-card');
-    card.style.animation = 'none';
-    card.offsetHeight; /* trigger reflow */
-    card.style.animation = 'shake 0.3s';
+function setStepStatus(stepNum, status) {
+    const el = document.getElementById(`step-${stepNum}`);
+    if (el) el.classList.add(status);
 }
 
-// CSS Inline para animação de erro
-const style = document.createElement('style');
-style.innerHTML = `
-@keyframes shake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  50% { transform: translateX(5px); }
-  75% { transform: translateX(-5px); }
-  100% { transform: translateX(0); }
-}`;
-document.head.appendChild(style);
+// --- DOWNLOAD ---
+if (btnDownload) {
+    btnDownload.addEventListener('click', async () => {
+        if (!foundTask) return;
+        
+        const originalText = btnDownload.innerHTML;
+        btnDownload.innerHTML = '<i class="fas fa-spinner fa-spin"></i> GERANDO PDF...';
+        btnDownload.disabled = true;
+
+        try {
+            // Usa dados congelados se existirem
+            const reportData = foundTask.report || {};
+            const finalData = { ...reportData, ...foundTask };
+            await generateLaudoWord(foundTask, finalData);
+        } catch (e) {
+            console.error(e);
+            alert("Erro ao baixar: " + e.message);
+        } finally {
+            btnDownload.innerHTML = originalText;
+            btnDownload.disabled = false;
+        }
+    });
+}

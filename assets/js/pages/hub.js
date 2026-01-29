@@ -64,8 +64,8 @@ function initRealTimeDashboard() {
     unsubscribeTasks = onSnapshot(q, (snapshot) => {
         // Zera contadores
         const counts = {
-            necropsias: 0, // Totalizador
-            biopsias: 0,   // Totalizador
+            necropsias: 0, 
+            biopsias: 0,   
             clivagem: 0,
             processamento: 0,
             emblocamento: 0,
@@ -79,36 +79,24 @@ function initRealTimeDashboard() {
 
         snapshot.forEach(doc => {
             const task = { id: doc.id, ...doc.data() };
-            const status = task.status; // Onde está na esteira
-            const type = task.type;     // 'biopsia' ou 'necropsia'
+            const status = task.status; 
+            const type = task.type;     
 
-            // --- LÓGICA 1: TOTALIZADORES (Biopsias/Necropsias) ---
-            // Conta sempre, a menos que já tenha sido liberado (saiu do lab)
-            // (Consideramos 'liberar' como o último passo antes de arquivar)
-            // Se você quiser que suma APÓS clicar em liberar, mantenha != 'liberar'
-            // Se quiser que conte em liberar também, remova a condição.
-            
-            // Regra: Conta como ativo se NÃO estiver finalizado/arquivado
-            // Assumindo que 'liberar' ainda é uma etapa ativa (o professor tem que clicar)
-            // Se 'arquivado' for o fim, mude para != 'arquivado'
-            
-            // Neste exemplo: Conta sempre até que o status mude para algo como 'concluido' ou 'arquivado'.
-            // Mas como sua esteira termina em "Liberar Laudo", vamos contar tudo.
-            
+            // --- LÓGICA 1: TOTALIZADORES ---
+            // Conta apenas se NÃO estiver concluído/arquivado
             if (status !== 'concluido' && status !== 'arquivado') { 
                 if (type === 'biopsia') counts.biopsias++;
                 if (type === 'necropsia') counts.necropsias++;
-            }
-
-            // --- LÓGICA 2: ESTEIRA DE PRODUÇÃO (Onde está agora?) ---
-            if (counts.hasOwnProperty(status)) {
-                counts[status]++;
-            } else {
-                // Mapeamento de segurança para nomes antigos
-                if (status === 'waiting') counts.processamento++;
+                
+                // --- LÓGICA 2: ESTEIRA DE PRODUÇÃO ---
+                // Só conta nas etapas se o status for válido
+                if (counts.hasOwnProperty(status)) {
+                    counts[status]++;
+                }
             }
 
             // --- LÓGICA 3: MINHA FILA LATERAL ---
+            // A função isTaskRelevant agora filtra os concluídos
             if (isTaskRelevant(task, currentUserData.role)) {
                 myQueue.push(task);
             }
@@ -121,11 +109,9 @@ function initRealTimeDashboard() {
 }
 
 function updateCounters(c) {
-    // Totalizadores
     if(els.cNecropsias) els.cNecropsias.textContent = c.necropsias;
     if(els.cBiopsias) els.cBiopsias.textContent = c.biopsias;
     
-    // Etapas
     if(els.cClivagem) els.cClivagem.textContent = c.clivagem;
     if(els.cProcessamento) els.cProcessamento.textContent = c.processamento;
     if(els.cEmblocamento) els.cEmblocamento.textContent = c.emblocamento;
@@ -137,20 +123,25 @@ function updateCounters(c) {
 
 // QUEM VÊ O QUE NA BARRA LATERAL
 function isTaskRelevant(task, role) {
-    if (role === 'admin' || role === 'professor') return true; // Vê tudo
+    // [CORREÇÃO] REGRA GLOBAL: Se já foi concluído ou arquivado, NINGUÉM vê na lista lateral.
+    // Isso garante que sumam da lista assim que forem liberadas (status vira 'concluido').
+    if (task.status === 'concluido' || task.status === 'arquivado') {
+        return false;
+    }
+
+    if (role === 'admin' || role === 'professor') return true; // Vê tudo (que não esteja concluído)
     
     if (role === 'pós graduando' || role === 'pos-graduando') {
         return ['analise', 'liberar'].includes(task.status);
     }
 
     if (role === 'estagiario') {
-        // Estagiário vê a parte técnica (Clivagem -> Coloração)
         return ['clivagem', 'processamento', 'emblocamento', 'corte', 'coloracao'].includes(task.status);
     }
     return false;
 }
 
-// 7. RENDERIZAR A LISTA LATERAL (ATUALIZADO COM CORES E CLIQUE)
+// 7. RENDERIZAR A LISTA LATERAL
 function renderQueue(tasks) {
     const container = document.getElementById('queue-list-container');
     if (!container) return;
@@ -169,23 +160,15 @@ function renderQueue(tasks) {
     tasks.forEach(task => {
         const div = document.createElement('div');
         
-        // --- CORREÇÃO AQUI ---
-        // Adiciona a classe de cor (k7-rosa, k7-azul) para o CSS pintar o fundo e a borda automaticamente
         const colorClass = task.k7Color ? `k7-${task.k7Color}` : '';
         div.className = `sample-ticket ${colorClass}`;
-        // ---------------------
 
         div.onclick = () => window.openTaskManager(task.id);
 
-        // Dados para exibição
         const protocol = task.protocolo || task.accessCode || '---';
-        
-        // Verifica se é necropsia pela cor ou tipo
         const isNecropsia = (task.type === 'necropsia') || (!task.type && task.k7Color === 'azul');
         
-        // Configuração do Badge
         const typeLabel = isNecropsia ? 'NECROPSIA' : 'BIÓPSIA';
-        // Ajusta a cor do texto do badge para contrastar bem
         const typeColor = isNecropsia ? '#3b82f6' : '#ec4899';
         
         const shortPos = getShortName(task.posGraduando || "Sem Pós");
@@ -229,46 +212,22 @@ function renderQueue(tasks) {
     });
 }
 
-function formatStatus(status) {
-    const map = {
-        necropsias: 'Necropsia', // (Caso raro aparecer como status)
-        biopsias: 'Biópsia',     // (Caso raro aparecer como status)
-        clivagem: 'Clivagem',
-        processamento: 'Process.',
-        emblocamento: 'Embloc.',
-        corte: 'Corte',
-        coloracao: 'Coloração',
-        analise: 'Análise',
-        liberar: 'Liberar'
-    };
-    return map[status] || status;
-}
-
-// --- FUNÇÃO EXTRA: SCROLL HORIZONTAL COM MOUSE NA ESTEIRA ---
+// SCROLL HORIZONTAL
 const productionWrapper = document.querySelector('.production-wrapper');
 
 if (productionWrapper) {
     productionWrapper.addEventListener('wheel', (evt) => {
-        // Se o usuário estiver rolando para cima/baixo (deltaY)
         if (evt.deltaY !== 0) {
-            // Impede a página de descer
             evt.preventDefault();
-            
-            // Transforma a rolagem vertical em horizontal
-            // O '+= evt.deltaY' faz ir para direita/esquerda
             productionWrapper.scrollLeft += evt.deltaY;
         }
     });
 }
 
-// --- Função Auxiliar para Abreviar Nomes ---
+// AUXILIARES
 function getShortName(fullName) {
     if (!fullName) return '-';
-    // Remove espaços extras e divide
     const parts = fullName.trim().split(/\s+/);
-    
-    if (parts.length === 1) return parts[0]; // Se só tem um nome (ex: "Bruna")
-    
-    // Retorna Primeiro Nome + Inicial do Segundo (ex: "Bruna K.")
+    if (parts.length === 1) return parts[0]; 
     return `${parts[0]} ${parts[1][0]}.`;
 }

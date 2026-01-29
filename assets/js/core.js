@@ -206,4 +206,28 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoutProfile) logoutProfile.addEventListener('click', handleLogout);
 });
 
-export { app, auth, db, initThemeSystem, signOut };
+
+// --- FUNÇÃO DE LOGOUT GLOBAL ---
+async function logout() {
+    try {
+        await signOut(auth);
+        console.log("Logout realizado com sucesso.");
+        // O onAuthStateChanged vai detectar e redirecionar para auth.html
+    } catch (error) {
+        console.error("Erro ao fazer logout:", error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initThemeSystem();
+    
+    // Tenta encontrar botões de logout comuns no layout e atrelar a função
+    const logoutBtn = document.getElementById('logout-btn');
+    const logoutProfile = document.getElementById('logout-btn-profile');
+    
+    if (logoutBtn) logoutBtn.addEventListener('click', logout);
+    if (logoutProfile) logoutProfile.addEventListener('click', logout);
+});
+
+// ADICIONEI 'logout' NA LISTA DE EXPORTS ABAIXO:
+export { app, auth, db, initThemeSystem, signOut, logout };

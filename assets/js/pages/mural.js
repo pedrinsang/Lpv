@@ -77,7 +77,12 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 function initBoard() {
-    const q = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
+    const q = query(
+        collection(db, "tasks"), 
+        where("status", "!=", "concluido"),
+        orderBy("status"), // Necessário quando se usa != em status
+        orderBy("createdAt", "desc")
+    );
     
     onSnapshot(q, (snapshot) => {
         allTasks = [];

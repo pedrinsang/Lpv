@@ -70,6 +70,10 @@ if(closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidde
 // ==========================================================================
 // 3. RENDERIZAÇÃO DA TELA DE DETALHES (FLUXO CORRIGIDO)
 // ==========================================================================
+/* --- DENTRO DE assets/js/components/task-manager.js --- */
+
+// Substitua a função renderDetails existente por esta versão moderna:
+
 function renderDetails(task) {
     const user = currentUserData || {};
     const role = user.role || '';
@@ -78,22 +82,19 @@ function renderDetails(task) {
     const isStaff = ['professor', 'pós graduando', 'pos-graduando', 'admin'].includes(role);
     const canRelease = role === 'admin' || role === 'professor' || (role.includes('graduando') && user.canReleaseReports === true);
 
-    // --- CONFIGURAÇÃO DOS BOTÕES DE NAVEGAÇÃO (NEXT/PREV) ---
-    // Reset inicial
+    // --- CONFIGURAÇÃO DE NAVEGAÇÃO ---
+    // (Mantida a lógica original, apenas ajustando visualização)
     if(btnNext) { 
         btnNext.classList.remove('hidden'); 
         btnNext.innerHTML = 'Próxima Etapa <i class="fas fa-arrow-right"></i>'; 
         btnNext.onclick = handleNextStage;
-        btnNext.disabled = false;
     }
     if(btnPrev) { 
         btnPrev.classList.remove('hidden'); 
         btnPrev.onclick = handlePrevStage; 
     }
 
-    // Regras de Navegação por Status
     if (task.status === 'analise') {
-        // Na análise, o botão "Próxima" serve para enviar para Liberação
         if (isStaff) {
             btnNext.innerHTML = 'Enviar para Liberação <i class="fas fa-paper-plane"></i>';
             btnNext.onclick = () => updateStatus('liberar');
@@ -102,117 +103,140 @@ function renderDetails(task) {
         }
     } 
     else if (task.status === 'liberar') {
-        // Na liberação, escondemos o "Próxima" padrão (pois a ação final é o botão de Liberar customizado)
-        // Mas MANTEMOS o "Anterior" para poder voltar para análise se precisar corrigir
-        btnNext.classList.add('hidden'); 
+        btnNext.classList.add('hidden'); // Esconde o "Próxima" padrão, usaremos botões customizados
         btnPrev.classList.remove('hidden');
     }
     else if (task.status === 'clivagem') {
-        if(btnPrev) btnPrev.classList.add('hidden'); // Não tem anterior
+        if(btnPrev) btnPrev.classList.add('hidden');
     }
 
+    // --- DADOS VISUAIS ---
+    const typeClass = task.type === 'necropsia' ? 'necropsia' : 'biopsia';
+    const typeIcon = task.type === 'necropsia' ? 'fa-skull' : 'fa-microscope';
+    const typeLabel = task.type === 'necropsia' ? 'Necropsia' : 'Biópsia';
+    
+    // Status Legível
+    const statusMap = { 
+        'clivagem':'Clivagem', 'processamento':'Processamento', 'emblocamento':'Emblocamento', 
+        'corte':'Corte', 'coloracao':'Coloração', 'analise':'Análise', 
+        'liberar':'Aguardando Liberação', 'concluido':'Concluído' 
+    };
 
-    // --- CONSTRUÇÃO DO HTML INTERNO ---
-    const typeLabel = task.type === 'necropsia' ? 'NECROPSIA' : 'BIÓPSIA';
-    const typeColor = task.type === 'necropsia' ? '#3b82f6' : '#ec4899';
-    const statusMap = { 'clivagem':'Clivagem', 'processamento':'Processamento', 'emblocamento':'Emblocamento', 'corte':'Corte', 'coloracao':'Coloração', 'analise':'Análise', 'liberar':'Liberar Laudo', 'concluido':'Concluído' };
-
-    // 1. Bloco Financeiro (Com botão de alterar)
+    // --- HTML FINANCEIRO ---
     let financialHtml = '';
     const finStatus = task.financialStatus || 'pendente';
-    // Botão de alterar visível para staff
     const btnChangeFin = isStaff ? 
-        `<button class="btn btn-sm btn-outline-secondary" onclick="window.toggleFinancialStatus()" style="margin-left:auto; font-size:0.8rem; cursor:pointer; padding:2px 8px;">
-            <i class="fas fa-sync-alt"></i> Alterar
-         </button>` : '';
+        `<button onclick="window.toggleFinancialStatus()" style="background:transparent; border:1px solid currentColor; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:0.75rem; color:inherit; opacity:0.8;">Mudar</button>` : '';
 
     if (finStatus === 'pendente') {
-        financialHtml = `<div style="background:#fffbeb; border:1px solid #fcd34d; color:#b45309; padding:10px; border-radius:8px; margin-bottom:15px; display:flex; align-items:center; gap:10px;">
-                <i class="fas fa-exclamation-triangle"></i> <div><strong>Financeiro Pendente</strong></div> ${btnChangeFin}
+        financialHtml = `
+            <div class="finance-alert pending">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size:1.2rem;"></i>
+                    <div>
+                        <div style="font-weight:700;">Pagamento Pendente</div>
+                        <div style="font-size:0.8rem; opacity:0.9;">Bloqueia download público</div>
+                    </div>
+                </div>
+                ${btnChangeFin}
             </div>`;
     } else {
-        financialHtml = `<div style="background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; padding:10px; border-radius:8px; margin-bottom:15px; display:flex; align-items:center; gap:10px;">
-                <i class="fas fa-check-circle"></i> <div><strong>Financeiro Pago</strong></div> ${btnChangeFin}
+        financialHtml = `
+            <div class="finance-alert paid">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <i class="fas fa-check-circle" style="font-size:1.2rem;"></i>
+                    <div>
+                        <div style="font-weight:700;">Pagamento Realizado</div>
+                        <div style="font-size:0.8rem; opacity:0.9;">Liberado para download</div>
+                    </div>
+                </div>
+                ${btnChangeFin}
             </div>`;
     }
 
-    // 2. Área de Ações Específicas (Botões Grandes)
-    let customActionsHtml = '';
+    // --- HTML BOTÕES DE AÇÃO (MODERNO) ---
+    let actionsHtml = '';
 
     if (task.status === 'analise' && isStaff) {
-        // Botões da Fase de Análise: Editar e Pré-visualizar
-        customActionsHtml = `
-            <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap; justify-content: flex-end; border-top:1px solid #eee; padding-top:15px; justify-content: space-evenly;">
-                <button onclick="window.openReportEditorWrapper()" style="background:#8b5cf6; color:white; border:none; padding:10px 15px; border-radius:6px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-edit"></i> Preencher/Editar Laudo
-                </button>
-                ${task.report ? `
-                <button onclick="window.exportToWord()" style="background:#3b82f6; color:white; border:none; padding:10px 15px; border-radius:6px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-eye"></i> Pré-visualizar DOCX
-                </button>` : ''}
-            </div>
+        actionsHtml = `
+            <button onclick="window.openReportEditorWrapper()" class="action-btn btn-main-action">
+                <i class="fas fa-edit"></i> Preencher Laudo
+            </button>
+            ${task.report ? `<button onclick="window.exportToWord()" class="action-btn btn-word"><i class="fas fa-eye"></i> Ver Doc</button>` : ''}
         `;
     } 
     else if (task.status === 'liberar') {
-        // Botões da Fase de Liberação: Editar, Baixar, Liberar
-        let btnReleaseHtml = '';
-        if (canRelease) {
-            btnReleaseHtml = `
-                <button onclick="window.finishReportWrapper()" style="background:#10b981; color:white; border:none; padding:10px 15px; border-radius:6px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-check-double"></i> Liberar e Finalizar
-                </button>`;
-        } else {
-            btnReleaseHtml = `<div style="padding:10px; color:#666; font-style:italic; font-size:0.9rem;">Aguardando liberação do responsável.</div>`;
-        }
+        let btnReleaseHtml = canRelease ? 
+            `<button onclick="window.finishReportWrapper()" class="action-btn btn-release"><i class="fas fa-check-double"></i> Liberar Laudo</button>` : 
+            `<span style="font-size:0.8rem; color:#666; align-self:center;">Aguardando responsável</span>`;
 
-        customActionsHtml = `
-            <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap; justify-content: flex-end; border-top:1px solid #eee; padding-top:15px; justify-content: space-evenly;">
-                <button onclick="window.openReportEditorWrapper()" style="background:#6b7280; color:white; border:none; padding:10px 15px; border-radius:6px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-edit"></i> Corrigir/Editar
-                </button>
-                <button onclick="window.exportToWord()" style="background:#3b82f6; color:white; border:none; padding:10px 15px; border-radius:6px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:8px; ">
-                    <i class="fas fa-eye"></i> Pré-visualizar DOCX
-                </button>
-                ${btnReleaseHtml}
-            </div>
+        actionsHtml = `
+            <button onclick="window.openReportEditorWrapper()" class="action-btn btn-edit"><i class="fas fa-pen"></i> Corrigir</button>
+            <button onclick="window.exportToWord()" class="action-btn btn-word"><i class="fas fa-file-word"></i> Visualizar Doc</button>
+            ${btnReleaseHtml}
         `;
     }
 
+    // --- MONTAGEM FINAL DO HTML ---
     const html = `
-        <div class="tm-hero">
-            <div class="tm-hero-info">
-                <div class="tm-hero-species">
-                    <span style="color:${typeColor}; border:1px solid ${typeColor}40; padding:2px 6px; border-radius:4px; margin-right:6px;">${typeLabel}</span>
-                    <i class="fas fa-paw"></i> ${task.especie || '-'}
-                </div>
-                <h3>${task.animalNome || 'Sem Nome'}</h3>
+        <div class="tm-hero-modern ${typeClass}">
+            <div class="tm-hero-content">
+                <div class="tm-hero-badge"><i class="fas ${typeIcon}"></i> ${typeLabel}</div>
+                <h2>${task.animalNome || 'Sem Nome'}</h2>
+                <p><i class="fas fa-paw"></i> ${task.especie || 'Espécie não inf.'} &bull; ${task.sexo || '-'} &bull; ${task.idade || '-'}</p>
             </div>
-            <div class="tm-status-pill">${statusMap[task.status] || task.status}</div>
+            <div style="text-align:right;">
+                <div style="font-size:0.8rem; opacity:0.8; margin-bottom:4px;">STATUS ATUAL</div>
+                <div style="background:white; color:#333; padding:5px 12px; border-radius:8px; font-weight:700;">
+                    ${statusMap[task.status] || task.status}
+                </div>
+            </div>
         </div>
 
-        <div class="tm-code-strip">
-            <div><div class="tm-code-label">Código Público</div><div class="tm-code-value">${task.accessCode || "---"}</div></div>
-            <div style="display:flex; gap:10px;">
-                <button class="btn btn-secondary btn-sm" onclick="window.enableEditMode()"> <i class="fas fa-edit"></i> Editar Dados</button>
+        <div class="tm-code-section">
+            <div>
+                <div class="tm-code-label">Código de Acesso Público</div>
+                <div class="tm-code-value">${task.accessCode || "---"}</div>
             </div>
+            <div style="text-align:right;">
+                <div class="tm-code-label" style="margin-bottom:4px;">Protocolo Interno</div>
+                <div style="font-weight:600; color:var(--text-secondary);">${task.protocolo || "---"}</div>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="window.enableEditMode()" style="margin-left:15px;">
+                <i class="fas fa-edit"></i> Editar Dados
+            </button>
         </div>
         
         ${financialHtml}
 
-        <div class="tm-data-grid">
-            <div class="tm-data-item"><span class="tm-data-label">Protocolo</span><span class="tm-data-value" style="font-weight:800; color:var(--color-primary);">${task.protocolo || "---"}</span></div>
-            <div class="tm-data-item"><span class="tm-data-label">Proprietário</span><span class="tm-data-value">${task.proprietario || '-'}</span></div>
-            <div class="tm-data-item"><span class="tm-data-label">Docente</span><span class="tm-data-value">${task.docente || '-'}</span></div>
-            <div class="tm-data-item"><span class="tm-data-label">Pós-Graduando</span><span class="tm-data-value">${task.posGraduando || '-'}</span></div>
-            <div class="tm-data-item"><span class="tm-data-label">K7 Qtd/Cor</span><div style="margin-top:4px;">${task.k7Quantity || 0} unid. (${task.k7Color || '-'})</div></div>
+        <div class="tm-info-cards">
+            <div class="info-card">
+                <div class="info-icon"><i class="fas fa-user-tag"></i></div>
+                <div class="info-label">Proprietário</div>
+                <div class="info-value">${task.proprietario || '-'}</div>
+            </div>
+            <div class="info-card">
+                <div class="info-icon"><i class="fas fa-user-md"></i></div>
+                <div class="info-label">Veterinário / Docente</div>
+                <div class="info-value">${task.docente || '-'}</div>
+            </div>
+            <div class="info-card">
+                <div class="info-icon"><i class="fas fa-user-graduate"></i></div>
+                <div class="info-label">Pós-Graduando</div>
+                <div class="info-value">${task.posGraduando || '-'}</div>
+            </div>
+            <div class="info-card">
+                <div class="info-icon"><i class="fas fa-vial"></i></div>
+                <div class="info-label">Cassetes (Qtd/Cor)</div>
+                <div class="info-value">${task.k7Quantity || 0} un. <span class="tm-hero-modern ${typeClass}"style="font-size:0.8rem; margin-left:5px; padding:2px 6px; border-radius:4px;">${task.k7Color || '-'}</span></div>
+            </div>
         </div>
         
-        ${customActionsHtml}
+        ${actionsHtml ? `<div class="tm-actions-footer">${actionsHtml}</div>` : ''}
     `;
 
     infoGrid.innerHTML = html;
 }
-
 // ==========================================================================
 // 4. AÇÕES (FINANCEIRO, SALVAR, LIBERAR)
 // ==========================================================================
