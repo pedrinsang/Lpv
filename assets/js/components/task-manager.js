@@ -3,10 +3,57 @@ import {
     doc, getDoc, updateDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// Importa o gerador de Word
 import { generateLaudoWord } from './docx-generator.js';
 
-console.log("Task Manager Carregado - Fluxo de Aprovação Corrigido");
+console.log("Task Manager Loaded - vFinal (Auto-Close Fixed)");
+
+// --- INJEÇÃO DE ESTILOS MOBILE ---
+const style = document.createElement('style');
+style.innerHTML = `
+    @media (max-width: 768px) {
+        .modal-glass {
+            width: 95% !important;
+            max-height: 90vh;
+            padding: 1rem !important;
+            margin: 10px auto;
+            overflow-y: auto;
+        }
+        .tm-hero-modern {
+            flex-direction: column;
+            text-align: center;
+            gap: 15px;
+        }
+        .tm-hero-modern > div:last-child {
+            text-align: center !important;
+            width: 100%;
+        }
+        .tm-code-section {
+            flex-direction: column;
+            gap: 15px;
+            align-items: stretch !important;
+        }
+        .tm-code-section > div {
+            text-align: left !important;
+            width: 100%;
+        }
+        .tm-info-cards {
+            grid-template-columns: 1fr !important;
+        }
+        .tm-actions-footer {
+            flex-direction: column;
+        }
+        .tm-actions-footer button {
+            width: 100%;
+        }
+        .modal-footer {
+            flex-direction: column-reverse;
+        }
+        .modal-footer button {
+            width: 100%;
+        }
+    }
+`;
+document.head.appendChild(style);
 
 // --- ELEMENTOS DO DOM ---
 const modal = document.getElementById('task-manager-modal');
@@ -17,11 +64,11 @@ const infoGrid = document.getElementById('tm-info-grid');
 const formK7 = document.getElementById('form-k7');
 const reportModal = document.getElementById('report-editor-modal');
 
-// Botões de Navegação (Rodapé do Modal Principal)
+// Botões de Navegação
 const btnNext = document.getElementById('btn-next-stage');
 const btnPrev = document.getElementById('btn-prev-stage');
 const btnDelete = document.getElementById('btn-delete-task');
-const btnSaveReport = document.getElementById('btn-save-report'); // Botão dentro do modal de edição
+const btnSaveReport = document.getElementById('btn-save-report'); 
 
 let currentTask = null; 
 let currentUserData = null; 
@@ -53,13 +100,11 @@ async function openTaskManager(taskId) {
 
         currentTask = { id: docSnap.id, ...docSnap.data() };
         
-        // Renderiza a interface principal
         renderDetails(currentTask);
         
-        // Exibe o modal principal
         if(viewDetails) viewDetails.classList.remove('hidden');
         if(viewK7) viewK7.classList.add('hidden');
-        if(reportModal) reportModal.classList.add('hidden'); // Garante que o editor comece fechado
+        if(reportModal) reportModal.classList.add('hidden'); 
         if(modal) modal.classList.remove('hidden');
 
     } catch (e) { console.error(e); alert("Erro ao abrir: " + e.message); }
@@ -68,22 +113,15 @@ async function openTaskManager(taskId) {
 if(closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
 
 // ==========================================================================
-// 3. RENDERIZAÇÃO DA TELA DE DETALHES (FLUXO CORRIGIDO)
+// 3. RENDERIZAÇÃO DA TELA DE DETALHES
 // ==========================================================================
-/* --- DENTRO DE assets/js/components/task-manager.js --- */
-
-// Substitua a função renderDetails existente por esta versão moderna:
-
 function renderDetails(task) {
     const user = currentUserData || {};
     const role = user.role || '';
     
-    // Permissões
     const isStaff = ['professor', 'pós graduando', 'pos-graduando', 'admin'].includes(role);
     const canRelease = role === 'admin' || role === 'professor' || (role.includes('graduando') && user.canReleaseReports === true);
 
-    // --- CONFIGURAÇÃO DE NAVEGAÇÃO ---
-    // (Mantida a lógica original, apenas ajustando visualização)
     if(btnNext) { 
         btnNext.classList.remove('hidden'); 
         btnNext.innerHTML = 'Próxima Etapa <i class="fas fa-arrow-right"></i>'; 
@@ -103,26 +141,23 @@ function renderDetails(task) {
         }
     } 
     else if (task.status === 'liberar') {
-        btnNext.classList.add('hidden'); // Esconde o "Próxima" padrão, usaremos botões customizados
+        btnNext.classList.add('hidden'); 
         btnPrev.classList.remove('hidden');
     }
     else if (task.status === 'clivagem') {
         if(btnPrev) btnPrev.classList.add('hidden');
     }
 
-    // --- DADOS VISUAIS ---
     const typeClass = task.type === 'necropsia' ? 'necropsia' : 'biopsia';
     const typeIcon = task.type === 'necropsia' ? 'fa-skull' : 'fa-microscope';
     const typeLabel = task.type === 'necropsia' ? 'Necropsia' : 'Biópsia';
     
-    // Status Legível
     const statusMap = { 
         'clivagem':'Clivagem', 'processamento':'Processamento', 'emblocamento':'Emblocamento', 
         'corte':'Corte', 'coloracao':'Coloração', 'analise':'Análise', 
         'liberar':'Aguardando Liberação', 'concluido':'Concluído' 
     };
 
-    // --- HTML FINANCEIRO ---
     let financialHtml = '';
     const finStatus = task.financialStatus || 'pendente';
     const btnChangeFin = isStaff ? 
@@ -154,14 +189,10 @@ function renderDetails(task) {
             </div>`;
     }
 
-    // --- HTML BOTÕES DE AÇÃO (MODERNO) ---
     let actionsHtml = '';
-
     if (task.status === 'analise' && isStaff) {
         actionsHtml = `
-            <button onclick="window.openReportEditorWrapper()" class="action-btn btn-main-action">
-                <i class="fas fa-edit"></i> Preencher Laudo
-            </button>
+            <button onclick="window.openReportEditorWrapper()" class="action-btn btn-main-action"><i class="fas fa-edit"></i> Preencher Laudo</button>
             ${task.report ? `<button onclick="window.exportToWord()" class="action-btn btn-word"><i class="fas fa-eye"></i> Ver Doc</button>` : ''}
         `;
     } 
@@ -176,8 +207,14 @@ function renderDetails(task) {
             ${btnReleaseHtml}
         `;
     }
+    else if (task.status === 'concluido') {
+         actionsHtml = `
+            <button onclick="window.openReportEditorWrapper()" class="action-btn btn-edit"><i class="fas fa-eye"></i> Ver Detalhes</button>
+            <button onclick="window.exportToWord()" class="action-btn btn-word"><i class="fas fa-file-word"></i> Baixar Word</button>
+        `;
+    }
 
-    // --- MONTAGEM FINAL DO HTML ---
+    // HTML PRINCIPAL
     const html = `
         <div class="tm-hero-modern ${typeClass}">
             <div class="tm-hero-content">
@@ -202,7 +239,8 @@ function renderDetails(task) {
                 <div class="tm-code-label" style="margin-bottom:4px;">Protocolo Interno</div>
                 <div style="font-weight:600; color:var(--text-secondary);">${task.protocolo || "---"}</div>
             </div>
-            <button class="btn btn-sm btn-secondary" onclick="window.enableEditMode()" style="margin-left:15px;">
+            
+            <button class="btn btn-sm btn-secondary" onclick="window.triggerEditEntry()" style="margin-left:15px;">
                 <i class="fas fa-edit"></i> Editar Dados
             </button>
         </div>
@@ -237,11 +275,10 @@ function renderDetails(task) {
 
     infoGrid.innerHTML = html;
 }
-// ==========================================================================
-// 4. AÇÕES (FINANCEIRO, SALVAR, LIBERAR)
-// ==========================================================================
 
-// ALTERAR FINANCEIRO
+// ==========================================================================
+// 4. AÇÕES FINANCEIRAS E RELATÓRIO
+// ==========================================================================
 async function toggleFinancialStatus() {
     if(!currentTask) return;
     const currentStatus = currentTask.financialStatus || 'pendente';
@@ -252,101 +289,66 @@ async function toggleFinancialStatus() {
     try {
         await updateDoc(doc(db, "tasks", currentTask.id), { financialStatus: newStatus });
         currentTask.financialStatus = newStatus;
-        renderDetails(currentTask); // Atualiza visual instantaneamente
+        renderDetails(currentTask); 
     } catch(e) { console.error(e); alert("Erro ao atualizar financeiro."); }
 }
 
-// SALVAR RASCUNHO (SEM MUDAR ETAPA)
 if(btnSaveReport) {
     btnSaveReport.addEventListener('click', async () => {
         const btn = btnSaveReport;
         btn.innerHTML = 'Salvando...'; btn.disabled = true;
-
         try {
             const formData = new FormData(document.getElementById('form-report-data'));
             const reportData = Object.fromEntries(formData.entries());
-            
-            // Salva apenas o relatório, NÃO muda o status
             await updateDoc(doc(db, "tasks", currentTask.id), { 
                 report: reportData, 
                 lastEditor: auth.currentUser.uid 
             });
-            
             currentTask.report = reportData;
-            
-            // Fecha modal de edição e volta para detalhes
             document.getElementById('report-editor-modal').classList.add('hidden');
-            renderDetails(currentTask); // Atualiza para aparecer o botão de "Pré-visualizar"
-            
-            // Feedback discreto
-            // alert("Rascunho salvo!"); 
+            renderDetails(currentTask); 
         } catch(e) { alert("Erro ao salvar: " + e.message); } 
         finally { btn.innerHTML = '<i class="fas fa-save"></i> Salvar e Voltar'; btn.disabled = false; }
     });
 }
 
-// LIBERAR E FINALIZAR (CONGELAR DATA)
 async function finishReportWrapper() {
     if(!currentTask) return;
-    
-    // 1. Checa Financeiro
     const finStatus = currentTask.financialStatus || 'pendente';
     if (finStatus !== 'pago' && finStatus !== 'isento') {
         if(!confirm("⚠️ AVISO FINANCEIRO: Status PENDENTE.\nDeseja liberar o laudo mesmo assim?")) return;
     }
-
     if(!confirm("Tem certeza que deseja LIBERAR e FINALIZAR este laudo?\nA data será congelada e ele irá para os Concluídos.")) return;
 
     try {
-        // Data Congelada (Agora)
         const dataCongelada = new Date().toISOString();
-
         await updateDoc(doc(db, "tasks", currentTask.id), { 
             status: 'concluido', 
             releasedBy: auth.currentUser.uid, 
             releasedAt: dataCongelada 
         });
-        
         alert("Laudo Liberado com Sucesso!"); 
-        modal.classList.add('hidden'); // Fecha tudo
+        modal.classList.add('hidden'); 
         if(window.location.reload) window.location.reload(); 
     } catch(e) { console.error(e); alert("Erro ao liberar: " + e.message); }
 }
 
-// ==========================================================================
-// 5. EDITOR E EXPORTAÇÃO
-// ==========================================================================
-
 async function exportToWord() {
     if (!currentTask) return alert("Nenhuma tarefa selecionada.");
-    
-    // Tenta pegar do form se estiver aberto, senão usa do objeto salvo
     const form = document.getElementById('form-report-data');
     let finalData = currentTask.report || {};
-    
     if (form && !document.getElementById('report-editor-modal').classList.contains('hidden')) {
         const formData = new FormData(form);
         const formObj = Object.fromEntries(formData.entries());
         finalData = { ...finalData, ...formObj };
     }
-
-    // Feedback visual
-    const allBtns = document.querySelectorAll('button'); 
-    // Desabilita botões temporariamente pra evitar clique duplo
-    
-    try {
-        await generateLaudoWord(currentTask, finalData);
-    } catch (e) {
-        console.error(e);
-        alert("Erro ao gerar Word: " + e.message);
-    }
+    try { await generateLaudoWord(currentTask, finalData); } catch (e) { alert("Erro Word: " + e.message); }
 }
 
 function openReportEditor(task) {
     const reportModal = document.getElementById('report-editor-modal');
     if (!reportModal) return;
     
-    // Configura o visual do modal (Remove estilo A4 antigo)
     const container = document.getElementById('print-area');
     const parentContainer = container.parentElement; 
     if (parentContainer) parentContainer.classList.add('mode-edit');
@@ -354,10 +356,8 @@ function openReportEditor(task) {
     container.classList.remove('report-paper'); 
 
     const rep = task.report || {};
-    // Bloqueia se já estiver concluído
     const isReadOnly = task.status === 'concluido';
     const disabledAttr = isReadOnly ? 'disabled style="background:#f0f0f0; color:#555;"' : '';
-
     const isChecked = (val, fieldName) => {
         if (fieldName === 'tipo_material_radio') {
             if (rep.tipo_material_radio) return rep.tipo_material_radio === val ? 'checked' : '';
@@ -368,7 +368,7 @@ function openReportEditor(task) {
 
     container.innerHTML = `
         <div class="report-form-wrapper">
-            <div class="report-header">
+             <div class="report-header">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <h4><i class="fas fa-file-medical-alt"></i> Laudo Digital ${isReadOnly ? '(Finalizado)' : ''}</h4>
                     <button type="button" class="btn-close-modal" onclick="document.getElementById('report-editor-modal').classList.add('hidden')" style="background:transparent; border:none; color:var(--text-tertiary); cursor:pointer; font-size:1.2rem;"><i class="fas fa-times"></i></button>
@@ -376,6 +376,28 @@ function openReportEditor(task) {
                 <p style="font-size:0.9rem; color:var(--text-tertiary);">Protocolo: <span style="color:var(--color-primary); font-weight:bold;">${task.protocolo || task.accessCode}</span></p>
             </div>
             <form id="form-report-data">
+                
+                <div class="form-section-title"><i class="fas fa-address-book"></i> Dados de Contato e Localização</div>
+                
+                <h5 style="color:var(--text-secondary); margin-bottom:10px; border-bottom:1px solid #eee;">Requisitante (Veterinário/Clínica)</h5>
+                <div class="form-row">
+                    <div class="form-col"><label>Clínica / Empresa</label><input type="text" name="clinica_requisitante" class="input-field-sm" value="${rep.clinica_requisitante || ''}" ${disabledAttr}></div>
+                    <div class="form-col"><label>Endereço Completo</label><input type="text" name="endereco_requisitante" class="input-field-sm" value="${rep.endereco_requisitante || ''}" ${disabledAttr}></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-col"><label>Telefone / WhatsApp</label><input type="text" name="telefone_requisitante" class="input-field-sm" value="${rep.telefone_requisitante || ''}" ${disabledAttr}></div>
+                    <div class="form-col"><label>Email</label><input type="email" name="email_requisitante" class="input-field-sm" value="${rep.email_requisitante || ''}" ${disabledAttr}></div>
+                </div>
+
+                <h5 style="color:var(--text-secondary); margin-bottom:10px; margin-top:15px; border-bottom:1px solid #eee;">Proprietário</h5>
+                <div class="form-row">
+                    <div class="form-col"><label>Endereço Completo</label><input type="text" name="endereco_proprietario" class="input-field-sm" value="${rep.endereco_proprietario || ''}" ${disabledAttr}></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-col"><label>Telefone / WhatsApp</label><input type="text" name="telefone_proprietario" class="input-field-sm" value="${rep.telefone_proprietario || ''}" ${disabledAttr}></div>
+                    <div class="form-col"><label>Email</label><input type="email" name="email_proprietario" class="input-field-sm" value="${rep.email_proprietario || ''}" ${disabledAttr}></div>
+                </div>
+
                 <div class="form-section-title"><i class="fas fa-box-open"></i> 1. Dados do Material</div>
                 <div class="form-row">
                     <div class="form-col"><label>Material Remetido</label><div class="radio-cards-container"><label><input type="radio" name="tipo_material_radio" value="biopsia" ${isChecked('biopsia', 'tipo_material_radio')} ${disabledAttr}><div class="radio-card-label"><i class="fas fa-microscope"></i> Biópsia</div></label><label><input type="radio" name="tipo_material_radio" value="necropsia" ${isChecked('necropsia', 'tipo_material_radio')} ${disabledAttr}><div class="radio-card-label"><i class="fas fa-skull"></i> Necropsia</div></label></div></div>
@@ -385,9 +407,10 @@ function openReportEditor(task) {
                     <div class="form-col"><label>Tipo de Morte</label><div class="radio-cards-container"><label><input type="radio" name="morte_tipo" value="espontanea" ${isChecked('espontanea', 'morte_tipo')} ${disabledAttr}><div class="radio-card-label">Espontânea</div></label><label><input type="radio" name="morte_tipo" value="eutanasia" ${isChecked('eutanasia', 'morte_tipo')} ${disabledAttr}><div class="radio-card-label">Eutanásia</div></label></div></div>
                     <div class="form-col"><label>Tempo Morte/Colheita</label><input type="text" name="tempo_morte" class="input-field-sm" value="${rep.tempo_morte || ''}" ${disabledAttr}></div>
                 </div>
-                <div class="form-row">
+                 <div class="form-row">
                     <div class="form-col"><label>Conservação</label><div class="radio-cards-container"><label><input type="radio" name="conservacao" value="formol" ${!rep.conservacao || rep.conservacao === 'formol' ? 'checked' : ''} ${disabledAttr}><div class="radio-card-label">Formol</div></label><label><input type="radio" name="conservacao" value="refrigerado" ${isChecked('refrigerado', 'conservacao')} ${disabledAttr}><div class="radio-card-label">Refrig.</div></label><label><input type="radio" name="conservacao" value="congelado" ${isChecked('congelado', 'conservacao')} ${disabledAttr}><div class="radio-card-label">Cong.</div></label></div></div>
                 </div>
+                
                 <div class="form-section-title"><i class="fas fa-diagnoses"></i> 2. Análise Patológica</div>
                 <div class="form-row"><div class="form-col"><label>Histórico Clínico</label><textarea name="historico" rows="3" class="input-area" ${disabledAttr}>${rep.historico || ''}</textarea></div></div>
                 <div class="form-row"><div class="form-col"><label>Diagnóstico Presuntivo</label><textarea name="suspeita" rows="2" class="input-area" ${disabledAttr}>${rep.suspeita || ''}</textarea></div></div>
@@ -398,21 +421,14 @@ function openReportEditor(task) {
             </form>
         </div>`;
     
-    // Esconde o botão antigo de download que ficava DENTRO do modal, pois agora ele fica fora
     const btnDown = document.getElementById('btn-download-word');
     if(btnDown) btnDown.classList.add('hidden');
-    
     reportModal.classList.remove('hidden');
 }
-
-// ==========================================================================
-// 6. FUNÇÕES AUXILIARES DE NAVEGAÇÃO
-// ==========================================================================
 
 function handleNextStage() {
     if (!currentTask) return;
     if (currentTask.status === 'clivagem') { openK7FormSmart(currentTask); return; }
-    
     const flow = ['clivagem', 'processamento', 'emblocamento', 'corte', 'coloracao', 'analise', 'liberar', 'concluido'];
     const currIdx = flow.indexOf(currentTask.status);
     if (currIdx >= 0 && currIdx < flow.length - 1) updateStatus(flow[currIdx + 1]);
@@ -430,14 +446,12 @@ async function updateStatus(newStatus) {
     try { 
         await updateDoc(doc(db, "tasks", currentTask.id), { status: newStatus }); 
         currentTask.status = newStatus;
-        // Re-renderiza para atualizar os botões de acordo com a nova etapa
         renderDetails(currentTask); 
     } catch (e) { alert("Erro ao mover."); }
 }
 
 function openK7FormSmart(task) {
     viewDetails.classList.add('hidden'); viewK7.classList.remove('hidden');
-    // ... Logica do K7 (simplificada aqui, use a existente se preferir) ...
     let optionsHTML = '';
     const optionWhite = `<label class="color-option"><input type="radio" name="k7Color" value="branco"><span class="color-box" style="background:#f8fafc; border-color:#cbd5e1;"></span>Branco</label>`;
     if (task.type === 'necropsia') { optionsHTML = `<label class="color-option"><input type="radio" name="k7Color" value="azul" checked><span class="color-box" style="background:#dbeafe; border-color:#3b82f6;"></span>Azul</label>${optionWhite}`; } 
@@ -459,10 +473,25 @@ if(btnDelete) {
 
 function openReportEditorWrapper() { openReportEditor(currentTask); }
 
+// ==========================================================================
+// FUNÇÃO GLOBAL DE EDIÇÃO (COM FECHAMENTO DO MODAL ATUAL)
+// ==========================================================================
+window.triggerEditEntry = function() {
+    if(currentTask && window.openEditEntry) {
+        // --- ADIÇÃO AQUI: Fecha o Modal de Tarefas ---
+        const tmModal = document.getElementById('task-manager-modal');
+        if(tmModal) tmModal.classList.add('hidden');
+        
+        // Abre o Modal de Edição
+        window.openEditEntry(currentTask);
+    } else {
+        console.error("Não foi possível editar: Task ou função global não encontrada.");
+    }
+}
+
 // EXPORTS GLOBAIS
 window.openTaskManager = openTaskManager;
 window.exportToWord = exportToWord; 
 window.openReportEditorWrapper = openReportEditorWrapper;
 window.finishReportWrapper = finishReportWrapper;
 window.toggleFinancialStatus = toggleFinancialStatus;
-window.enableEditMode = async () => { alert("Use o Firebase Console para editar dados estruturais no momento."); };

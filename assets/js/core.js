@@ -1,11 +1,11 @@
 /**
- * LPV - CORE SYSTEM (Versão Final v8.0 - Correção de Loop Pendente)
+ * LPV - CORE SYSTEM (Versão Final v8.1 - Correção Theme Toggle)
  */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-console.log(">>> CORE.JS V8 CARREGADO (Correção Loop) <<<");
+console.log(">>> CORE.JS V8.1 CARREGADO <<<");
 
 // --- CONFIGURAÇÃO ---
 const firebaseConfig = {
@@ -29,9 +29,12 @@ function initThemeSystem() {
     try {
         const themeToggleBtn = document.getElementById('theme-toggle');
         const html = document.documentElement;
+        
+        // 1. Verificar preferência salva ou do sistema
         const savedTheme = localStorage.getItem('theme');
         const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
+        // 2. Aplicar tema inicial
         if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
             html.setAttribute('data-theme', 'dark');
             updateThemeIcon(true);
@@ -40,8 +43,14 @@ function initThemeSystem() {
             updateThemeIcon(false);
         }
 
+        // 3. Adicionar Listener (GARANTIA DE ÚNICA EXECUÇÃO)
+        // Removemos qualquer listener anterior clone para evitar duplicidade
         if (themeToggleBtn) {
-            themeToggleBtn.addEventListener('click', () => {
+            // Clona e substitui o botão para limpar event listeners antigos (truque de segurança)
+            const newBtn = themeToggleBtn.cloneNode(true);
+            themeToggleBtn.parentNode.replaceChild(newBtn, themeToggleBtn);
+            
+            newBtn.addEventListener('click', () => {
                 const isDark = html.getAttribute('data-theme') === 'dark';
                 if (isDark) {
                     html.removeAttribute('data-theme');
@@ -62,7 +71,7 @@ function updateThemeIcon(isDark) {
     if (btn) btn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
 }
 
-// --- MONITORAMENTO ---
+// --- MONITORAMENTO DE AUTH ---
 onAuthStateChanged(auth, async (user) => {
     const currentPath = window.location.pathname;
     const isPagesDir = currentPath.includes('/pages/');
@@ -71,14 +80,12 @@ onAuthStateChanged(auth, async (user) => {
                          currentPath.includes('index.html') ||
                          currentPath.includes('resultados.html');
     
-    // Verifica se estamos EXATAMENTE na página de Auth (Login/Cadastro)
     const isAuthPage = currentPath.includes('auth.html');
 
     if (user) {
         // --- LOGADO ---
         console.log("Core: Usuário detectado:", user.uid);
         
-        // Verifica status no banco
         const userDoc = await getDoc(doc(db, "users", user.uid));
         
         if (userDoc.exists()) {
@@ -86,39 +93,27 @@ onAuthStateChanged(auth, async (user) => {
             const status = data.status || 'active';
             console.log("Core: Perfil encontrado. Status:", status);
 
-            // =================================================================
-            // CORREÇÃO DO LOOP INFINITO:
-            // Se o status for 'pending', mas o usuário estiver na página de Auth,
-            // NÃO faça o logout aqui. Deixe o script auth.js terminar o cadastro
-            // e mostrar a mensagem de sucesso. O auth.js fará o logout depois.
-            // =================================================================
             if (status === 'pending') {
                 if (isAuthPage) {
-                    console.log("Core: Usuário pendente na tela de Auth. Permitindo conclusão do cadastro...");
-                    return; // PARE AQUI. Não deslogue.
+                    console.log("Core: Usuário pendente na tela de Auth.");
+                    return; 
                 }
-
-                // Se ele tentar entrar em OUTRA página (Hub, etc), aí sim chuta ele.
-                console.warn("Core: Usuário pendente tentando acessar sistema. Deslogando...");
+                console.warn("Core: Usuário pendente tentando acessar sistema.");
                 await signOut(auth);
-                if (!isAuthPage) {
-                    window.location.href = isPagesDir ? 'auth.html' : 'pages/auth.html';
-                }
+                if (!isAuthPage) window.location.href = isPagesDir ? 'auth.html' : 'pages/auth.html';
                 return;
             }
 
-            // Se for Active e estiver no Auth, manda pro Hub
             if (status === 'active' && (isAuthPage || currentPath.endsWith('/'))) {
                 window.location.href = isPagesDir ? 'hub.html' : 'pages/hub.html';
                 return;
             }
 
-            // Carrega UI
             if (!isPublicPage || currentPath.includes('hub.html')) {
                 loadUserInterface(data, user.uid);
             }
         } else {
-            console.log("⚠️ Core: Perfil não encontrado. Aguardando criação pelo Auth.js...");
+            console.log("⚠️ Core: Perfil não encontrado. Aguardando criação...");
         }
     } else {
         // --- DESLOGADO ---
@@ -163,27 +158,20 @@ function loadUserInterface(data, uid) {
 function applyRolePermissions(role) {
     const newBtnSidebar = document.querySelector('.btn-sidebar-new');
     const newFabMobile = document.querySelector('.nav-fab');
-    
-    // DEFINIÇÃO DE SUPER USUÁRIO (Professor ou Admin)
     const isSuperUser = (role === 'professor' || role === 'admin');
 
-    // 1. Estagiário não cria tarefas
     if (role === 'estagiario') {
         if (newBtnSidebar) newBtnSidebar.style.display = 'none';
         if (newFabMobile) newFabMobile.style.display = 'none';
     }
 
-    // 2. Professor/Admin vê painéis de gestão
     if (isSuperUser) {
         const adminCards = document.querySelectorAll('#admin-card');
         adminCards.forEach(card => card.classList.remove('hidden'));
     }
 
-    // 3. Bloqueio de Laudo (Observer)
     const observer = new MutationObserver(() => {
         const statusSelect = document.getElementById('task-status');
-        
-        // Se NÃO for Super Usuário, esconde opções de concluir/liberar
         if (!isSuperUser && statusSelect) {
             for (let i = 0; i < statusSelect.options.length; i++) {
                 const val = statusSelect.options[i].value;
@@ -197,31 +185,22 @@ function applyRolePermissions(role) {
     observer.observe(document.body, { childList: true, subtree: true });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    initThemeSystem();
-    const logoutBtn = document.getElementById('logout-btn');
-    const logoutProfile = document.getElementById('logout-btn-profile');
-    const handleLogout = async () => { try { await signOut(auth); } catch (e) { console.error(e); } };
-    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
-    if (logoutProfile) logoutProfile.addEventListener('click', handleLogout);
-});
-
-
 // --- FUNÇÃO DE LOGOUT GLOBAL ---
 async function logout() {
     try {
         await signOut(auth);
         console.log("Logout realizado com sucesso.");
-        // O onAuthStateChanged vai detectar e redirecionar para auth.html
     } catch (error) {
         console.error("Erro ao fazer logout:", error);
     }
 }
 
+// --- INICIALIZAÇÃO ÚNICA (Correção da Duplicidade) ---
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Inicia o sistema de tema
     initThemeSystem();
     
-    // Tenta encontrar botões de logout comuns no layout e atrelar a função
+    // 2. Configura botões de logout
     const logoutBtn = document.getElementById('logout-btn');
     const logoutProfile = document.getElementById('logout-btn-profile');
     
@@ -229,5 +208,5 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoutProfile) logoutProfile.addEventListener('click', logout);
 });
 
-// ADICIONEI 'logout' NA LISTA DE EXPORTS ABAIXO:
+// EXPORTS
 export { app, auth, db, initThemeSystem, signOut, logout };

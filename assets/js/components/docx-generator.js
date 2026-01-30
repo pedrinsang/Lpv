@@ -41,7 +41,7 @@ export async function generateLaudoWord(task, reportData) {
 
     // --- IMAGENS ---
     const urlUFSM = "../assets/images/Logo-UFSM.png"
-    const urlLPV = "../assets/images/LPV.png"; // Verifique o nome do arquivo
+    const urlLPV = "../assets/images/LPV.png"; 
     
     const [base64UFSM, base64LPV] = await Promise.all([
         getImageAsBase64(urlUFSM),
@@ -66,13 +66,13 @@ export async function generateLaudoWord(task, reportData) {
     const chk = (val) => val ? "[ X ]" : "[   ]";
     
     // Usa reportData em vez de tentar ler o DOM
-    const isBio = task.type === 'biopsia' || reportData.tipo_material_radio === 'biopsia';
-    const isNecro = task.type === 'necropsia' || reportData.tipo_material_radio === 'necropsia';
+    // Prioriza o que foi marcado no formulário (reportData), senão usa o tipo da task
+    const isBio = reportData.tipo_material_radio ? reportData.tipo_material_radio === 'biopsia' : task.type === 'biopsia';
+    const isNecro = reportData.tipo_material_radio ? reportData.tipo_material_radio === 'necropsia' : task.type === 'necropsia';
 
     // --- ESTILOS ---
     const fontName = "Times New Roman";
     const noBorder = { style: BorderStyle.NONE, size: 0, color: "auto" };
-    const solidBorder = { style: BorderStyle.SINGLE, size: 1, color: "000000" };
     
     // Helpers
     const createTextCell = (text, bold=false, size=22, align=AlignmentType.LEFT) => new TableCell({
@@ -91,6 +91,7 @@ export async function generateLaudoWord(task, reportData) {
                 new TableCell({ children:[new Paragraph({children:[new TextRun({text:val2||"-", font:fontName, size:22})]})], width:{size:35, type:WidthType.PERCENTAGE} })
             );
         } else {
+            // Se não tiver label 2, faz a célula de valor ocupar o resto da linha
             cells[1] = new TableCell({ children:[new Paragraph({children:[new TextRun({text:val1||"-", font:fontName, size:22})]})], columnSpan:3, width:{size:85, type:WidthType.PERCENTAGE} });
         }
         return new TableRow({ children: cells });
@@ -134,20 +135,26 @@ export async function generateLaudoWord(task, reportData) {
         new Paragraph({ children: [new TextRun({ text: "Data de recebimento: ", bold: true, size: 22, font: fontName }), new TextRun({ text: dataReceb, size: 22, font: fontName })], spacing: { after: 100 } })
     );
 
-    // 3. DADOS
+    // 3. DADOS (PREENCHIDO COM DADOS DO FORMULÁRIO DE LAUDO)
     sections.push(new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
         rows: [
+            // --- DADOS DO ANIMAL ---
             new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "DADOS DO ANIMAL", bold: true, size: 20, font: "Arial" })], alignment: AlignmentType.CENTER })], columnSpan: 4, shading: { fill: "E6E6E6" } })] }),
             createDataRow("Nome:", task.animalNome, "Espécie:", task.especie),
             createDataRow("Raça:", task.raca || "SRD", "Sexo/Idade:", `${task.sexo || "-"} / ${task.idade || "-"}`),
+            
+            // --- REQUISITANTE ---
             new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "REQUISITANTE", bold: true, size: 20, font: "Arial" })], alignment: AlignmentType.CENTER })], columnSpan: 4, shading: { fill: "E6E6E6" } })] }),
-            createDataRow("Requisitante:", task.remetente, "Telefone:", " "),
-            createDataRow("Email:", " ", "Clínica/Empresa:", " "),
-            createDataRow("Endereço:", " "),
+            // Usa 'task.docente' (nome do veterinário cadastrado) ou fallback para remetente
+            createDataRow("Requisitante:", task.remetente, "Telefone:", reportData.telefone_requisitante),
+            createDataRow("Email:", reportData.email_requisitante, "Clínica/Empresa:", reportData.clinica_requisitante),
+            createDataRow("Endereço:", reportData.endereco_requisitante),
+            
+            // --- PROPRIETÁRIO ---
             new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "PROPRIETÁRIO", bold: true, size: 20, font: "Arial" })], alignment: AlignmentType.CENTER })], columnSpan: 4, shading: { fill: "E6E6E6" } })] }),
-            createDataRow("Proprietário:", task.proprietario, "Telefone:", " "),
-            createDataRow("Email:", " ", "Endereço:", " "),
+            createDataRow("Proprietário:", task.proprietario, "Telefone:", reportData.telefone_proprietario),
+            createDataRow("Email:", reportData.email_proprietario, "Endereço:", reportData.endereco_proprietario),
         ]
     }));
     sections.push(new Paragraph({ text: "", spacing: { after: 200 } }));
@@ -191,11 +198,8 @@ export async function generateLaudoWord(task, reportData) {
     sections.push(new Paragraph({ border: { bottom: { color: "000000", space: 1, style: "single", size: 6 } }, spacing: { after: 200 } }));
     
     // 6. ASSINATURAS (COM PROTEÇÃO DE QUEBRA DE PÁGINA)
-    // Usamos 'keepLines: true' e 'cantSplit: true' na tabela para garantir que o bloco
-    // de assinatura nunca seja cortado ao meio. Se não couber, ele vai inteiro para a próxima página.
-
     const signatureRow = new TableRow({
-        cantSplit: true, // PROIBIDO QUEBRAR ESTA LINHA DE TABELA
+        cantSplit: true, 
         children: [
             // Coluna Esquerda: Patologista
             new TableCell({

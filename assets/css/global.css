@@ -1378,3 +1378,59 @@ body {
 
 .btn-main-action { background: var(--color-primary); color: white; }
 .btn-main-action:hover { opacity: 0.9; transform: translateY(-2px); }
+
+/* --- RESPONSIVIDADE DO MODAL (MOBILE) --- */
+@media (max-width: 768px) {
+    .tm-modal-content {
+        width: 95% !important; /* Ocupa quase toda a largura */
+        margin: 10px auto;
+        padding: 1.5rem !important;
+        max-height: 90vh; /* Evita que o modal fique maior que a tela */
+        overflow-y: auto; /* Permite rolar dentro do modal */
+    }
+
+    .tm-hero {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .tm-hero-info {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .tm-code-strip {
+        flex-direction: column;
+        align-items: stretch; /* Botões ocupam largura total */
+        gap: 15px;
+        text-align: center;
+    }
+
+    .tm-data-grid {
+        grid-template-columns: 1fr !important; /* Um item por linha */
+        gap: 10px;
+    }
+
+    /* Ajuste para os botões de ação (Baixar/Liberar) ficarem empilhados no mobile */
+    .tm-actions-bar {
+        justify-content: center !important;
+    }
+    .tm-actions-bar button {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}
+
+/* --- INDICADOR DE COR DO K7 --- */
+.k7-dot {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: text-bottom;
+    border: 1px solid rgba(0,0,0,0.15); /* Borda sutil para cores claras */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
