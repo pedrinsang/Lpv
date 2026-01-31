@@ -253,11 +253,20 @@
         </div>
     </div>
 
-     <div id="entry-modal" class="modal-overlay hidden">
+    <div id="entry-modal" class="modal-overlay hidden">
         <div class="modal-glass">
-            <div style="text-align: right; margin-bottom: 5px;">
+            
+            <div class="modal-header-tabs">
+                <h2 style="margin-bottom: 1rem;">Nova Entrada</h2>
+                <div class="tabs-container">
+                    <button class="tab-btn active" data-tab="tab-v">Novo V</button>
+                    <button class="tab-btn" data-tab="tab-vn">Novo Vn</button>
+                    <button class="tab-btn" data-tab="tab-special">Coloração Especial</button>
+                </div>
                 <button id="close-modal-btn" class="btn-close-modal"><i class="fas fa-times"></i></button>
             </div>
+
+            <div id="tab-v" class="tab-content active">
                 <form id="form-new-v">
                     <div class="form-grid">
                         
@@ -343,9 +352,21 @@
                     </div>
                 </form>
             </div>
-    </div>
 
-    <div id="entry-modal" class="modal-overlay hidden"></div>
+            <div id="tab-vn" class="tab-content">
+                <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                    <i class="fas fa-tools"></i> Funcionalidade em desenvolvimento.
+                </div>
+            </div>
+
+            <div id="tab-special" class="tab-content">
+                <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                    <i class="fas fa-tools"></i> Funcionalidade em desenvolvimento.
+                </div>
+            </div>
+
+        </div>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.min.js"></script>
     <script type="module" src="../assets/js/components/task-manager.js"></script>

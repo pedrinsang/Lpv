@@ -1,165 +1,165 @@
 import { db, auth, logout } from '../core.js';
-import { 
-    collection, 
-    query, 
-    onSnapshot, 
-    doc, 
-    updateDoc, 
-    deleteDoc 
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { collection, query, where, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { generateLaudoWord } from '../components/docx-generator.js';
 
-// Elementos
-const pendingGrid = document.getElementById('pending-grid');
-const pendingSection = document.getElementById('pending-section');
-const activeGrid = document.getElementById('active-list'); // Agora é um Grid
-const searchInput = document.getElementById('admin-search');
+// Importa task manager para permitir abrir o modal ao clicar (se necessário visualizar detalhes)
+import '../components/task-manager.js'; 
 
-// --- SETUP INICIAL ---
-document.addEventListener('DOMContentLoaded', () => {
-    const btnLogoutSidebar = document.getElementById('btn-logout');
-    const btnLogoutHeader = document.getElementById('logout-btn-header');
+console.log("Historico Module Loaded");
 
-    if (btnLogoutSidebar) btnLogoutSidebar.addEventListener('click', logout);
-    if (btnLogoutHeader) btnLogoutHeader.addEventListener('click', logout);
-});
+const listContainer = document.getElementById('reports-list');
+const searchInput = document.getElementById('history-search');
+const cleanupNotice = document.getElementById('cleanup-notice');
+const deletedCountSpan = document.getElementById('deleted-count');
 
-// --- SEGURANÇA ---
-setTimeout(() => {
-    if (window.currentUserRole) {
-        checkPermission(window.currentUserRole);
-    } else {
-        const checkInterval = setInterval(() => {
-            if (window.currentUserRole) {
-                clearInterval(checkInterval);
-                checkPermission(window.currentUserRole);
-            }
-        }, 500);
-    }
-}, 1000);
+let allReports = [];
 
-function checkPermission(role) {
-    if (role !== 'professor' && role !== 'admin') {
-        alert("Acesso Negado: Área restrita.");
-        window.location.href = 'hub.html';
-    }
-}
-
-// --- LISTAR USUÁRIOS ---
-const q = query(collection(db, "users"));
-let allUsers = [];
-
-onSnapshot(q, (snapshot) => {
-    const pending = [];
-    const active = [];
-
-    snapshot.docs.forEach(docSnap => {
-        const data = docSnap.data();
-        const user = { id: docSnap.id, ...data };
-        if (data.status === 'pending') pending.push(user);
-        else active.push(user);
+window.addEventListener('DOMContentLoaded', async () => {
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            await loadAndCleanupHistory();
+        } else {
+            window.location.href = '../pages/auth.html';
+        }
     });
 
-    allUsers = active; 
-    renderPending(pending);
-    renderActive(active);
-}, (error) => {
-    console.error("Erro:", error);
-    activeGrid.innerHTML = `<div class="empty-state" style="color:var(--color-error)">Erro de permissão.</div>`;
+    // Logout Sidebar
+    const btnLogout = document.getElementById('btn-logout');
+    if(btnLogout) btnLogout.addEventListener('click', logout);
+
+    // Logout Header (Se existir na página)
+    const btnLogoutHeader = document.getElementById('logout-btn-header');
+    if(btnLogoutHeader) btnLogoutHeader.addEventListener('click', logout);
 });
 
-// --- RENDER PENDENTES (Cards Grid) ---
-function renderPending(users) {
-    if (users.length === 0) {
-        pendingSection.classList.add('hidden');
-        return;
-    }
-    
-    pendingSection.classList.remove('hidden');
-    pendingGrid.innerHTML = users.map(u => `
-        <div class="admin-card pending fade-in">
-            <div class="card-header">
-                <div class="user-role-badge" style="background: var(--color-warning); color: #fff; border:none;">Pendente</div>
-                <div style="font-size:0.8rem; opacity:0.7;">${new Date(u.createdAt?.seconds * 1000 || Date.now()).toLocaleDateString()}</div>
-            </div>
-            
-            <div class="card-title">${u.name}</div>
-            <div class="card-subtitle">${u.email}</div>
-
-            <div class="card-actions">
-                <button class="btn btn-sm" style="background:#10b981; color:white; border:none; flex:1;" onclick="window.approveUser('${u.id}')">
-                    <i class="fas fa-check"></i> Aprovar
-                </button>
-                <button class="btn btn-sm" style="background:#ef4444; color:white; border:none; width:40px;" onclick="window.deleteUser('${u.id}', '${u.name}')">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-    `).join('');
-}
-
-// --- RENDER ATIVOS (Cards Grid) ---
-function renderActive(users) {
-    if (users.length === 0) {
-        activeGrid.innerHTML = '<div class="empty-state"><p>Nenhum membro ativo.</p></div>';
-        return;
-    }
-
-    activeGrid.innerHTML = users.map(u => {
-        const isMe = u.id === auth.currentUser?.uid;
+async function loadAndCleanupHistory() {
+    try {
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
         
-        return `
-        <div class="admin-card fade-in">
-            <div class="card-header">
-                <div class="user-role-badge">${u.role}</div>
-                ${isMe ? '<i class="fas fa-user-circle" style="color:var(--color-primary);"></i>' : ''}
-            </div>
+        // Busca apenas concluídos
+        const q = query(
+            collection(db, "tasks"), 
+            where("status", "==", "concluido")
+        );
+        
+        const querySnapshot = await getDocs(q);
+        let deletedCount = 0;
+        allReports = [];
+
+        const promises = querySnapshot.docs.map(async (documento) => {
+            const data = documento.data();
+            const taskId = documento.id;
             
-            <div class="card-title">${u.name}</div>
-            <div class="card-subtitle">${u.email}</div>
+            // Define data de referência (liberação ou atualização)
+            let releaseDate = data.releasedAt ? new Date(data.releasedAt) : (data.updatedAt ? new Date(data.updatedAt) : new Date());
 
-            <div class="card-actions">
-                <select class="role-select" onchange="window.updateRole('${u.id}', this.value)" ${isMe ? 'disabled' : ''}>
-                    <option value="estagiario" ${u.role === 'estagiario' ? 'selected' : ''}>Estagiário</option>
-                    <option value="pós graduando" ${u.role === 'pós graduando' || u.role === 'pos-graduando' ? 'selected' : ''}>Pós-Graduando</option>
-                    <option value="professor" ${u.role === 'professor' ? 'selected' : ''}>Professor</option>
-                </select>
+            // Limpeza automática de 365 dias
+            if (releaseDate < oneYearAgo) {
+                await deleteDoc(doc(db, "tasks", taskId));
+                deletedCount++;
+                return null;
+            }
 
-                ${!isMe ? `
-                <button class="btn btn-sm" style="color:var(--color-error); border:1px solid var(--color-error); background:transparent;" onclick="window.deleteUser('${u.id}', '${u.name}')" title="Remover">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-                ` : ''}
-            </div>
-        </div>
-    `}).join('');
+            return { id: taskId, ...data, releaseDateObj: releaseDate };
+        });
+
+        const results = await Promise.all(promises);
+        
+        allReports = results
+            .filter(item => item !== null)
+            .sort((a, b) => b.releaseDateObj - a.releaseDateObj);
+
+        if (deletedCount > 0 && cleanupNotice) {
+            if(deletedCountSpan) deletedCountSpan.innerText = deletedCount;
+            cleanupNotice.classList.remove('hidden');
+        }
+
+        renderList(allReports);
+
+    } catch (error) {
+        console.error("Erro ao carregar histórico:", error);
+        if(listContainer) listContainer.innerHTML = `<div class="empty-state">Erro ao carregar dados.<br>${error.message}</div>`;
+    }
 }
 
-// --- BUSCA ---
-if(searchInput) {
+function renderList(reports) {
+    if (!listContainer) return;
+
+    if (reports.length === 0) {
+        listContainer.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-folder-open" style="font-size: 3rem; margin-bottom: 1rem; opacity:0.5;"></i>
+                <p>Nenhum laudo encontrado no histórico.</p>
+            </div>`;
+        return;
+    }
+
+    listContainer.innerHTML = reports.map(task => {
+        const dataLib = task.releaseDateObj.toLocaleDateString('pt-BR');
+        const tipoClass = task.type === 'necropsia' ? 'color:#3b82f6;' : 'color:#ec4899;';
+        const tipoLabel = task.type === 'necropsia' ? 'Necropsia' : 'Biópsia';
+
+        return `
+        <div class="report-card" onclick="window.openTaskManager('${task.id}')">
+            <div class="card-header">
+                <div class="card-code">${task.accessCode || '---'}</div>
+                <div class="card-date"><i class="far fa-calendar-alt"></i> ${dataLib}</div>
+            </div>
+            
+            <div class="card-title">${task.animalNome || 'Sem Nome'}</div>
+            <div class="card-subtitle">
+                <span style="${tipoClass} font-weight:bold; font-size:0.8rem; text-transform:uppercase;">${tipoLabel}</span> • 
+                ${task.proprietario || 'Proprietário não inf.'}
+            </div>
+
+            <div style="font-size: 0.85rem; color: var(--text-tertiary); margin-bottom: 10px;">
+                <i class="fas fa-user-md"></i> ${task.docente || 'Veterinário'}
+            </div>
+
+            <div class="card-actions">
+                <button onclick="event.stopPropagation(); window.downloadDoc('${task.id}')" class="btn btn-sm btn-primary" style="width:100%; display:flex; justify-content:center; align-items:center; gap:8px;">
+                    <i class="fas fa-file-word"></i> Baixar Documento
+                </button>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+// Wrapper para download direto
+window.downloadDoc = async (taskId) => {
+    const task = allReports.find(t => t.id === taskId);
+    if (!task) return alert("Erro: Tarefa não encontrada na memória.");
+
+    try {
+        const btn = event.currentTarget; 
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+
+        const reportData = task.report || {};
+        const finalData = { ...reportData, ...task };
+
+        await generateLaudoWord(task, finalData);
+
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    } catch (e) {
+        console.error(e);
+        alert("Erro ao gerar arquivo.");
+    }
+};
+
+if (searchInput) {
     searchInput.addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
-        const filtered = allUsers.filter(u => 
-            u.name.toLowerCase().includes(term) || 
-            u.email.toLowerCase().includes(term)
+        const filtered = allReports.filter(task => 
+            (task.animalNome && task.animalNome.toLowerCase().includes(term)) ||
+            (task.proprietario && task.proprietario.toLowerCase().includes(term)) ||
+            (task.accessCode && task.accessCode.toLowerCase().includes(term)) ||
+            (task.protocolo && task.protocolo.toLowerCase().includes(term))
         );
-        renderActive(filtered);
+        renderList(filtered);
     });
 }
-
-// --- FUNÇÕES GLOBAIS ---
-window.approveUser = async (uid) => {
-    if (!confirm("Aprovar este usuário?")) return;
-    try { await updateDoc(doc(db, "users", uid), { status: 'active', role: 'estagiario' }); } 
-    catch (e) { alert("Erro ao aprovar."); }
-};
-
-window.updateRole = async (uid, newRole) => {
-    try { await updateDoc(doc(db, "users", uid), { role: newRole }); } 
-    catch (e) { alert("Erro ao mudar cargo."); }
-};
-
-window.deleteUser = async (uid, name) => {
-    if (!confirm(`Remover ${name} do sistema?`)) return;
-    try { await deleteDoc(doc(db, "users", uid)); } 
-    catch (e) { alert("Erro ao remover."); }
-};
