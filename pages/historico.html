@@ -10,7 +10,9 @@
             try {
                 const localTheme = localStorage.getItem('theme');
                 const sysTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (localTheme === 'dark' || (!localTheme && sysTheme)) document.documentElement.setAttribute('data-theme', 'dark');
+                if (localTheme === 'dark' || (!localTheme && sysTheme)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
             } catch (e) {}
         })();
     </script>
@@ -21,40 +23,70 @@
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
 
     <style>
-        /* Estilos Específicos do Histórico */
+
+        
+        /* Estilos Locais do Histórico */
         .history-container {
-            max-width: 1000px; margin: 0 auto; padding: 2rem;
+            max-width: 1200px; 
+            margin: 0 auto; 
+            width: 100%;
         }
         
-        .history-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 2rem; flex-wrap: wrap; gap: 15px;
+        .history-controls {
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            margin-bottom: 2rem; 
+            flex-wrap: wrap; 
+            gap: 15px;
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid var(--border-glass);
         }
 
         .search-bar {
-            flex: 1; max-width: 400px; position: relative;
+            flex: 1; 
+            max-width: 400px; 
+            position: relative;
         }
         .search-bar input {
-            width: 100%; padding: 12px 15px 12px 45px;
-            border-radius: 10px; border: 1px solid var(--border-glass);
-            background: var(--bg-card); color: var(--text-primary);
+            width: 100%; 
+            padding: 12px 15px 12px 45px;
+            border-radius: 10px; 
+            border: 1px solid var(--border-glass);
+            background: var(--bg-glass); 
+            color: var(--text-primary);
+            transition: all 0.3s;
+        }
+        .search-bar input:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
         }
         .search-bar i {
-            position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+            position: absolute; 
+            left: 15px; 
+            top: 50%; 
+            transform: translateY(-50%);
             color: var(--text-tertiary);
         }
 
         /* Grid de Laudos */
         .reports-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 20px;
         }
 
         .report-card {
-            background: var(--bg-card); border: 1px solid var(--border-glass);
-            border-radius: 16px; padding: 1.5rem;
-            transition: all 0.3s ease; position: relative; overflow: hidden;
-            cursor: pointer; /* Indica clicável */
+            background: var(--bg-card); 
+            border: 1px solid var(--border-glass);
+            border-radius: 16px; 
+            padding: 1.5rem;
+            transition: all 0.3s ease; 
+            position: relative; 
+            overflow: hidden;
+            cursor: pointer;
         }
         .report-card:hover {
             transform: translateY(-5px);
@@ -85,145 +117,239 @@
             grid-column: 1 / -1; text-align: center; padding: 4rem;
             color: var(--text-tertiary);
         }
+
+        /* Ajustes Mobile para o Header */
+        .mobile-back-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            margin-right: 15px;
+            cursor: pointer;
+        }
+
+        @media (min-width: 1024px){
+            .header-brand::after {
+                content: "Histórico de Laudos";
+            }
+        }
+
+        @media (max-width: 768px) {
+            .mobile-back-btn { display: block; }
+            .history-controls { flex-direction: column; align-items: stretch; }
+            .search-bar { max-width: 100%; }
+        }
     </style>
 </head>
 <body>
+
     <aside class="desktop-sidebar">
         <div class="sidebar-header">
             <img src="../assets/images/lpvminilogo2.png" alt="LPV" class="light-mode-only" style="height: 40px;">
             <img src="../assets/images/lpvminilogo.png" alt="LPV" class="dark-mode-only" style="height: 40px;">
-            
             <div style="line-height: 1;">
                 <div class="sidebar-brand-text">LPV Digital</div>
                 <div style="font-size: 0.75rem; color: var(--text-secondary);">Patologia Veterinária</div>
             </div>
         </div>
-
         <nav class="sidebar-nav">
-            <a href="hub.html" class="sidebar-link">
-                <i class="fas fa-home"></i> <span>Visão Geral</span>
-            </a>
-            <a href="mural.html" class="sidebar-link">
-                <i class="fas fa-columns"></i> <span>Mural de Tarefas</span>
-            </a>
-            <a href="coloracao.html" class="sidebar-link">
-                <i class="fas fa-stopwatch"></i> <span>Timers</span>
-            </a>
-            <a href="protocolos.html" class="sidebar-link">
-                <i class="fas fa-book-medical"></i> <span>Protocolos</span>
-            </a>
-            <a href="historico.html" class="sidebar-link active">
-                <i class="fas fa-history"></i> <span>Histórico</span>
-            </a>
-            
-            <button class="sidebar-link btn-sidebar-new" onclick="alert('Vá para a Visão Geral para criar novas entradas.')">
-                <i class="fas fa-plus"></i> <span>Nova Entrada</span>
-            </button>
+            <a href="hub.html" class="sidebar-link"><i class="fas fa-home"></i> <span>Visão Geral</span></a>
+            <a href="mural.html" class="sidebar-link"><i class="fas fa-columns"></i> <span>Mural de Produção</span></a>
+            <a href="coloracao.html" class="sidebar-link"><i class="fas fa-stopwatch"></i> <span>Timers</span></a>
+            <a href="protocolos.html" class="sidebar-link"><i class="fas fa-book-medical"></i> <span>Protocolos</span></a>
+            <a href="historico.html" class="sidebar-link active"><i class="fas fa-history"></i> <span>Histórico</span></a>
+            <button class="sidebar-link btn-sidebar-new"><i class="fas fa-plus"></i> <span>Nova Entrada</span></button>
         </nav>
-
         <div class="sidebar-footer">
-            <div class="sidebar-user-avatar">
-                <i class="fas fa-user"></i>
-            </div>
-            
+            <div class="sidebar-user-avatar"><i class="fas fa-user"></i></div>
             <div class="sidebar-user-info">
                 <div id="sidebar-user-name" class="user-name-text">Carregando...</div>
                 <div id="sidebar-user-role" class="user-role-text">...</div>
             </div>
-
-            <div style="display: flex; gap: 5px;">
-                <button class="btn-sidebar-settings" onclick="alert('Configurações em breve!')" title="Configurações">
-                    <i class="fas fa-cog"></i>
-                </button>
-                <button id="btn-logout" class="btn-sidebar-settings" title="Sair do Sistema">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
-            </div>
+            <button id="btn-logout" class="btn-sidebar-settings" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
         </div>
     </aside>
 
-    <main class="main-content">
-        <div class="history-container">
-            
-            
-            <div class="history-header">
-                <div>
-                    <h1 style="margin: 0; font-size: 1.8rem;">Histórico de Laudos</h1>
-                    <p style="margin-top: 5px; color: var(--text-secondary);">Arquivo de amostras concluídas (Últimos 365 dias)</p>
-                </div>
+    <div class="layout-wrapper">
+        
+        <header class="app-header">
+            <div class="header-brand" style="display: flex; align-items: center;">
+                <button class="mobile-back-btn" onclick="window.location.href='hub.html'">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+
+                <img src="../assets/images/lpvminilogo2.png" alt="Logo" class="header-logo light-mode-only">
+                <img src="../assets/images/lpvminilogo.png" alt="Logo" class="header-logo dark-mode-only">
                 
-                <div class="search-bar">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="history-search" placeholder="Buscar por nome, protocolo ou proprietário...">
+                <div class="header-text-column">
+                    <span class="brand-title">LPV<span class="brand-subtitle">Histórico</span></span>
+                    <span id="user-role-badge" class="user-badge">...</span>
                 </div>
             </div>
-
-            <div id="cleanup-notice" class="hidden" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 10px 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; border: 1px solid rgba(239, 68, 68, 0.2);">
-                <i class="fas fa-trash-alt"></i> Limpeza automática realizada: <span id="deleted-count">0</span> laudos antigos foram removidos.
+            <div style="display: flex; gap: 10px;">
+                <button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button>
+                <button id="logout-btn-header" class="btn-icon" style="color: var(--color-error);"><i class="fas fa-sign-out-alt"></i></button>
             </div>
+        </header>
 
-            <div id="reports-list" class="reports-grid">
-                <div class="empty-state">
-                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
-                    <p>Carregando histórico...</p>
+        <main class="main-container" style="padding: 2rem; overflow-y: auto;">
+            <div class="history-container">
+                
+                <div class="history-controls">
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-primary);">Arquivo Digital</h2>
+                        <p style="margin-top: 5px; color: var(--text-secondary); font-size: 0.9rem;">Laudos concluídos (Últimos 365 dias)</p>
+                    </div>
+                    
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="history-search" placeholder="Buscar por nome, protocolo, proprietário...">
+                    </div>
                 </div>
-            </div>
 
-        </div>
-    </main>
+                <div id="cleanup-notice" class="hidden" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 10px 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; border: 1px solid rgba(239, 68, 68, 0.2);">
+                    <i class="fas fa-trash-alt"></i> Limpeza automática realizada: <span id="deleted-count">0</span> laudos antigos foram removidos.
+                </div>
+
+                <div id="reports-list" class="reports-grid">
+                    <div class="empty-state">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
+                        <p>Carregando histórico...</p>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
 
     <div id="task-manager-modal" class="modal-overlay hidden">
         <div class="modal-glass">
-            
             <div style="text-align: right; margin-bottom: 5px;">
                 <button id="close-tm-btn" class="btn-close-modal"><i class="fas fa-times"></i></button>
             </div>
-
             <div id="view-details-content">
                 <div id="tm-info-grid"></div>
-
-                <div class="modal-footer" style="justify-content: space-between; margin-top: 2rem; gap: 10px;">
-                    <button id="btn-delete-task" class="btn btn-secondary" style="color: var(--color-error); border-color: var(--color-error); margin-right: auto; display:none;">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                    
-                    <div style="display: flex; gap: 10px;">
-                        <button id="btn-prev-stage" class="btn btn-secondary hidden">
-                            <i class="fas fa-undo"></i> Voltar
-                        </button>
-
-                        <button id="btn-next-stage" class="btn btn-primary hidden">
-                            Próxima <i class="fas fa-arrow-right"></i>
-                        </button>
-                    </div>
+                <div class="modal-footer" style="justify-content: flex-end; margin-top: 2rem;">
+                    <button class="btn btn-primary" onclick="document.getElementById('task-manager-modal').classList.add('hidden')">Fechar</button>
                 </div>
             </div>
-
-            <div id="view-k7-form" class="hidden">
-                <form id="form-k7"></form>
-            </div>
+            <div id="view-k7-form" class="hidden"><form id="form-k7"></form></div>
         </div>
     </div>
 
     <div id="report-editor-modal" class="modal-overlay hidden" style="z-index: 3000;">
         <div class="report-paper-container">
             <div class="report-toolbar">
-                <h3 style="color: var(--text-primary);"><i class="fas fa-file-medical"></i> Editor de Laudo</h3>
+                <h3 style="color: var(--text-primary);"><i class="fas fa-file-medical"></i> Laudo Finalizado</h3>
                 <div style="display: flex; gap: 10px;">
                     <button id="btn-download-word" class="btn btn-secondary btn-sm hidden" onclick="window.exportToWord()">
                         <i class="fas fa-file-word"></i> Baixar Word
                     </button>
-                    <button id="btn-save-report" class="btn btn-primary btn-sm">
-                        <i class="fas fa-save"></i> Salvar
-                    </button>
+                    <button id="btn-save-report" class="btn btn-primary btn-sm hidden"><i class="fas fa-save"></i> Salvar</button>
                 </div>
             </div>
-            <div class="report-paper" id="print-area">
-                </div>
+            <div class="report-paper" id="print-area"></div>
         </div>
     </div>
 
+     <div id="entry-modal" class="modal-overlay hidden">
+        <div class="modal-glass">
+            <div style="text-align: right; margin-bottom: 5px;">
+                <button id="close-modal-btn" class="btn-close-modal"><i class="fas fa-times"></i></button>
+            </div>
+                <form id="form-new-v">
+                    <div class="form-grid">
+                        
+                        <div class="form-group">
+                            <label>Nº Protocolo Interno</label>
+                            <input type="text" name="protocolo" placeholder="Ex: V-123/26" class="input-field" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Data Entrada</label>
+                            <input type="date" name="dataEntrada" id="date-v" class="input-field" required>
+                        </div>
+
+                        <div class="form-group span-2">
+                            <label>Remetente (Clínica/Vet)</label>
+                            <input type="text" name="remetente" class="input-field" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Situação Financeira</label>
+                            <select name="situacao" class="input-field">
+                                <option value="pendente">Pendente</option>
+                                <option value="pago">Pago</option>
+                                <option value="didatico">Interesse Didático (Isento)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Docente Responsável</label>
+                            <select name="docente" id="select-docente" class="input-field" required>
+                                <option value="" disabled selected>Carregando...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Pós-Graduando</label>
+                            <select name="posGraduando" id="select-pos" class="input-field" required>
+                                <option value="" disabled selected>Carregando...</option>
+                            </select>
+                        </div>
+
+                        <div class="span-3 divider-text">Dados do Animal</div>
+
+                        <div class="form-group span-2">
+                            <label>Nome do Animal / RG</label>
+                            <input type="text" name="animalNome" class="input-field" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Proprietário</label>
+                            <input type="text" name="proprietario" class="input-field" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Espécie</label>
+                            <input type="text" name="especie" placeholder="Canina" class="input-field" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Raça</label>
+                            <input type="text" name="raca" class="input-field">
+                        </div>
+                        <div class="form-group" style="display: flex; gap: 10px;">
+                            <div style="flex: 1;">
+                                <label>Sexo</label>
+                                <select name="sexo" class="input-field">
+                                    <option value="M">M</option>
+                                    <option value="F">F</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1;">
+                                <label>Idade</label>
+                                <input type="text" name="idade" class="input-field">
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="accessCode" id="generated-access-code">
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <div class="code-preview">
+                            Código Público Gerado: <span id="display-code" style="font-family: monospace; font-weight: 700; color: var(--color-primary);">...</span>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Salvar Entrada
+                        </button>
+                    </div>
+                </form>
+            </div>
+    </div>
+
+    <div id="entry-modal" class="modal-overlay hidden"></div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.min.js"></script>
+    <script type="module" src="../assets/js/components/task-manager.js"></script>
+    <script type="module" src="../assets/js/components/entry-modal.js"></script>
     <script type="module" src="../assets/js/pages/historico.js"></script>
 </body>
 </html>

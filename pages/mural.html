@@ -23,38 +23,30 @@
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
 
     <style>
-        /* --- CSS ESPECÍFICO DO CARROSSEL MOBILE --- */
+        /* --- ESTILO GERAL DO MURAL --- */
         
-        /* --- Atualize este bloco no pages/mural.html --- */
-
         .kanban-board {
             display: flex;
             gap: 15px;
             overflow-x: auto;
             height: calc(100vh - 240px);
             
-            /* CORREÇÃO DA CENTRALIZAÇÃO: */
-            /* 85vw (card) + 7.5vw (esq) + 7.5vw (dir) = 100vw */
-            padding: 0 7.5vw 10px 7.5vw; 
-            
+            /* Mobile Default: Snap e Esconde Scrollbar */
+            padding: 0 7.5vw 20px 7.5vw; 
             scroll-snap-type: x mandatory; 
             scroll-behavior: smooth;
             -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; /* Firefox Mobile */
         }
+        .kanban-board::-webkit-scrollbar { display: none; /* Chrome Mobile */ }
 
-        /* Garante que o último item também tenha espaço para centralizar */
-        .kanban-board::after {
-            content: '';
-            min-width: 1px; /* Hackzinho para o scroll ir até o fim */
-        }
-
-        /* O resto do CSS mantém igual... */
+        /* Hack de espaçamento mobile */
+        .kanban-board::after { content: ''; min-width: 1px; flex-shrink: 0; }
 
         .kanban-column {
-            /* Mobile: Ocupa quase a tela toda (efeito página) */
-            min-width: 85vw; 
-            width: 85vw;
-            scroll-snap-align: center; /* Centraliza ao soltar o dedo */
+            min-width: 85vw; width: 85vw; /* Mobile width */
+            scroll-snap-align: center;
+            scroll-snap-stop: always;
             
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid var(--border-glass);
@@ -62,87 +54,115 @@
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
-            transition: transform 0.3s ease;
+            
+            transition: all 0.3s ease;
+            opacity: 0.5; transform: scale(0.95); /* Mobile inactive state */
         }
 
-        /* Efeito visual: Coluna ativa fica normal, as outras diminuem levemente */
-        .kanban-column { opacity: 0.5; transform: scale(0.95); }
-        .kanban-column.active-col { opacity: 1; transform: scale(1); border-color: var(--color-primary); }
+        /* Estado Ativo (Focado) */
+        .kanban-column.active-col { 
+            opacity: 1; transform: scale(1); 
+            border-color: var(--color-primary); 
+            background: var(--bg-card);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
 
         .kanban-header {
             padding: 15px;
-            font-weight: 800;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            font-size: 0.9rem;
+            font-weight: 800; color: var(--text-secondary); text-transform: uppercase; font-size: 0.9rem;
             border-bottom: 1px solid var(--border-glass);
             display: flex; justify-content: space-between; align-items: center;
-            background: rgba(0,0,0,0.1);
+            background: rgba(0,0,0,0.05);
             border-radius: 16px 16px 0 0;
+            user-select: none; /* Evita seleção de texto ao arrastar */
         }
 
         .kanban-body {
             padding: 10px;
             overflow-y: auto;
             flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            display: flex; flex-direction: column; gap: 10px;
         }
 
-        /* INDICADORES (BOLINHAS) MOBILE */
-        .carousel-indicators {
-            display: flex; justify-content: center; gap: 8px;
-            margin-top: 10px; margin-bottom: 5px;
-        }
-        .dot {
-            width: 8px; height: 8px; border-radius: 50%;
-            background: var(--border-glass); transition: 0.3s;
-        }
-        .dot.active { background: var(--color-primary); width: 20px; border-radius: 10px; }
+        /* Dots Mobile */
+        .carousel-indicators { display: flex; justify-content: center; gap: 8px; margin-top: 5px; margin-bottom: 10px; min-height: 10px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); opacity: 0.3; transition: 0.3s; }
+        .dot.active { background: var(--color-primary); opacity: 1; width: 24px; border-radius: 4px; }
 
-        /* AJUSTE PARA DESKTOP (Volta ao normal) */
+
+        /* --- DESKTOP PRO (Ajustes para PC) --- */
         @media (min-width: 1024px) {
+            .header-brand::after {
+                content: "Mural de Produção";
+            }
             .kanban-board { 
-                height: calc(100vh - 180px); 
-                scroll-snap-type: none; /* Desativa snap no PC */
-                padding-bottom: 20px;
+                height: calc(100vh - 160px); 
+                scroll-snap-type: none; /* Remove trava */
+                padding: 0 5px 15px 5px; /* Padding normal */
+                gap: 15px;
+                
+                /* MOSTRAR SCROLLBAR */
+                scrollbar-width: thin; /* Firefox Desktop */
+                scrollbar-color: var(--text-tertiary) transparent;
             }
+            
+            /* Scrollbar Customizada (Chrome/Edge/Safari) */
+            .kanban-board::-webkit-scrollbar {
+                display: block; 
+                height: 8px;
+            }
+            .kanban-board::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .kanban-board::-webkit-scrollbar-thumb {
+                background: rgba(0,0,0,0.2); 
+                border-radius: 10px;
+            }
+            .kanban-board::-webkit-scrollbar-thumb:hover {
+                background: var(--color-primary); 
+            }
+
             .kanban-column { 
-                min-width: 280px; width: 280px; 
+                min-width: 280px; width: 280px; /* Largura fixa menor para caber mais */
                 scroll-snap-align: none;
-                opacity: 1; transform: none;
+                opacity: 1 !important; transform: none !important; /* Sempre visível */
+                background: var(--bg-card);
+                border-color: var(--border-glass);
             }
-            .carousel-indicators { display: none; } /* Esconde bolinhas no PC */
+            
+            /* Remove sombra de foco no desktop (visual clean) */
+            .kanban-column.active-col {
+                box-shadow: none;
+                border-color: var(--border-glass);
+            }
+
+            .carousel-indicators { display: none; }
+            .mural-stats-row { margin-bottom: 15px; }
         }
 
-        /* Ajuste do Card */
+        /* --- CARDS E DETALHES --- */
         .mural-card {
-            background: var(--bg-glass);
-            padding: 14px;
-            border-radius: 12px;
-            border: 1px solid var(--border-glass);
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
-            transition: transform 0.2s, border-color 0.2s;
+            background: var(--bg-glass); padding: 14px; border-radius: 12px;
+            border: 1px solid var(--border-glass); cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
         }
-        .mural-card:active { transform: scale(0.98); }
+        .mural-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border-color: var(--color-primary);
+        }
         .mural-tag { font-size: 0.7rem; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,0.05); font-weight: 600; }
-        
-        /* Totalizadores Simplificados para o Mural */
-        .mural-stats-row {
-            display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto;
-            padding: 5px; scrollbar-width: none; justify-content: center;
-        }
-        .mini-stat-card {
-            background: var(--bg-glass); border: 1px solid var(--border-glass);
-            border-radius: 12px; padding: 10px 15px; min-width: 140px;
-            display: flex; flex-direction: column; position: relative; overflow: hidden;
-        }
+        .k7-azul { border-left: 4px solid #3b82f6; }
+        .k7-rosa { border-left: 4px solid #ec4899; }
+        .k7-branco { border-left: 4px solid #cbd5e1; }
+
+        .mural-stats-row { display: flex; gap: 10px; margin-bottom: 10px; overflow-x: auto; padding: 5px; scrollbar-width: none; justify-content: center; }
+        .mini-stat-card { background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: 12px; padding: 10px 15px; min-width: 140px; display: flex; flex-direction: column; position: relative; overflow: hidden; }
         .mini-stat-val { font-size: 1.4rem; font-weight: 800; color: var(--text-primary); line-height: 1; }
         .mini-stat-label { font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; }
         .mini-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; }
-
     </style>
 </head>
 <body>
@@ -151,7 +171,6 @@
         <div class="sidebar-header">
             <img src="../assets/images/lpvminilogo2.png" alt="LPV" class="light-mode-only" style="height: 40px;">
             <img src="../assets/images/lpvminilogo.png" alt="LPV" class="dark-mode-only" style="height: 40px;">
-            
             <div style="line-height: 1;">
                 <div class="sidebar-brand-text">LPV Digital</div>
                 <div style="font-size: 0.75rem; color: var(--text-secondary);">Patologia Veterinária</div>
@@ -162,9 +181,7 @@
             <a href="mural.html" class="sidebar-link active"><i class="fas fa-columns"></i> <span>Mural de Produção</span></a>
             <a href="coloracao.html" class="sidebar-link"><i class="fas fa-stopwatch"></i> <span>Timers</span></a>
             <a href="protocolos.html" class="sidebar-link"><i class="fas fa-book-medical"></i> <span>Protocolos</span></a>
-            <a href="admin.html" class="sidebar-link hidden" id="admin-link-sidebar"><i class="fas fa-users-cog"></i> <span>Gestão</span></a>
             <a href="historico.html" class="sidebar-link"><i class="fas fa-history"></i> <span>Histórico</span></a>
-            
             <button class="sidebar-link btn-sidebar-new"><i class="fas fa-plus"></i> <span>Nova Entrada</span></button>
         </nav>
         <div class="sidebar-footer">
@@ -185,6 +202,7 @@
                 
                 <div class="header-text-column">
                     <span class="brand-title">LPV<span class="brand-subtitle">Mural</span></span>
+                    <span id="user-role-badge" class="user-badge">...</span>
                     <div id="filter-container" style="display: none; gap: 8px; margin-top: 2px;">
                         <button class="btn btn-sm btn-primary" id="filter-all" style="padding: 2px 10px; font-size: 0.7rem;">Todos</button>
                         <button class="btn btn-sm btn-secondary" id="filter-mine" style="padding: 2px 10px; font-size: 0.7rem;">Minhas</button>
@@ -210,10 +228,9 @@
                     <div class="mini-stat-label">Biópsias</div>
                     <div class="mini-bar" style="background: #ec4899;"></div>
                 </div>
-                </div>
+            </div>
 
-            <div class="carousel-indicators" id="carousel-dots">
-                </div>
+            <div class="carousel-indicators" id="carousel-dots"></div>
 
             <div class="kanban-board" id="kanban-board">
                 <div class="kanban-column active-col" id="col-wrap-clivagem"><div class="kanban-header">Clivagem <span id="count-clivagem">0</span></div><div class="kanban-body" id="col-clivagem"></div></div>
@@ -224,7 +241,6 @@
                 <div class="kanban-column" id="col-wrap-analise"><div class="kanban-header">Análise <span id="count-analise">0</span></div><div class="kanban-body" id="col-analise"></div></div>
                 <div class="kanban-column" id="col-wrap-liberar"><div class="kanban-header">Liberar Laudo <span id="count-liberar">0</span></div><div class="kanban-body" id="col-liberar"></div></div>
             </div>
-
         </main>
     </div>
 
@@ -238,154 +254,129 @@
 
     <div id="task-manager-modal" class="modal-overlay hidden">
         <div class="modal-glass">
-            
             <div style="text-align: right; margin-bottom: 5px;">
                 <button id="close-tm-btn" class="btn-close-modal"><i class="fas fa-times"></i></button>
             </div>
-
             <div id="view-details-content">
                 <div id="tm-info-grid"></div>
-
                 <div class="modal-footer" style="justify-content: space-between; margin-top: 2rem; gap: 10px;">
-                    
                     <button id="btn-delete-task" class="btn btn-secondary" style="color: var(--color-error); border-color: var(--color-error); margin-right: auto;">
                         <i class="fas fa-trash"></i>
                     </button>
-                    
                     <div style="display: flex; gap: 10px;">
-                        <button id="btn-prev-stage" class="btn btn-secondary hidden">
-                            <i class="fas fa-undo"></i> Voltar
-                        </button>
-
-                        <button id="btn-next-stage" class="btn btn-primary">
-                            Próxima <i class="fas fa-arrow-right"></i>
-                        </button>
+                        <button id="btn-prev-stage" class="btn btn-secondary hidden"><i class="fas fa-undo"></i> Voltar</button>
+                        <button id="btn-next-stage" class="btn btn-primary">Próxima <i class="fas fa-arrow-right"></i></button>
                     </div>
-
                 </div>
             </div>
-
-            <div id="view-k7-form" class="hidden">
-                <form id="form-k7"></form>
-            </div>
-
+            <div id="view-k7-form" class="hidden"><form id="form-k7"></form></div>
         </div>
     </div>
 
     <div id="report-editor-modal" class="modal-overlay hidden" style="z-index: 3000;">
         <div class="report-paper-container">
-            
             <div class="report-toolbar">
                 <h3 style="color: var(--text-primary);"><i class="fas fa-file-medical"></i> Editor de Laudo</h3>
                 <div style="display: flex; gap: 10px;">
-                    <button id="btn-download-word" class="btn btn-secondary btn-sm hidden" onclick="window.exportToWord()">
-                        <i class="fas fa-file-word"></i> Baixar Word
-                    </button>
-                    <button id="btn-cancel-report" class="btn btn-secondary btn-sm">Fechar</button>
-                    <button id="btn-save-report" class="btn btn-primary btn-sm">
-                        <i class="fas fa-save"></i> Salvar
-                    </button>
+                    <button id="btn-download-word" class="btn btn-secondary btn-sm hidden" onclick="window.exportToWord()"><i class="fas fa-file-word"></i> Baixar Word</button>
+                    <button id="btn-save-report" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Salvar</button>
                 </div>
             </div>
-
-            <div class="report-paper" id="print-area">
-                
-                <table class="header-table">
-                    <tr>
-                        <td>
-                            <img src="../assets/images/Logo-UFSM.png" alt="UFSM" style="width: 90px; height: auto;">
-                        </td>
-                        <td>
-                            <div class="univ-title" style="color: black;">UNIVERSIDADE FEDERAL DE SANTA MARIA</div>
-                            <div class="dept-title">DEPARTAMENTO DE PATOLOGIA</div>
-                            <div class="lab-title">Laboratório de Patologia Veterinária</div>
-                            <div class="address-text">Prédio 97B, 97105-900 Santa Maria, RS, Brasil</div>
-                            <div class="address-text">lpv@ufsm.br | 55 3220-8168</div>
-                        </td>
-                        <td>
-                            <img src="../assets/images/LPV.png" alt="LPV" style="width: 120px; height: auto;">
-                        </td>
-                    </tr>
-                </table>
-
-                <div style="text-align: center; margin: 15px 0;">
-                    <span style="font-family: Arial, sans-serif; font-weight: bold; font-size: 16px; text-decoration: underline;">
-                        LAUDO HISTOPATOLÓGICO (<span id="rep-protocol-header">V-000</span>)
-                    </span>
-                </div>
-
-                <div class="info-block">
-                    <table class="info-table" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px;">
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 4px; background: #f0f0f0;" colspan="4"><strong>DADOS DO ANIMAL</strong></td>
-                        </tr>
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 4px;"><strong>Nome:</strong> <span id="rep-animal">...</span></td>
-                            <td style="border: 1px solid #000; padding: 4px;"><strong>Espécie:</strong> <span id="rep-especie">...</span></td>
-                            <td style="border: 1px solid #000; padding: 4px;"><strong>Raça:</strong> <span id="rep-raca">...</span></td>
-                            <td style="border: 1px solid #000; padding: 4px;"><strong>Sexo:</strong> <span id="rep-sexo">...</span></td>
-                        </tr>
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 4px;" colspan="4"><strong>Idade:</strong> <span id="rep-idade">...</span></td>
-                        </tr>
-                        
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 4px; background: #f0f0f0;" colspan="4"><strong>DADOS DO REQUISITANTE / PROPRIETÁRIO</strong></td>
-                        </tr>
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 4px;" colspan="2"><strong>Requisitante:</strong> <span id="rep-req">...</span></td>
-                            <td style="border: 1px solid #000; padding: 4px;" colspan="2"><strong>Proprietário:</strong> <span id="rep-proprietario">...</span></td>
-                        </tr>
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 4px;" colspan="4"><strong>Data Recebimento:</strong> <span id="rep-data">...</span></td>
-                        </tr>
-                    </table>
-                </div>
-
-                <form id="form-report-content" style="margin-top: 15px; font-family: 'Times New Roman', serif;">
-                    
-                    <div class="report-section">
-                        <label>HISTÓRICO CLÍNICO</label>
-                        <textarea name="historico" class="report-textarea" rows="2"></textarea>
-                    </div>
-
-                    <div class="report-section">
-                        <label>DESCRIÇÃO MACROSCÓPICA</label>
-                        <textarea name="macroscopia" class="report-textarea" rows="3"></textarea>
-                    </div>
-
-                    <div class="report-section">
-                        <label>DESCRIÇÃO MICROSCÓPICA</label>
-                        <textarea name="microscopia" class="report-textarea" rows="5"></textarea>
-                    </div>
-
-                    <div class="report-section">
-                        <label>DIAGNÓSTICO(S)</label>
-                        <textarea name="diagnostico" class="report-textarea" rows="2" style="font-weight: bold;"></textarea>
-                    </div>
-                    
-                    <div class="report-section">
-                        <label>COMENTÁRIOS / NOTAS</label>
-                        <textarea name="notas" class="report-textarea" rows="2"></textarea>
-                    </div>
-
-                </form>
-
-                <div class="report-footer-signature" style="margin-top: 40px; font-family: 'Times New Roman', serif; font-size: 12px;">
-                    <p>Data de emissão: <span id="rep-date-emission">Em andamento</span></p>
-                    <br>
-                    <div class="signature-line">
-                        <strong>Dra. Mariana Martins Flores</strong><br>
-                        Patologista / CRMV 14.636
-                    </div>
-                    <div class="signature-line" style="margin-top: 20px;">
-                        <strong>Pós-Graduando(a):</strong> <span id="rep-pos-graduando">...</span>
-                    </div>
-                </div>
-
-            </div>
+            <div class="report-paper" id="print-area"></div>
         </div>
     </div>
+    
+    <div id="entry-modal" class="modal-overlay hidden">
+        <div class="modal-glass">
+            <div style="text-align: right; margin-bottom: 5px;">
+                <button id="close-modal-btn" class="btn-close-modal"><i class="fas fa-times"></i></button>
+            </div>
+                <form id="form-new-v">
+                    <div class="form-grid">
+                        
+                        <div class="form-group">
+                            <label>Nº Protocolo Interno</label>
+                            <input type="text" name="protocolo" placeholder="Ex: V-123/26" class="input-field" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Data Entrada</label>
+                            <input type="date" name="dataEntrada" id="date-v" class="input-field" required>
+                        </div>
+
+                        <div class="form-group span-2">
+                            <label>Remetente (Clínica/Vet)</label>
+                            <input type="text" name="remetente" class="input-field" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Situação Financeira</label>
+                            <select name="situacao" class="input-field">
+                                <option value="pendente">Pendente</option>
+                                <option value="pago">Pago</option>
+                                <option value="didatico">Interesse Didático (Isento)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Docente Responsável</label>
+                            <select name="docente" id="select-docente" class="input-field" required>
+                                <option value="" disabled selected>Carregando...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Pós-Graduando</label>
+                            <select name="posGraduando" id="select-pos" class="input-field" required>
+                                <option value="" disabled selected>Carregando...</option>
+                            </select>
+                        </div>
+
+                        <div class="span-3 divider-text">Dados do Animal</div>
+
+                        <div class="form-group span-2">
+                            <label>Nome do Animal / RG</label>
+                            <input type="text" name="animalNome" class="input-field" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Proprietário</label>
+                            <input type="text" name="proprietario" class="input-field" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Espécie</label>
+                            <input type="text" name="especie" placeholder="Canina" class="input-field" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Raça</label>
+                            <input type="text" name="raca" class="input-field">
+                        </div>
+                        <div class="form-group" style="display: flex; gap: 10px;">
+                            <div style="flex: 1;">
+                                <label>Sexo</label>
+                                <select name="sexo" class="input-field">
+                                    <option value="M">M</option>
+                                    <option value="F">F</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1;">
+                                <label>Idade</label>
+                                <input type="text" name="idade" class="input-field">
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="accessCode" id="generated-access-code">
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <div class="code-preview">
+                            Código Público Gerado: <span id="display-code" style="font-family: monospace; font-weight: 700; color: var(--color-primary);">...</span>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Salvar Entrada
+                        </button>
+                    </div>
+                </form>
+            </div>
+
 
     <script type="module" src="../assets/js/core.js"></script>
     <script type="module" src="../assets/js/components/task-manager.js"></script>

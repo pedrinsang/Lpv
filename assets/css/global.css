@@ -317,7 +317,7 @@ body {
         font-size: 1.5rem; font-weight: 800; color: var(--text-primary);
     }
 
-    .main-container { max-width: 1100px; margin: 0 auto; padding: 2rem; width: 100%; }
+    .main-container { max-width: 1100px; margin: 0 auto; width: 100%; }
     .bottom-nav { display: none !important; }
     .header-logo { display: none; }
     

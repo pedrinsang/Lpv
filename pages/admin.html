@@ -21,58 +21,153 @@
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
 
     <style>
-        /* Estilos específicos do Admin */
-        .admin-section-title {
-            font-size: 1.1rem; font-weight: 700; color: var(--text-secondary);
-            margin: 2rem 0 1rem 0; display: flex; align-items: center; gap: 10px;
+        /* --- LAYOUT PADRONIZADO --- */
+        .admin-container {
+            max-width: 1200px; 
+            margin: 0 auto; 
+            width: 100%;
         }
         
-        /* Card de Usuário Pendente */
-        .user-card-pending {
-            background: var(--bg-glass);
-            border: 1px solid var(--color-warning); /* Borda amarela */
-            border-left: 4px solid var(--color-warning);
-            padding: 1.5rem; border-radius: 12px;
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;
-        }
-
-        /* Card de Usuário Ativo */
-        .user-card {
-            background: var(--bg-glass);
+        /* Controles (Barra Superior) */
+        .admin-controls {
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            margin-bottom: 2rem; 
+            flex-wrap: wrap; 
+            gap: 15px;
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 16px;
             border: 1px solid var(--border-glass);
-            padding: 1.2rem; border-radius: 12px;
+        }
+
+        .search-bar {
+            flex: 1; max-width: 400px; position: relative;
+        }
+        .search-bar input {
+            width: 100%; padding: 12px 15px 12px 45px;
+            border-radius: 10px; border: 1px solid var(--border-glass);
+            background: var(--bg-glass); color: var(--text-primary);
+            transition: all 0.3s;
+        }
+        .search-bar input:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
+        }
+        .search-bar i {
+            position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+            color: var(--text-tertiary);
+        }
+
+        /* Seção Pendentes */
+        .pending-section {
+            background: rgba(245, 158, 11, 0.1); 
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .pending-header {
+            display: flex; align-items: center; gap: 10px;
+            color: var(--color-warning); font-weight: 700; font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        /* GRID */
+        .admin-grid {
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        /* CARD DE USUÁRIO (Novo Design "Crachá") */
+        .admin-card {
+            background: var(--bg-card); 
+            border: 1px solid var(--border-glass);
+            border-radius: 16px; 
+            padding: 1.5rem;
+            transition: all 0.3s ease; 
+            position: relative; 
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+        .admin-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--color-primary);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        /* Borda lateral colorida */
+        .admin-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+            background: var(--color-primary);
+        }
+        .admin-card.pending::before { background: var(--color-warning); }
+
+        /* Cabeçalho do Card (Cargo e Data) */
+        .card-header {
             display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 0.8rem; transition: 0.2s;
+            margin-bottom: 15px;
         }
-        .user-card:hover { transform: translateY(-2px); background: var(--bg-glass-heavy); }
+        .card-role {
+            font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;
+            color: var(--color-primary); 
+            background: rgba(var(--color-primary-rgb), 0.1);
+            padding: 4px 8px; border-radius: 6px;
+        }
+        .card-date { font-size: 0.75rem; color: var(--text-tertiary); }
 
-        .user-info h3 { margin: 0; font-size: 1rem; color: var(--text-primary); }
-        .user-info p { margin: 2px 0 0; font-size: 0.85rem; color: var(--text-secondary); }
-        .user-badge { 
-            font-size: 0.75rem; padding: 4px 10px; border-radius: 50px; 
-            background: rgba(0,0,0,0.05); color: var(--text-secondary); border: 1px solid var(--border-glass);
+        /* Corpo do Card (Avatar e Info) */
+        .card-body {
+            display: flex; align-items: center; gap: 15px; margin-bottom: 15px;
+        }
+        
+        .user-avatar-initials {
+            width: 50px; height: 50px;
+            border-radius: 50%;
+            background: var(--bg-body);
+            border: 2px solid var(--border-glass);
+            color: var(--text-primary);
+            font-weight: 700; font-size: 1.1rem;
+            display: flex; justify-content: center; align-items: center;
+            flex-shrink: 0;
+            text-transform: uppercase;
         }
 
-        /* Botões de Ação */
-        .action-group { display: flex; gap: 8px; }
-        .btn-sm { padding: 8px 12px; font-size: 0.85rem; border-radius: 8px; cursor: pointer; border: none; font-weight: 600; transition: 0.2s; }
-        
-        .btn-approve { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-        .btn-approve:hover { background: #10b981; color: white; }
-        
-        .btn-reject { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-        .btn-reject:hover { background: #ef4444; color: white; }
+        .user-details { overflow: hidden; }
+        .card-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 3px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-subtitle { font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
 
+        /* Rodapé do Card (Ações) */
+        .card-actions {
+            margin-top: auto; padding-top: 15px; border-top: 1px solid var(--border-glass);
+            display: flex; justify-content: space-between; align-items: center; gap: 10px;
+        }
+        
         .role-select {
-            padding: 6px; border-radius: 6px; border: 1px solid var(--border-glass);
-            background: var(--bg-body); color: var(--text-primary); font-size: 0.85rem;
+            padding: 8px; border-radius: 8px; border: 1px solid var(--border-glass);
+            background: var(--bg-body); color: var(--text-primary); font-size: 0.85rem; flex: 1;
+            cursor: pointer; outline: none; transition: 0.2s;
+        }
+        .role-select:focus { border-color: var(--color-primary); }
+
+        .btn-icon-action {
+            width: 36px; height: 36px; border-radius: 8px; border: 1px solid transparent;
+            display: flex; justify-content: center; align-items: center; cursor: pointer;
+            transition: 0.2s; background: transparent;
+        }
+        .btn-delete:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.3); }
+
+        /* Botão Voltar Mobile */
+        .mobile-back-btn {
+            display: none; background: none; border: none; color: var(--text-primary);
+            font-size: 1.2rem; margin-right: 15px; cursor: pointer;
         }
 
-        /* Responsividade */
         @media (max-width: 768px) {
-            .user-card-pending, .user-card { flex-direction: column; align-items: flex-start; }
-            .action-group { width: 100%; justify-content: flex-end; margin-top: 10px; }
+            .mobile-back-btn { display: block; }
+            .admin-controls { flex-direction: column; align-items: stretch; }
+            .search-bar { max-width: 100%; }
         }
     </style>
 </head>
@@ -92,65 +187,67 @@
             <a href="admin.html" class="sidebar-link active"><i class="fas fa-users-cog"></i> <span>Gestão de Equipe</span></a>
             <a href="mural.html" class="sidebar-link"><i class="fas fa-columns"></i> <span>Mural</span></a>
             <a href="coloracao.html" class="sidebar-link"><i class="fas fa-stopwatch"></i> <span>Timers</span></a>
+            <a href="protocolos.html" class="sidebar-link"><i class="fas fa-book-medical"></i> <span>Protocolos</span></a>
         </nav>
         <div class="sidebar-footer">
             <div class="sidebar-user-avatar"><i class="fas fa-user"></i></div>
             <div class="sidebar-user-info">
-                <div id="sidebar-user-name" class="user-name-text">...</div>
+                <div id="sidebar-user-name" class="user-name-text">Carregando...</div>
                 <div id="sidebar-user-role" class="user-role-text">...</div>
             </div>
+            <button id="btn-logout" class="btn-sidebar-settings" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
         </div>
     </aside>
 
     <div class="layout-wrapper">
         <header class="app-header">
-            <div class="header-brand">
+            <div class="header-brand" style="display: flex; align-items: center;">
+                <button class="mobile-back-btn" onclick="window.location.href='hub.html'"><i class="fas fa-arrow-left"></i></button>
+                <img src="../assets/images/lpvminilogo2.png" class="header-logo light-mode-only">
+                <img src="../assets/images/lpvminilogo.png" class="header-logo dark-mode-only">
                 <div class="header-text-column">
-                    <span class="brand-title">Administração</span>
-                    <span class="brand-subtitle">Controle de acessos e cargos</span>
+                    <span class="brand-title">LPV<span class="brand-subtitle">Admin</span></span>
+                    <span id="user-role-badge" class="user-badge">...</span>
                 </div>
             </div>
             <div style="display: flex; gap: 10px;">
                 <button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button>
+                <button id="logout-btn-header" class="btn-icon" style="color: var(--color-error);"><i class="fas fa-sign-out-alt"></i></button>
             </div>
         </header>
 
-        <main class="main-container">
-            
-            <div id="pending-section" class="hidden">
-                <div class="admin-section-title" style="color: var(--color-warning);">
-                    <i class="fas fa-exclamation-circle"></i> Aprovações Pendentes
-                </div>
-                <div id="pending-list">
+        <main class="main-container" style="padding: 2rem; overflow-y: auto;">
+            <div class="admin-container">
+                
+                <div class="admin-controls">
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-primary);">Equipe do Laboratório</h2>
+                        <p style="margin-top: 5px; color: var(--text-secondary); font-size: 0.9rem;">Gerencie permissões e acessos dos membros.</p>
                     </div>
-            </div>
-
-            <div class="admin-section-title">
-                <i class="fas fa-users"></i> Membros Ativos
-            </div>
-            
-            <div style="margin-bottom: 1rem;">
-                <input type="text" id="search-users" placeholder="Buscar por nome ou email..." 
-                       class="input-field" style="max-width: 400px; padding: 10px 15px;">
-            </div>
-
-            <div id="active-list">
-                <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-                    <i class="fas fa-spinner fa-spin"></i> Carregando equipe...
+                    
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="admin-search" placeholder="Buscar membro por nome ou email...">
+                    </div>
                 </div>
-            </div>
 
+                <div id="pending-section" class="pending-section hidden">
+                    <div class="pending-header">
+                        <i class="fas fa-user-clock"></i> Aprovações Pendentes
+                    </div>
+                    <div id="pending-grid" class="admin-grid"></div>
+                </div>
+
+                <div id="active-list" class="admin-grid">
+                    <div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 4rem; color: var(--text-tertiary);">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
+                        <p>Carregando equipe...</p>
+                    </div>
+                </div>
+
+            </div>
         </main>
     </div>
-
-    <nav class="bottom-nav">
-        <a href="hub.html" class="nav-item"><i class="fas fa-home"></i><span>Início</span></a>
-        <a href="admin.html" class="nav-item active"><i class="fas fa-users-cog"></i><span>Admin</span></a>
-        <a href="mural.html" class="nav-item"><i class="fas fa-columns"></i><span>Mural</span></a>
-        <a href="perfil.html" class="nav-item">
-            <i class="fas fa-user-circle"></i><span id="mobile-user-name">Perfil</span>
-        </a>
-    </nav>
 
     <script type="module" src="../assets/js/core.js"></script>
     <script type="module" src="../assets/js/pages/admin.js"></script>
