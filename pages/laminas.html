@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contador de Lâminas | LPV</title>
+    
+    <script>
+        (function() {
+            try {
+                const localTheme = localStorage.getItem('theme');
+                const sysTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (localTheme === 'dark' || (!localTheme && sysTheme)) document.documentElement.setAttribute('data-theme', 'dark');
+            } catch (e) {}
+        })();
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
+
+    <style>
+        .laminas-container { max-width: 900px; margin: 0 auto; width: 100%; }
+        
+        /* Card de Totalizador */
+        .total-card {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            color: white;
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 10px 20px rgba(var(--color-primary-rgb), 0.3);
+        }
+        .total-card h2 { margin: 0; font-size: 2.5rem; font-weight: 800; }
+        .total-card p { margin: 0; opacity: 0.9; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Lista / Tabela */
+        .slide-list { display: flex; flex-direction: column; gap: 10px; }
+
+        .slide-row {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            padding: 15px 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto; /* Data | Qtd | Tipo | Delete */
+            align-items: center;
+            transition: 0.2s;
+        }
+        .slide-row:hover { transform: translateX(5px); border-color: var(--color-primary); }
+
+        .slide-data { font-size: 0.9rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+        .slide-qtd { font-weight: 800; font-size: 1.1rem; color: var(--text-primary); }
+        .slide-type { 
+            font-size: 0.8rem; font-weight: 700; text-transform: uppercase; 
+            background: rgba(0,0,0,0.05); padding: 4px 10px; border-radius: 6px; 
+            color: var(--text-secondary); width: fit-content;
+        }
+
+        /* Mobile Header */
+        .mobile-back-btn {
+            display: none; background: none; border: none; color: var(--text-primary);
+            font-size: 1.2rem; margin-right: 15px; cursor: pointer;
+        }
+        
+        /* Estilo Específico do Modal de Rodízio */
+        .rodizio-content {
+            text-align: center;
+            padding: 2rem;
+        }
+        .rodizio-icon {
+            font-size: 4rem;
+            color: var(--color-warning);
+            margin-bottom: 1rem;
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-20px);}
+            60% {transform: translateY(-10px);}
+        }
+
+        @media (max-width: 768px) {
+            .mobile-back-btn { display: block; }
+            .slide-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .slide-type { grid-column: 1 / -1; }
+            .btn-delete-row { position: absolute; top: 10px; right: 10px; }
+            .slide-row { position: relative; }
+        }
+    </style>
+</head>
+<body>
+
+     <aside class="desktop-sidebar">
+        <div class="sidebar-header">
+            <img src="../assets/images/lpvminilogo2.png" alt="LPV" class="light-mode-only" style="height: 40px;">
+            <img src="../assets/images/lpvminilogo.png" alt="LPV" class="dark-mode-only" style="height: 40px;">
+            
+            <div style="line-height: 1;">
+                <div class="sidebar-brand-text">LPV Digital</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">Patologia Veterinária</div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="hub.html" class="sidebar-link">
+                <i class="fas fa-home"></i> <span>Visão Geral</span>
+            </a>
+            <a href="mural.html" class="sidebar-link">
+                <i class="fas fa-columns"></i> <span>Mural de Produção</span>
+            </a>
+            <a href="coloracao.html" class="sidebar-link">
+                <i class="fas fa-stopwatch"></i> <span>Timers</span>
+            </a>
+            <a href="protocolos.html" class="sidebar-link">
+                <i class="fas fa-book-medical"></i> <span>Protocolos</span>
+            </a>
+            <a href="historico.html" class="sidebar-link">
+                <i class="fas fa-history"></i> <span>Histórico</span>
+            </a>
+            <a href="laminas.html" class="sidebar-link active">
+                <i class="fas fa-layer-group"></i> <span>Lâminas</span>
+            </a>
+
+            
+            
+            <button class="sidebar-link btn-sidebar-new">
+                <i class="fas fa-plus"></i> <span>Nova Entrada</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="sidebar-user-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            
+            <div class="sidebar-user-info">
+                <div id="sidebar-user-name" class="user-name-text">Carregando...</div>
+                <div id="sidebar-user-role" class="user-role-text">...</div>
+            </div>
+
+            <button class="btn-sidebar-settings" onclick="alert('Configurações de Perfil em breve!')" title="Configurações">
+                <i class="fas fa-cog"></i>
+            </button>
+        </div>
+    </aside>
+
+
+    <div class="layout-wrapper">
+        <header class="app-header">
+            <div class="header-brand" style="display: flex; align-items: center;">
+                <button class="mobile-back-btn" onclick="window.location.href='hub.html'"><i class="fas fa-arrow-left"></i></button>
+                <img src="../assets/images/lpvminilogo2.png" class="header-logo light-mode-only">
+                <img src="../assets/images/lpvminilogo.png" class="header-logo dark-mode-only">
+                <div class="header-text-column">
+                    <span class="brand-title">Contador<span class="brand-subtitle">Lâminas</span></span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button>
+            </div>
+        </header>
+
+        <main class="main-container" style="padding: 2rem; overflow-y: auto;">
+            <div class="laminas-container">
+                
+                <div class="total-card">
+                    <div>
+                        <p>Total de Lâminas Coradas</p>
+                        <h2 id="total-count">0</h2>
+                    </div>
+                    <i class="fas fa-layer-group" style="font-size: 3rem; opacity: 0.5;"></i>
+                </div>
+
+                <button class="btn btn-primary" onclick="document.getElementById('add-slide-modal').classList.remove('hidden')" style="width: 100%; margin-bottom: 20px; padding: 15px; font-size: 1rem;">
+                    <i class="fas fa-plus-circle"></i> Registrar Nova Coloração
+                </button>
+
+                <div id="slide-list" class="slide-list">
+                    <div class="empty-state" style="text-align: center; padding: 3rem; color: var(--text-tertiary);">
+                        <i class="fas fa-spinner fa-spin"></i> Carregando registros...
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="add-slide-modal" class="modal-overlay hidden">
+        <div class="modal-glass" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Registrar Lâminas</h3>
+                <button class="btn-close-modal" onclick="document.getElementById('add-slide-modal').classList.add('hidden')"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="form-add-slide">
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" name="date" id="input-date" class="input-field" required>
+                </div>
+                <div class="form-group">
+                    <label>Quantidade de Lâminas</label>
+                    <input type="number" name="quantity" class="input-field" min="1" placeholder="Ex: 15" required>
+                </div>
+                <div class="form-group">
+                    <label>Tipo de Coloração</label>
+                    <select name="type" class="input-field">
+                        <option value="HE" selected>HE (Hematoxilina e Eosina)</option>
+                        <option value="PAS">PAS</option>
+                        <option value="Giemsa">Giemsa</option>
+                        <option value="Tricromico">Tricrômico</option>
+                        <option value="Outro">Outro</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Salvar Registro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="rodizio-modal" class="modal-overlay hidden" style="z-index: 4000;">
+        <div class="modal-glass" style="max-width: 400px; border-color: var(--color-warning);">
+            <div class="rodizio-content">
+                <div class="rodizio-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <h2 style="color: var(--color-warning); margin-bottom: 10px;">ATENÇÃO!</h2>
+                <h3 style="margin-bottom: 15px;">Rodízio de Álcool Necessário</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                    O total de lâminas atingiu uma marca de troca (<strong><span id="rodizio-target">80</span></strong>).
+                    <br>Por favor, realize a troca ou filtragem dos alcoóis.
+                </p>
+                <button class="btn btn-primary" style="background: var(--color-warning); border:none; width:100%;" onclick="document.getElementById('rodizio-modal').classList.add('hidden')">
+                    Entendido, vou verificar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="../assets/js/core.js"></script>
+    <script type="module" src="../assets/js/pages/laminas.js"></script>
+</body>
+</html>
