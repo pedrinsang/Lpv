@@ -44,9 +44,8 @@ async function loadUserProfile(uid) {
         if (docSnap.exists()) {
             currentUserData = docSnap.data();
             updateUserBadge(currentUserData.role);
-            if (['admin', 'professor'].includes(currentUserData.role)) {
-                if(els.adminCard) els.adminCard.classList.remove('hidden');
-            }
+            
+            
         }
     } catch (e) { console.error(e); }
 }
@@ -57,7 +56,39 @@ function updateUserBadge(role) {
     els.userBadge.textContent = display;
 }
 
-// 4. DASHBOARD (LÓGICA CORRIGIDA)
+// Renderiza botão do Planner dinamicamente
+function checkAndRenderAdminButtons() {
+    // Evita duplicatas
+    if(document.getElementById('btn-planner-menu')) return;
+
+    // Busca a grid principal (Hub Grid)
+    const grid = document.querySelector('.hub-grid');
+    
+    if(grid) {
+        const btn = document.createElement('div');
+        // Usa as classes nativas do seu CSS (tool-card)
+        btn.className = 'tool-card'; 
+        btn.id = 'btn-planner-menu';
+        btn.style.cursor = 'pointer';
+        btn.style.borderLeft = '4px solid #f97316'; // Laranja para destaque
+        btn.onclick = () => window.location.href = '../pages/planner.html';
+        
+        btn.innerHTML = `
+            <div class="tool-icon" style="background: linear-gradient(135deg, #f97316 0%, #fbbf24 100%);">
+                <i class="fas fa-calendar-alt"></i>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:2px;">
+                <span style="font-weight:700; font-size:1rem;">Planner</span>
+                <span style="font-size:0.8rem; opacity:0.8;">Agenda & Tarefas</span>
+            </div>
+        `;
+        
+        // Insere como primeiro item da grid
+        grid.insertBefore(btn, grid.firstChild);
+    }
+}
+
+// 4. DASHBOARD (LÓGICA CORRIGIDA COM FILTRO)
 function initRealTimeDashboard() {
     const q = query(collection(db, "tasks"));
 
@@ -79,6 +110,11 @@ function initRealTimeDashboard() {
 
         snapshot.forEach(doc => {
             const task = { id: doc.id, ...doc.data() };
+            
+            // --- FILTRO CRÍTICO ---
+            // Ignora tarefas exclusivas do Planner para não poluir o Hub
+            if (task.type === 'agendamento_rapido') return;
+
             const status = task.status; 
             const type = task.type;     
 
@@ -89,14 +125,12 @@ function initRealTimeDashboard() {
                 if (type === 'necropsia') counts.necropsias++;
                 
                 // --- LÓGICA 2: ESTEIRA DE PRODUÇÃO ---
-                // Só conta nas etapas se o status for válido
                 if (counts.hasOwnProperty(status)) {
                     counts[status]++;
                 }
             }
 
             // --- LÓGICA 3: MINHA FILA LATERAL ---
-            // A função isTaskRelevant agora filtra os concluídos
             if (isTaskRelevant(task, currentUserData.role)) {
                 myQueue.push(task);
             }
@@ -123,19 +157,20 @@ function updateCounters(c) {
 
 // QUEM VÊ O QUE NA BARRA LATERAL
 function isTaskRelevant(task, role) {
-    // [CORREÇÃO] REGRA GLOBAL: Se já foi concluído ou arquivado, NINGUÉM vê na lista lateral.
-    // Isso garante que sumam da lista assim que forem liberadas (status vira 'concluido').
+    // Se já foi concluído ou arquivado, ninguém vê na lista lateral
     if (task.status === 'concluido' || task.status === 'arquivado') {
         return false;
     }
 
-    if (role === 'admin' || role === 'professor') return true; // Vê tudo (que não esteja concluído)
+    const cleanRole = role ? role.toLowerCase() : 'student';
+
+    if (cleanRole === 'admin' || cleanRole === 'professor') return true; 
     
-    if (role === 'pós graduando' || role === 'pos-graduando') {
+    if (cleanRole === 'pós graduando' || cleanRole === 'pos-graduando') {
         return ['analise', 'liberar'].includes(task.status);
     }
 
-    if (role === 'estagiario') {
+    if (cleanRole === 'estagiario') {
         return ['clivagem', 'processamento', 'emblocamento', 'corte', 'coloracao'].includes(task.status);
     }
     return false;
@@ -157,18 +192,31 @@ function renderQueue(tasks) {
         return;
     }
 
+    // Ordena por data de atualização (mais recente primeiro) se existir, ou fallback
+    tasks.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+
     tasks.forEach(task => {
         const div = document.createElement('div');
         
+        // Usa classes do CSS global
         const colorClass = task.k7Color ? `k7-${task.k7Color}` : '';
         div.className = `sample-ticket ${colorClass}`;
 
-        div.onclick = () => window.openTaskManager(task.id);
+        div.onclick = () => {
+            // Verifica se existe a função global de abrir, senão redireciona
+            if(window.openTaskManager) {
+                window.openTaskManager(task.id);
+            } else {
+                console.log("Abrindo tarefa:", task.id);
+                // Fallback ou navegação
+            }
+        };
 
         const protocol = task.protocolo || task.accessCode || '---';
         const isNecropsia = (task.type === 'necropsia') || (!task.type && task.k7Color === 'azul');
         
         const typeLabel = isNecropsia ? 'NECROPSIA' : 'BIÓPSIA';
+        // Cores do CSS Global
         const typeColor = isNecropsia ? '#3b82f6' : '#ec4899';
         
         const shortPos = getShortName(task.posGraduando || "Sem Pós");

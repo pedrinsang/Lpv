@@ -1,10 +1,11 @@
 import { db } from '../core.js';
 import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-import { generateLaudoWord } from '../components/docx-generator.js';
 
-console.log("Public Results Loaded - Fixed ID");
+// ALTERAÇÃO: Importa nova função PDF
+import { generateLaudoPDF } from '../components/docx-generator.js';
 
-// CORREÇÃO AQUI: O ID no seu HTML novo é 'access-code', não 'search-code'
+console.log("Public Results Loaded - PDF Enabled");
+
 const searchInput = document.getElementById('access-code'); 
 const searchBtn = document.getElementById('btn-search');
 const resultContainer = document.getElementById('result-container');
@@ -12,7 +13,6 @@ const btnDownload = document.getElementById('btn-download-public');
 
 let foundTask = null;
 
-// --- EVENTOS ---
 if (searchBtn) {
     searchBtn.addEventListener('click', handleSearch);
 }
@@ -23,9 +23,7 @@ if (searchInput) {
     });
 }
 
-// --- BUSCA ---
 async function handleSearch() {
-    // Agora 'searchInput' existe, então não vai dar erro de null
     const code = searchInput.value.trim(); 
     
     if (!code) return alert("Por favor, digite o código de acesso.");
@@ -55,11 +53,9 @@ async function handleSearch() {
     }
 }
 
-// --- RENDERIZAÇÃO ---
 function renderResult(task) {
     resultContainer.classList.remove('hidden');
 
-    // Preenche textos
     document.getElementById('res-pet-name').innerText = task.animalNome || "Pet";
     document.getElementById('res-owner').innerText = `Tutor: ${task.proprietario || "---"}`;
     
@@ -68,7 +64,6 @@ function renderResult(task) {
         : new Date(task.createdAt).toLocaleDateString('pt-BR');
     document.getElementById('res-date').innerText = dateStr;
 
-    // Atualiza Stepper (Timeline)
     updateStepper(task);
 }
 
@@ -84,14 +79,12 @@ function updateStepper(task) {
     else if (analysisSteps.includes(status)) currentStep = 3;
     else if (status === 'concluido') currentStep = 4;
 
-    // Reset Visual
     document.querySelectorAll('.step-item').forEach(el => el.className = 'step-item');
     const progressLine = document.getElementById('progress-line');
     const msgBox = document.getElementById('status-message');
     const step4Label = document.getElementById('label-step-4');
     const step4Icon = document.querySelector('#step-4 .step-circle i');
 
-    // Lógica dos Passos
     if (currentStep === 1) {
         setStepStatus(1, 'active');
         progressLine.style.width = '15%';
@@ -128,6 +121,9 @@ function updateStepper(task) {
             step4Label.innerText = "Liberado";
             step4Icon.className = "fas fa-check";
             msgBox.innerHTML = `<span style="color:#10b981; font-weight:bold;">Laudo Disponível!</span>`;
+            
+            // ALTERAÇÃO: Texto do botão para PDF
+            btnDownload.innerHTML = '<i class="fas fa-file-pdf"></i> BAIXAR LAUDO (PDF)';
             btnDownload.classList.remove('hidden');
         }
     }
@@ -138,7 +134,6 @@ function setStepStatus(stepNum, status) {
     if (el) el.classList.add(status);
 }
 
-// --- DOWNLOAD ---
 if (btnDownload) {
     btnDownload.addEventListener('click', async () => {
         if (!foundTask) return;
@@ -148,10 +143,10 @@ if (btnDownload) {
         btnDownload.disabled = true;
 
         try {
-            // Usa dados congelados se existirem
             const reportData = foundTask.report || {};
             const finalData = { ...reportData, ...foundTask };
-            await generateLaudoWord(foundTask, finalData);
+            // ALTERAÇÃO: Chama geração PDF
+            await generateLaudoPDF(foundTask, finalData);
         } catch (e) {
             console.error(e);
             alert("Erro ao baixar: " + e.message);

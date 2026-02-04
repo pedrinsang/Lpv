@@ -1,11 +1,12 @@
 import { db, auth, logout } from '../core.js';
 import { collection, query, where, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-import { generateLaudoWord } from '../components/docx-generator.js';
 
-// Importa task manager para permitir abrir o modal ao clicar (se necessário visualizar detalhes)
+// ALTERAÇÃO: Importa nova função PDF
+import { generateLaudoPDF } from '../components/docx-generator.js';
+
 import '../components/task-manager.js'; 
 
-console.log("Historico Module Loaded");
+console.log("Historico Module Loaded - vPDF");
 
 const listContainer = document.getElementById('reports-list');
 const searchInput = document.getElementById('history-search');
@@ -23,11 +24,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Logout Sidebar
     const btnLogout = document.getElementById('btn-logout');
     if(btnLogout) btnLogout.addEventListener('click', logout);
 
-    // Logout Header (Se existir na página)
     const btnLogoutHeader = document.getElementById('logout-btn-header');
     if(btnLogoutHeader) btnLogoutHeader.addEventListener('click', logout);
 });
@@ -37,7 +36,6 @@ async function loadAndCleanupHistory() {
         const oneYearAgo = new Date();
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
         
-        // Busca apenas concluídos
         const q = query(
             collection(db, "tasks"), 
             where("status", "==", "concluido")
@@ -51,10 +49,8 @@ async function loadAndCleanupHistory() {
             const data = documento.data();
             const taskId = documento.id;
             
-            // Define data de referência (liberação ou atualização)
             let releaseDate = data.releasedAt ? new Date(data.releasedAt) : (data.updatedAt ? new Date(data.updatedAt) : new Date());
 
-            // Limpeza automática de 365 dias
             if (releaseDate < oneYearAgo) {
                 await deleteDoc(doc(db, "tasks", taskId));
                 deletedCount++;
@@ -100,6 +96,7 @@ function renderList(reports) {
         const tipoClass = task.type === 'necropsia' ? 'color:#3b82f6;' : 'color:#ec4899;';
         const tipoLabel = task.type === 'necropsia' ? 'Necropsia' : 'Biópsia';
 
+        // ALTERAÇÃO: Botão Baixar Documento (PDF)
         return `
         <div class="report-card" onclick="window.openTaskManager('${task.id}')">
             <div class="card-header">
@@ -119,7 +116,7 @@ function renderList(reports) {
 
             <div class="card-actions">
                 <button onclick="event.stopPropagation(); window.downloadDoc('${task.id}')" class="btn btn-sm btn-primary" style="width:100%; display:flex; justify-content:center; align-items:center; gap:8px;">
-                    <i class="fas fa-file-word"></i> Baixar Documento
+                    <i class="fas fa-file-pdf"></i> Baixar PDF
                 </button>
             </div>
         </div>
@@ -127,7 +124,6 @@ function renderList(reports) {
     }).join('');
 }
 
-// Wrapper para download direto
 window.downloadDoc = async (taskId) => {
     const task = allReports.find(t => t.id === taskId);
     if (!task) return alert("Erro: Tarefa não encontrada na memória.");
@@ -141,7 +137,8 @@ window.downloadDoc = async (taskId) => {
         const reportData = task.report || {};
         const finalData = { ...reportData, ...task };
 
-        await generateLaudoWord(task, finalData);
+        // ALTERAÇÃO: Chama geração PDF
+        await generateLaudoPDF(task, finalData);
 
         btn.innerHTML = originalText;
         btn.disabled = false;

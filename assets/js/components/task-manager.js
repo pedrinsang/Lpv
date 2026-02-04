@@ -3,59 +3,29 @@ import {
     doc, getDoc, updateDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-import { generateLaudoWord } from './docx-generator.js';
+// ALTERAÇÃO: Importa a nova função de PDF
+import { generateLaudoPDF } from './docx-generator.js';
 
-console.log("Task Manager Loaded - vFinal (Auto-Close Fixed)");
+console.log("Task Manager Loaded - vPDF Update");
 
-// --- INJEÇÃO DE ESTILOS MOBILE ---
+// --- INJEÇÃO DE ESTILOS MOBILE (MANTIDO) ---
 const style = document.createElement('style');
 style.innerHTML = `
     @media (max-width: 768px) {
-        .modal-glass {
-            width: 95% !important;
-            max-height: 90vh;
-            padding: 1rem !important;
-            margin: 10px auto;
-            overflow-y: auto;
-        }
-        .tm-hero-modern {
-            flex-direction: column;
-            text-align: center;
-            gap: 15px;
-        }
-        .tm-hero-modern > div:last-child {
-            text-align: center !important;
-            width: 100%;
-        }
-        .tm-code-section {
-            flex-direction: column;
-            gap: 15px;
-            align-items: stretch !important;
-        }
-        .tm-code-section > div {
-            text-align: left !important;
-            width: 100%;
-        }
-        .tm-info-cards {
-            grid-template-columns: 1fr !important;
-        }
-        .tm-actions-footer {
-            flex-direction: column;
-        }
-        .tm-actions-footer button {
-            width: 100%;
-        }
-        .modal-footer {
-            flex-direction: column-reverse;
-        }
-        .modal-footer button {
-            width: 100%;
-        }
+        .modal-glass { width: 95% !important; max-height: 90vh; padding: 1rem !important; margin: 10px auto; overflow-y: auto; }
+        .tm-hero-modern { flex-direction: column; text-align: center; gap: 15px; }
+        .tm-hero-modern > div:last-child { text-align: center !important; width: 100%; }
+        .tm-code-section { flex-direction: column; gap: 15px; align-items: stretch !important; }
+        .tm-code-section > div { text-align: left !important; width: 100%; }
+        .tm-info-cards { grid-template-columns: 1fr !important; }
+        .tm-actions-footer { flex-direction: column; }
+        .tm-actions-footer button { width: 100%; }
+        .modal-footer { flex-direction: column-reverse; }
+        .modal-footer button { width: 100%; }
     }
 `;
 document.head.appendChild(style);
 
-// --- ELEMENTOS DO DOM ---
 const modal = document.getElementById('task-manager-modal');
 const closeBtn = document.getElementById('close-tm-btn');
 const viewDetails = document.getElementById('view-details-content');
@@ -64,7 +34,6 @@ const infoGrid = document.getElementById('tm-info-grid');
 const formK7 = document.getElementById('form-k7');
 const reportModal = document.getElementById('report-editor-modal');
 
-// Botões de Navegação
 const btnNext = document.getElementById('btn-next-stage');
 const btnPrev = document.getElementById('btn-prev-stage');
 const btnDelete = document.getElementById('btn-delete-task');
@@ -73,9 +42,6 @@ const btnSaveReport = document.getElementById('btn-save-report');
 let currentTask = null; 
 let currentUserData = null; 
 
-// ==========================================================================
-// 1. DADOS DE USUÁRIO
-// ==========================================================================
 async function fetchCurrentUserData() {
     if (currentUserData) return currentUserData;
     if (!auth.currentUser) return null;
@@ -89,9 +55,6 @@ async function fetchCurrentUserData() {
     return currentUserData;
 }
 
-// ==========================================================================
-// 2. ABRIR TAREFA
-// ==========================================================================
 async function openTaskManager(taskId) {
     try {
         await fetchCurrentUserData();
@@ -99,7 +62,6 @@ async function openTaskManager(taskId) {
         if (!docSnap.exists()) return alert("Tarefa não encontrada.");
 
         currentTask = { id: docSnap.id, ...docSnap.data() };
-        
         renderDetails(currentTask);
         
         if(viewDetails) viewDetails.classList.remove('hidden');
@@ -112,9 +74,6 @@ async function openTaskManager(taskId) {
 
 if(closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
 
-// ==========================================================================
-// 3. RENDERIZAÇÃO DA TELA DE DETALHES
-// ==========================================================================
 function renderDetails(task) {
     const user = currentUserData || {};
     const role = user.role || '';
@@ -189,11 +148,12 @@ function renderDetails(task) {
             </div>`;
     }
 
+    // ALTERAÇÃO: Botões agora chamam exportToPDF e têm ícone de PDF
     let actionsHtml = '';
     if (task.status === 'analise' && isStaff) {
         actionsHtml = `
             <button onclick="window.openReportEditorWrapper()" class="action-btn btn-main-action"><i class="fas fa-edit"></i> Preencher Laudo</button>
-            ${task.report ? `<button onclick="window.exportToWord()" class="action-btn btn-word"><i class="fas fa-eye"></i> Ver Doc</button>` : ''}
+            ${task.report ? `<button onclick="window.exportToPDF()" class="action-btn btn-word"><i class="fas fa-file-pdf"></i> Ver PDF</button>` : ''}
         `;
     } 
     else if (task.status === 'liberar') {
@@ -203,18 +163,17 @@ function renderDetails(task) {
 
         actionsHtml = `
             <button onclick="window.openReportEditorWrapper()" class="action-btn btn-edit"><i class="fas fa-pen"></i> Corrigir</button>
-            <button onclick="window.exportToWord()" class="action-btn btn-word"><i class="fas fa-file-word"></i> Visualizar Doc</button>
+            <button onclick="window.exportToPDF()" class="action-btn btn-word"><i class="fas fa-file-pdf"></i> Visualizar PDF</button>
             ${btnReleaseHtml}
         `;
     }
     else if (task.status === 'concluido') {
          actionsHtml = `
             <button onclick="window.openReportEditorWrapper()" class="action-btn btn-edit"><i class="fas fa-eye"></i> Ver Detalhes</button>
-            <button onclick="window.exportToWord()" class="action-btn btn-word"><i class="fas fa-file-word"></i> Baixar Word</button>
+            <button onclick="window.exportToPDF()" class="action-btn btn-word"><i class="fas fa-file-pdf"></i> Baixar PDF</button>
         `;
     }
 
-    // HTML PRINCIPAL
     const html = `
         <div class="tm-hero-modern ${typeClass}">
             <div class="tm-hero-content">
@@ -276,9 +235,6 @@ function renderDetails(task) {
     infoGrid.innerHTML = html;
 }
 
-// ==========================================================================
-// 4. AÇÕES FINANCEIRAS E RELATÓRIO
-// ==========================================================================
 async function toggleFinancialStatus() {
     if(!currentTask) return;
     const currentStatus = currentTask.financialStatus || 'pendente';
@@ -333,7 +289,8 @@ async function finishReportWrapper() {
     } catch(e) { console.error(e); alert("Erro ao liberar: " + e.message); }
 }
 
-async function exportToWord() {
+// ALTERAÇÃO: Função agora chama generateLaudoPDF
+async function exportToPDF() {
     if (!currentTask) return alert("Nenhuma tarefa selecionada.");
     const form = document.getElementById('form-report-data');
     let finalData = currentTask.report || {};
@@ -342,7 +299,8 @@ async function exportToWord() {
         const formObj = Object.fromEntries(formData.entries());
         finalData = { ...finalData, ...formObj };
     }
-    try { await generateLaudoWord(currentTask, finalData); } catch (e) { alert("Erro Word: " + e.message); }
+    // Mudança de nome e função
+    try { await generateLaudoPDF(currentTask, finalData); } catch (e) { alert("Erro PDF: " + e.message); }
 }
 
 function openReportEditor(task) {
@@ -473,25 +431,18 @@ if(btnDelete) {
 
 function openReportEditorWrapper() { openReportEditor(currentTask); }
 
-// ==========================================================================
-// FUNÇÃO GLOBAL DE EDIÇÃO (COM FECHAMENTO DO MODAL ATUAL)
-// ==========================================================================
 window.triggerEditEntry = function() {
     if(currentTask && window.openEditEntry) {
-        // --- ADIÇÃO AQUI: Fecha o Modal de Tarefas ---
         const tmModal = document.getElementById('task-manager-modal');
         if(tmModal) tmModal.classList.add('hidden');
-        
-        // Abre o Modal de Edição
         window.openEditEntry(currentTask);
     } else {
         console.error("Não foi possível editar: Task ou função global não encontrada.");
     }
 }
 
-// EXPORTS GLOBAIS
 window.openTaskManager = openTaskManager;
-window.exportToWord = exportToWord; 
+window.exportToPDF = exportToPDF; // Exporta nova função
 window.openReportEditorWrapper = openReportEditorWrapper;
 window.finishReportWrapper = finishReportWrapper;
 window.toggleFinancialStatus = toggleFinancialStatus;
