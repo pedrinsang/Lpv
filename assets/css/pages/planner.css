@@ -1,12 +1,12 @@
 /* ==========================================================================
-   PLANNER LPV - FOLHA DE ESTILO COMPLETA
+   PLANNER LPV - FOLHA DE ESTILO COMPLETA (CORRIGIDA)
    ========================================================================== */
 
-/* --- VARIÁVEIS LOCAIS (Sincronizadas com o JS) --- */
+/* --- VARIÁVEIS LOCAIS --- */
 :root {
     --calendar-grid-gap: 8px;
     --sidebar-width: 320px;
-    --slot-height: 40px; /* CRÍTICO: 40px = 30 minutos */
+    --slot-height: 40px; /* 40px = 30 minutos */
 }
 
 /* --- ESTRUTURA GERAL --- */
@@ -14,13 +14,13 @@ body {
     height: 100vh;
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Scroll apenas nos containers internos */
+    overflow: hidden;
 }
 
-/* --- LAYOUT PRINCIPAL (GRID) --- */
+/* --- LAYOUT PRINCIPAL --- */
 .planner-layout {
     display: grid;
-    grid-template-columns: 1fr; /* Calendário ocupa tudo inicialmente */
+    grid-template-columns: 1fr;
     gap: 20px;
     padding: 20px;
     flex-grow: 1;
@@ -45,7 +45,7 @@ body {
     position: relative;
 }
 
-/* Controles do Topo (Mês/Hoje) */
+/* Controles (Mês/Hoje) */
 .calendar-controls {
     display: flex;
     justify-content: space-between;
@@ -71,7 +71,7 @@ body {
     border-color: var(--color-primary);
 }
 
-/* Cabeçalho dos Dias (DOM, SEG...) */
+/* Cabeçalho dos Dias */
 .calendar-grid-header {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -92,10 +92,11 @@ body {
     gap: var(--calendar-grid-gap);
     padding-top: 10px;
     flex-grow: 1;
-    overflow-y: auto;
+    overflow-y: visible; 
+    padding-bottom: 20px;
 }
 
-/* Cartão do Dia Individual */
+/* --- CARTÃO DO DIA (EXPANSÍVEL) --- */
 .calendar-day {
     background: rgba(255,255,255,0.03);
     border: 1px solid var(--border-glass);
@@ -108,19 +109,27 @@ body {
     justify-content: space-between;
     transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     position: relative;
+    overflow: visible; 
 }
 
+/* EFEITO DE EXPANSÃO (HOVER) */
 .calendar-day:hover {
-    transform: translateY(-3px);
-    background: rgba(255,255,255,0.1);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    z-index: 2;
+    transform: scale(1.1);
+    z-index: 100; /* Fica por cima de todos */
+    background: var(--bg-glass-heavy); /* Fundo sólido */
+    box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+    border-color: var(--color-primary);
+    height: auto;
+    min-height: 120px;
 }
 
-/* Dia Atual (Hoje) */
+/* Dia Atual */
 .calendar-day.today {
     background: rgba(2, 132, 199, 0.08);
     border: 1px solid var(--color-primary);
+}
+.calendar-day.today:hover {
+    background: var(--bg-glass-heavy);
 }
 
 .day-number {
@@ -129,9 +138,16 @@ body {
     font-weight: 700;
 }
 
-.calendar-day.today .day-number { color: var(--color-primary); }
+/* Linha separadora no hover */
+.calendar-day:hover .day-number {
+    color: var(--color-primary);
+    border-bottom: 1px solid var(--border-glass);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    width: 100%;
+}
 
-/* Badge de Tarefas no Dia */
+/* Badge de Contagem */
 .day-badge {
     font-size: 0.7rem;
     color: white;
@@ -141,12 +157,44 @@ body {
     font-weight: 700;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
+.calendar-day:hover .day-badge { display: none; }
+
+/* --- LISTA DETALHADA NO CALENDÁRIO --- */
+.day-tasks-preview {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 5px;
+}
+
+.calendar-day:hover .day-tasks-preview { display: flex; }
+
+.preview-task-item {
+    font-size: 0.65rem;
+    padding: 4px 6px;
+    border-radius: 4px;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Cores dos Itens na Preview */
+.preview-task-item.task-blue { background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%); }
+.preview-task-item.task-pink { background: linear-gradient(90deg, #ec4899 0%, #be185d 100%); }
+.preview-task-item.task-green { background: linear-gradient(90deg, #10b981 0%, #059669 100%); }
+.preview-task-item.task-orange { background: linear-gradient(90deg, #f97316 0%, #ea580c 100%); }
+.preview-task-item.task-purple { background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%); }
+
 
 /* ==========================================================================
    MODAL DE VISÃO DO DIA (ESTAÇÃO DE TRABALHO)
    ========================================================================== */
 
-/* Overlay Fundo Escuro */
 .day-view-overlay {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -161,21 +209,14 @@ body {
     pointer-events: auto;
 }
 
-.day-view-overlay.hidden {
-    opacity: 0;
-    pointer-events: none;
-}
+.day-view-overlay.hidden { opacity: 0; pointer-events: none; }
 
-/* Container do Modal */
 .day-view-content {
-    width: 95%;
-    max-width: 1100px;
-    height: 90vh;
+    width: 95%; max-width: 1100px; height: 90vh;
     background: var(--bg-glass-heavy);
     border-radius: 20px;
     border: 1px solid var(--border-glass);
-    display: flex;
-    flex-direction: column;
+    display: flex; flex-direction: column;
     padding: 25px;
     box-shadow: 0 20px 50px rgba(0,0,0,0.3);
     transform: scale(1);
@@ -185,56 +226,30 @@ body {
 
 .day-view-overlay.hidden .day-view-content { transform: scale(0.95); }
 
-/* Header do Modal */
 .day-view-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    padding-bottom: 15px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 15px; padding-bottom: 15px;
     border-bottom: 1px solid var(--border-glass);
 }
+.day-view-header h2 { margin: 0; color: var(--color-primary); font-size: 1.5rem; }
 
-.day-view-header h2 { 
-    margin: 0; 
-    color: var(--color-primary); 
-    font-size: 1.5rem;
-}
-
-/* Corpo do Modal (Grid 2 Colunas) */
 .day-view-body {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-    gap: 20px;
-    position: relative;
+    display: flex; flex: 1; overflow: hidden; gap: 20px; position: relative;
 }
 
 /* --- COLUNA 1: TIMELINE (AGENDA) --- */
 .timeline-column {
-    flex: 3;
-    display: flex;
-    flex-direction: column;
+    flex: 3; display: flex; flex-direction: column;
     background: var(--bg-body);
-    border-radius: 12px;
-    border: 1px solid var(--border-glass);
-    position: relative;
-    overflow: hidden;
+    border-radius: 12px; border: 1px solid var(--border-glass);
+    position: relative; overflow: hidden;
 }
 
-/* --- TIMELINE (Grade do Modal) --- */
 .day-timeline {
-    flex: 1;
-    overflow-y: auto;
-    position: relative;
-    
-    /* SEU PADDING (Mantive como você pediu) */
+    flex: 1; overflow-y: auto; position: relative;
     padding: 10px;
     
-    padding-bottom: 50px; /* Espaço extra no fim */
-    
-    /* Fundo ajustado para começar depois do padding */
-    background-clip: content-box; 
+    background-clip: content-box;
     background-image: repeating-linear-gradient(
         to bottom,
         transparent 0px,
@@ -244,220 +259,145 @@ body {
     );
 }
 
-/* --- SLOTS DE TEMPO (A GRADE) --- */
+/* Slots de Tempo */
 .time-slot {
-    height: var(--slot-height); /* 40px fixos */
-    display: flex;
-    align-items: flex-start;
-    box-sizing: border-box;
-    position: relative;
+    height: var(--slot-height);
+    display: flex; align-items: flex-start;
+    box-sizing: border-box; position: relative;
 }
-
-/* Linha da Hora Cheia (Sólida) */
-.time-slot:not(.half-hour) {
-    border-top: 1px solid var(--border-glass);
-}
-
-/* Linha da Meia Hora (Pontilhada e Visível) */
-.time-slot.half-hour {
-    border-top: 1px dashed rgba(0,0,0,0.1);
-}
+.time-slot:not(.half-hour) { border-top: 1px solid var(--border-glass); }
+.time-slot.half-hour { border-top: 1px dashed rgba(0,0,0,0.1); }
 [data-theme="dark"] .time-slot.half-hour { border-top-color: rgba(255,255,255,0.15); }
 
-/* Labels de Hora (07:00, 07:30) */
 .slot-label {
-    width: 60px;
-    text-align: right;
-    padding-right: 12px;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 700;
-    transform: translateY(-50%);
-    margin-top: -1px;
-    flex-shrink: 0;
-    user-select: none;
+    width: 60px; text-align: right; padding-right: 12px;
+    font-size: 0.75rem; color: var(--text-secondary);
+    font-weight: 700; transform: translateY(-50%); margin-top: -1px;
+    flex-shrink: 0; user-select: none;
 }
+.time-slot.half-hour .slot-label { font-size: 0.7rem; color: var(--text-tertiary); font-weight: 400; }
 
-/* Label da meia hora (mais discreto) */
-.time-slot.half-hour .slot-label {
-    font-size: 0.7rem;
-    color: var(--text-tertiary);
-    font-weight: 400;
-}
-
-/* Área de Conteúdo do Slot (Drop Zone) */
 .slot-content {
-    flex: 1;
-    height: 100%;
-    border-left: 1px solid var(--border-glass);
-    position: relative;
-    transition: background 0.1s;
+    flex: 1; height: 100%; border-left: 1px solid var(--border-glass);
+    position: relative; transition: background 0.1s;
 }
+.slot-content:hover { background: rgba(var(--color-primary-rgb), 0.05); cursor: cell; }
+.slot-content.drag-over { background: rgba(var(--color-primary-rgb), 0.2) !important; box-shadow: inset 0 0 0 2px var(--color-primary); }
 
-.slot-content:hover {
-    background: rgba(var(--color-primary-rgb), 0.05);
-    cursor: cell;
-}
-
-.slot-content.drag-over {
-    background: rgba(var(--color-primary-rgb), 0.2) !important;
-    box-shadow: inset 0 0 0 2px var(--color-primary);
-}
-
-/* --- TAREFA AGENDADA (CARD NA TIMELINE) --- */
-/* --- TAREFA AGENDADA (Ajuste de Posição) --- */
+/* --- TAREFA AGENDADA (Timeline) --- */
 .scheduled-task {
     position: absolute;
+    margin-top: 10px; /* Compensa o padding da timeline */
+    left: 80px; right: 20px;
     
-    /* CORREÇÃO DO PADDING: 
-       Adicionamos margem superior igual ao padding do pai (10px) 
-       para que o "Zero" da tarefa alinhe com o "Zero" dos slots */
-    margin-top: 10px; 
-    
-    /* Ajuste horizontal: 70px (margem antiga) + 10px (padding left) */
-    left: 80px; 
-    
-    /* Ajuste direita: 10px (margem antiga) + 10px (padding right) */
-    right: 20px;
-    
-    /* --- RESTO DO ESTILO (Mantenha igual) --- */
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    background: var(--color-primary);
     color: white;
-    border-radius: 6px;
-    padding: 2px 10px;
-    font-size: 0.85rem;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    z-index: 10;
-    overflow: hidden;
-    cursor: grab;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    border-radius: 6px; padding: 2px 10px;
+    font-size: 0.8rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    z-index: 10; overflow: hidden; cursor: grab;
+    
+    display: flex; flex-direction: column; justify-content: center;
     border: 1px solid rgba(255,255,255,0.2);
-    transition: box-shadow 0.2s, transform 0.1s; 
-    /* Removemos transition de 'width', 'left' e 'top' para o drag ser instantâneo */
-}
-/* --- VARIAÇÕES DE CORES --- */
-.scheduled-task.task-blue, .planner-task-card.task-blue {
-    background: linear-gradient(135deg, #3b82f6, #113266); border-left-color: #60a5fa;
-}
-.scheduled-task.task-pink, .planner-task-card.task-pink {
-    background: linear-gradient(135deg, #ec4899, #630835); border-left-color: #f472b6;
-}
-.scheduled-task.task-green { background: linear-gradient(135deg, #10b981, #074b34); }
-.scheduled-task.task-orange { background: linear-gradient(135deg, #f97316, #5f2d09); }
-.scheduled-task.task-purple { background: linear-gradient(135deg, #8b5cf6, #290f64); }
-
-/* Hover e Drag */
-.scheduled-task:hover {
-    z-index: 50;
-    box-shadow: 0 8px 15px rgba(0,0,0,0.3);
-    transform: scale(1.01);
+    transition: box-shadow 0.2s, transform 0.1s;
 }
 
-.scheduled-task.dragging {
-    opacity: 0.7;
-    cursor: grabbing;
+/* Variações de Cor */
+.scheduled-task.task-blue { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+.scheduled-task.task-pink { background: linear-gradient(135deg, #ec4899, #be185d); }
+.scheduled-task.task-green { background: linear-gradient(135deg, #10b981, #047857); }
+.scheduled-task.task-orange { background: linear-gradient(135deg, #f97316, #c2410c); }
+.scheduled-task.task-purple { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+
+.scheduled-task:hover { z-index: 50; box-shadow: 0 8px 15px rgba(0,0,0,0.25); transform: scale(1.01); }
+
+/* --- CORREÇÃO DO BUG DE DRAG & DROP --- */
+.scheduled-task.dragging { 
+    opacity: 0.7; 
+    cursor: grabbing; 
     z-index: 60;
+    
+    /* ESSENCIAL: Permite clicar "através" da tarefa enquanto arrasta */
+    pointer-events: none; 
 }
 
-.scheduled-task.resizing {
-    cursor: ns-resize;
-    z-index: 60;
-    box-shadow: 0 0 0 2px white, 0 10px 20px rgba(0,0,0,0.3);
-}
+.scheduled-task.resizing { cursor: ns-resize; z-index: 60; box-shadow: 0 0 0 2px white, 0 10px 20px rgba(0,0,0,0.3); }
 
-/* Conteúdo interno da Tarefa */
-.task-content {
-    pointer-events: none;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    width: 100%;
-}
-
-.task-time { font-size: 0.75rem; opacity: 0.9; font-weight: 500; margin-bottom: 2px; }
+/* Conteúdo interno */
+.task-content { pointer-events: none; display: flex; flex-direction: column; justify-content: center; width: 100%; }
+.task-time { font-size: 0.7rem; opacity: 0.9; font-weight: 500; margin-bottom: 2px; }
 .task-title { font-weight: 700; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Botão Fechar (X) */
+/* Badge de Tipo */
+.task-type-badge {
+    font-size: 0.6rem; font-weight: 800; text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.2); padding: 1px 6px;
+    border-radius: 4px; margin-left: 5px; white-space: nowrap;
+}
+
 .task-remove-btn {
-    position: absolute; top: 4px; right: 4px;
-    width: 20px; height: 20px;
-    background: rgba(0,0,0,0.2); 
-    border-radius: 50%; border: none;
-    color: white; cursor: pointer; 
-    opacity: 0; transition: 0.2s;
+    position: absolute; top: 4px; right: 4px; width: 20px; height: 20px;
+    background: rgba(0,0,0,0.2); border-radius: 50%; border: none;
+    color: white; cursor: pointer; opacity: 0; transition: 0.2s;
     display: flex; align-items: center; justify-content: center;
 }
 .scheduled-task:hover .task-remove-btn { opacity: 1; }
 .task-remove-btn:hover { background: #ef4444; transform: scale(1.1); }
 
-/* ALÇA DE REDIMENSIONAMENTO */
 .resize-handle {
-    position: absolute; bottom: 0; left: 0; right: 0;
-    height: 10px; 
-    cursor: ns-resize;
-    display: flex; justify-content: center; align-items: flex-end;
-    padding-bottom: 2px;
-    opacity: 0; transition: opacity 0.2s;
+    position: absolute; bottom: 0; left: 0; right: 0; height: 10px; 
+    cursor: ns-resize; display: flex; justify-content: center; align-items: flex-end;
+    padding-bottom: 2px; opacity: 0; transition: opacity 0.2s;
 }
 .scheduled-task:hover .resize-handle { opacity: 1; }
+.resize-handle::after { content: ''; width: 40px; height: 4px; background: rgba(255,255,255,0.6); border-radius: 2px; }
 
-.resize-handle::after {
-    content: ''; width: 40px; height: 4px; 
-    background: rgba(255,255,255,0.6); 
-    border-radius: 2px;
-}
-.resize-handle:hover::after { background: white; height: 5px; }
-
-/* --- COLUNA 2: LISTA DE PENDENTES --- */
+/* --- COLUNA 2: PENDENTES --- */
 .pendings-column {
-    flex: 1;
-    background: var(--surface);
-    border-left: 1px solid var(--border-glass);
-    border-radius: 12px;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-    min-width: 250px;
+    flex: 1; background: var(--surface);
+    border-left: 1px solid var(--border-glass); border-radius: 12px;
+    padding: 15px; display: flex; flex-direction: column; min-width: 250px;
+    transition: background 0.2s, box-shadow 0.2s;
 }
+.pendings-column.drag-over { background: rgba(var(--color-primary-rgb), 0.1); box-shadow: inset 0 0 0 2px var(--color-primary); }
 
 .column-title {
-    font-size: 0.85rem;
-    color: var(--text-tertiary);
-    margin-bottom: 15px;
-    text-transform: uppercase;
-    font-weight: 800;
-    letter-spacing: 1px;
-    padding-left: 5px;
+    font-size: 0.85rem; color: var(--text-tertiary);
+    margin-bottom: 15px; text-transform: uppercase;
+    font-weight: 800; letter-spacing: 1px; padding-left: 5px;
 }
 
+/* Card Pendente */
 .planner-task-card {
     background: var(--bg-body);
-    border: 1px solid var(--border-glass);
-    border-left: 4px solid var(--color-secondary);
-    padding: 12px;
-    border-radius: 10px;
-    margin-bottom: 10px;
-    cursor: grab;
-    transition: transform 0.2s, box-shadow 0.2s;
-    user-select: none;
-    color: var(--text-primary);
+    border: 1px solid var(--border-glass); border-left: 4px solid var(--color-secondary);
+    padding: 12px 40px 12px 12px;
+    border-radius: 10px; margin-bottom: 10px;
+    cursor: grab; transition: transform 0.2s, box-shadow 0.2s;
+    user-select: none; color: var(--text-primary);
+    position: relative;
 }
+.planner-task-card:hover { transform: translateX(-4px); box-shadow: 0 4px 10px rgba(0,0,0,0.05); background: var(--bg-glass); }
+.planner-task-card.dragging { opacity: 0.5; border: 2px dashed var(--color-primary); background: rgba(var(--color-primary-rgb), 0.1); }
 
-.planner-task-card:hover {
-    transform: translateX(-4px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    background: var(--bg-glass);
+/* Cores Cards */
+.planner-task-card.task-blue { border-left-color: #3b82f6; }
+.planner-task-card.task-pink { border-left-color: #ec4899; }
+.planner-task-card.task-green { border-left-color: #10b981; }
+.planner-task-card.task-orange { border-left-color: #f97316; }
+.planner-task-card.task-purple { border-left-color: #8b5cf6; }
+
+/* Botão Excluir Definitivo */
+.btn-delete-task {
+    position: absolute; top: 50%; right: 10px; transform: translateY(-50%);
+    width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent;
+    color: var(--text-tertiary); cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; opacity: 0;
 }
+.planner-task-card:hover .btn-delete-task { opacity: 1; }
+.btn-delete-task:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
 
-.planner-task-card.dragging {
-    opacity: 0.5;
-    border: 2px dashed var(--color-primary);
-    background: rgba(var(--color-primary-rgb), 0.1);
-}
-
-/* --- SELETOR DE CORES (MODAL) --- */
+/* --- SELETOR DE CORES --- */
 .color-selector { display: flex; gap: 10px; margin-top: 10px; }
 .color-option { position: relative; cursor: pointer; }
 .color-option input { display: none; }
@@ -470,121 +410,14 @@ body {
 .swatch.green { background: #10b981; }
 .swatch.orange { background: #f97316; }
 .swatch.purple { background: #8b5cf6; }
+.color-option input:checked + .swatch { transform: scale(1.2); border-color: var(--text-primary); box-shadow: 0 0 0 2px var(--bg-glass); }
 
-.color-option input:checked + .swatch {
-    transform: scale(1.2);
-    border-color: var(--text-primary);
-    box-shadow: 0 0 0 2px var(--bg-glass);
-}
-
-/* --- MANTER TODO O CSS ANTERIOR --- */
-/* (Copie todo o arquivo anterior e substitua APENAS a parte da ".pendings-column" no final) */
-
-/* ... (código anterior) ... */
-
-/* --- COLUNA 2: LISTA DE PENDENTES --- */
-.pendings-column {
-    flex: 1;
-    background: var(--surface);
-    border-left: 1px solid var(--border-glass);
-    border-radius: 12px;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-    min-width: 250px;
-    transition: background 0.2s, box-shadow 0.2s;
-}
-
-/* Efeito visual ao arrastar uma tarefa de volta para cá */
-.pendings-column.drag-over {
-    background: rgba(var(--color-primary-rgb), 0.1);
-    box-shadow: inset 0 0 0 2px var(--color-primary);
-}
-
-.column-title {
-    font-size: 0.85rem;
-    color: var(--text-tertiary);
-    margin-bottom: 15px;
-    text-transform: uppercase;
-    font-weight: 800;
-    letter-spacing: 1px;
-    padding-left: 5px;
-}
-
-/* Card de Tarefa Pendente */
-.planner-task-card {
-    background: var(--bg-body);
-    border: 1px solid var(--border-glass);
-    border-left: 4px solid var(--color-secondary);
-    padding: 12px;
-    border-radius: 10px;
-    margin-bottom: 10px;
-    cursor: grab;
-    transition: transform 0.2s, box-shadow 0.2s;
-    user-select: none;
-    color: var(--text-primary);
-}
-
-.planner-task-card:hover {
-    transform: translateX(-4px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    background: var(--bg-glass);
-}
-
-.planner-task-card.dragging {
-    opacity: 0.5;
-    border: 2px dashed var(--color-primary);
-    background: rgba(var(--color-primary-rgb), 0.1);
-}
-
-/* Cores específicas na lista de pendentes */
-.planner-task-card.task-blue { border-left-color: #3b82f6; }
-.planner-task-card.task-pink { border-left-color: #ec4899; }
-.planner-task-card.task-green { border-left-color: #10b981; }
-.planner-task-card.task-orange { border-left-color: #f97316; }
-.planner-task-card.task-purple { border-left-color: #8b5cf6; }
-
-/* ... (resto do arquivo mobile media query) ... */
-
-/* ... (Adicione isso no final do seu CSS do Planner ou junto com os estilos de .scheduled-task) ... */
-
-/* Badge de Tipo dentro do agendamento (BIÓPSIA / NECROPSIA) */
-.task-type-badge {
-    font-size: 0.6rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    background: rgba(255, 255, 255, 0.2); /* Fundo branco semitransparente */
-    padding: 1px 6px;
-    border-radius: 4px;
-    margin-left: 5px;
-    white-space: nowrap;
-    letter-spacing: 0.5px;
-    line-height: 1.2;
-}
-
-/* Ajuste no container do tempo para alinhar o badge */
-.task-content > div {
-    margin-bottom: 2px;
-}
-
-/* --- RESPONSIVIDADE MOBILE --- */
+/* --- MOBILE --- */
 @media (max-width: 900px) {
     .planner-layout { padding-bottom: 90px; }
-    
-    .day-view-content {
-        width: 100%; height: 100%; border-radius: 0;
-        max-width: none; padding: 15px;
-    }
-    
-    .day-view-body {
-        flex-direction: column-reverse; /* Pendentes em baixo, Timeline em cima */
-    }
-    
-    .pendings-column {
-        flex: none; height: 180px; 
-        border-left: none; border-top: 1px solid var(--border-glass);
-    }
-    
+    .day-view-content { width: 100%; height: 100%; border-radius: 0; padding: 15px; }
+    .day-view-body { flex-direction: column-reverse; }
+    .pendings-column { flex: none; height: 180px; border-left: none; border-top: 1px solid var(--border-glass); }
     .slot-label { width: 45px; font-size: 0.7rem; padding-right: 8px; }
-    .scheduled-task { left: 50px; }
+    .scheduled-task { left: 60px; right: 10px; }
 }
