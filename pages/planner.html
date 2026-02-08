@@ -2,125 +2,105 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Planner Laboratorial | LPV</title>
-    <script>
-        (function() {
-            try {
-                const localTheme = localStorage.getItem('theme');
-                const sysTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (localTheme === 'dark' || (!localTheme && sysTheme)) {
-                    document.documentElement.setAttribute('data-theme', 'dark');
-                }
-            } catch (e) {}
-        })();
-    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planner Laboratorial</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/global.css">
     <link rel="stylesheet" href="../assets/css/pages/planner.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="manifest" href="../manifest.json">
-    <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-
-
 <body>
     <script>
         if(localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
     </script>
 
     <div class="app-container">
-        <header class="app-header">
+        <header class="app-header" style="background:transparent; border:none; padding:15px 20px;">
             <div style="display:flex; align-items:center; gap:15px;">
-                <button class="btn-icon" onclick="history.back()"><i class="fas fa-arrow-left"></i></button>
-                <h3 style="margin:0; font-size:1.2rem;">Planner LPV</h3>
+                <button class="btn-mini" onclick="history.back()" style="width:40px; height:40px;"><i class="fas fa-arrow-left"></i></button>
+                <h3 style="margin:0; font-size:1.1rem; font-weight:700; color:var(--text-secondary);">Planner LPV</h3>
             </div>
-            <span id="current-month-display">Carregando...</span>
         </header>
 
         <main class="planner-layout">
             <section class="calendar-section">
                 <div class="calendar-controls">
                     <button id="prev-month" class="btn-mini"><i class="fas fa-chevron-left"></i></button>
-                    <button id="today-btn" class="btn-mini">Hoje</button>
-                    <button id="next-month" class="btn-mini"><i class="fas fa-chevron-right"></i></button>
+                    
+                    <div class="calendar-date-display">
+                        <div id="calendar-year" class="calendar-year-text">----</div>
+                        <div id="calendar-month" class="calendar-month-text">Carregando</div>
+                    </div>
+
+                    <div style="display:flex; gap:10px;">
+                        <button id="today-btn" class="btn-mini today-btn">Hoje</button>
+                        <button id="next-month" class="btn-mini"><i class="fas fa-chevron-right"></i></button>
+                    </div>
                 </div>
                 
                 <div class="calendar-grid-header">
                     <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
                 </div>
-                <div id="calendar-grid" class="calendar-grid">
-                    </div>
+                <div id="calendar-grid" class="calendar-grid"></div>
             </section>
         </main>
 
         <div id="day-view-modal" class="day-view-overlay hidden">
             <div class="day-view-content">
                 <div class="day-view-header">
-                    <h2 id="selected-date-title" style="margin:0;">Data</h2>
-                    <button id="close-day-view" class="btn-icon"><i class="fas fa-times"></i></button>
+                    <div>
+                        <span style="font-size:0.75rem; color:var(--text-light); font-weight:600; letter-spacing:1px; text-transform:uppercase;">Agenda de</span>
+                        <h2 id="selected-date-title" style="margin-top:2px;">Data</h2>
+                    </div>
+                    <button id="close-day-view" class="btn-mini"><i class="fas fa-times"></i></button>
                 </div>
                 
                 <div class="day-view-body">
                     <div class="timeline-column">
-                        <div class="day-timeline" id="day-timeline">
-                            </div>
+                        <div class="day-timeline" id="day-timeline"></div>
                     </div>
-
                     <div class="pendings-column" id="modal-pendings-area">
-                        <h4 class="column-title">Tarefas Pendentes</h4>
-                        <div id="modal-pending-list" class="tasks-container">
-                            <div style="text-align:center; padding:20px; opacity:0.6;">Carregando...</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h4 style="margin:0; font-size:0.9rem; font-weight:700; color:var(--text-secondary);">Tarefas Pendentes</h4>
+                            <span style="font-size:0.7rem; color:var(--text-light);">Arraste para agendar</span>
                         </div>
+                        <div id="modal-pending-list" class="tasks-container" style="margin-top:15px;"></div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div id="quick-task-modal" class="modal-overlay hidden">
-            <div class="modal-glass" style="max-width: 400px;">
-                <h3 style="margin-bottom:15px; color:var(--text-primary);">Nova Tarefa</h3>
+            <div class="modal-glass">
+                <h3 style="margin-bottom:20px; font-weight:800; color:var(--text-primary);">Nova Tarefa</h3>
                 
                 <div class="form-group">
-                    <label>Título / Atividade</label>
-                    <input type="text" id="quick-task-title" class="input-field" placeholder="Ex: Manutenção, Reunião...">
+                    <label style="font-weight:600; color:var(--text-secondary);">Título</label>
+                    <input type="text" id="quick-task-title" class="input-field" placeholder="Ex: Biópsia...">
                 </div>
                 
-                <div class="form-group" style="margin-top:15px;">
-                    <label>Cor da Etiqueta</label>
+                <div class="form-group" style="margin-top:20px;">
+                    <label style="font-weight:600; color:var(--text-secondary); margin-bottom:10px; display:block;">Etiqueta de Cor</label>
                     <div class="color-selector">
-                        <label class="color-option">
-                            <input type="radio" name="taskColor" value="task-blue" checked>
-                            <span class="swatch blue"></span>
-                        </label>
-                        <label class="color-option">
-                            <input type="radio" name="taskColor" value="task-pink">
-                            <span class="swatch pink"></span>
-                        </label>
-                        <label class="color-option">
-                            <input type="radio" name="taskColor" value="task-green">
-                            <span class="swatch green"></span>
-                        </label>
-                        <label class="color-option">
-                            <input type="radio" name="taskColor" value="task-orange">
-                            <span class="swatch orange"></span>
-                        </label>
-                        <label class="color-option">
-                            <input type="radio" name="taskColor" value="task-purple">
-                            <span class="swatch purple"></span>
-                        </label>
+                        <label class="color-option"><input type="radio" name="taskColor" value="task-blue" checked><span class="swatch blue"></span></label>
+                        <label class="color-option"><input type="radio" name="taskColor" value="task-pink"><span class="swatch pink"></span></label>
+                        <label class="color-option"><input type="radio" name="taskColor" value="task-green"><span class="swatch green"></span></label>
+                        <label class="color-option"><input type="radio" name="taskColor" value="task-orange"><span class="swatch orange"></span></label>
+                        <label class="color-option"><input type="radio" name="taskColor" value="task-other"><span class="swatch gray" style="background:#94a3b8;"></span></label>
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-top:15px;">
-                    <label>Descrição (Opcional)</label>
-                    <input type="text" id="quick-task-desc" class="input-field" placeholder="Detalhes...">
+                <div class="form-group" style="margin-top:20px;">
+                    <label style="font-weight:600; color:var(--text-secondary);">Detalhes</label>
+                    <input type="text" id="quick-task-desc" class="input-field" placeholder="Opcional">
                 </div>
 
-                <div class="modal-footer" style="margin-top:25px;">
-                    <button class="btn btn-secondary" id="cancel-quick-task">Cancelar</button>
-                    <button class="btn btn-primary" id="save-quick-task">Criar</button>
+                <div class="modal-footer" style="margin-top:30px; display:flex; justify-content:flex-end; gap:10px;">
+                    <button class="btn-mini" style="width:auto; padding:0 20px; border-radius:8px;" id="cancel-quick-task">Cancelar</button>
+                    <button class="btn-mini" style="width:auto; padding:0 25px; border-radius:8px; background:var(--color-necro); color:white; border:none;" id="save-quick-task">Criar</button>
                 </div>
             </div>
         </div>
