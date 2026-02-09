@@ -7,8 +7,7 @@
     
     <script>
         (function() {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+            document.documentElement.setAttribute('data-theme', 'dark');
         })();
     </script>
 
@@ -71,7 +70,6 @@
             <a href="hub.html" class="btn-icon"><i class="fas fa-arrow-left"></i></a>
             <span>Aniversariantes</span>
         </div>
-        <button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button>
     </header>
 
     <main class="main-container" style="padding: 2rem; max-width: 800px; margin: 0 auto; padding-bottom: 100px;">

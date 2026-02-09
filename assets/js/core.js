@@ -24,51 +24,10 @@ const db = getFirestore(app);
 
 window.currentUserRole = null;
 
-// --- TEMA ---
+// --- TEMA (Sempre Dark) ---
 function initThemeSystem() {
-    try {
-        const themeToggleBtn = document.getElementById('theme-toggle');
-        const html = document.documentElement;
-        
-        // 1. Verificar preferência salva ou do sistema
-        const savedTheme = localStorage.getItem('theme');
-        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-        // 2. Aplicar tema inicial
-        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
-            html.setAttribute('data-theme', 'dark');
-            updateThemeIcon(true);
-        } else {
-            html.removeAttribute('data-theme');
-            updateThemeIcon(false);
-        }
-
-        // 3. Adicionar Listener (GARANTIA DE ÚNICA EXECUÇÃO)
-        // Removemos qualquer listener anterior clone para evitar duplicidade
-        if (themeToggleBtn) {
-            // Clona e substitui o botão para limpar event listeners antigos (truque de segurança)
-            const newBtn = themeToggleBtn.cloneNode(true);
-            themeToggleBtn.parentNode.replaceChild(newBtn, themeToggleBtn);
-            
-            newBtn.addEventListener('click', () => {
-                const isDark = html.getAttribute('data-theme') === 'dark';
-                if (isDark) {
-                    html.removeAttribute('data-theme');
-                    localStorage.setItem('theme', 'light');
-                    updateThemeIcon(false);
-                } else {
-                    html.setAttribute('data-theme', 'dark');
-                    localStorage.setItem('theme', 'dark');
-                    updateThemeIcon(true);
-                }
-            });
-        }
-    } catch(e) { console.log("Erro tema:", e); }
-}
-
-function updateThemeIcon(isDark) {
-    const btn = document.getElementById('theme-toggle');
-    if (btn) btn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    document.documentElement.setAttribute('data-theme', 'dark');
+    localStorage.setItem('theme', 'dark');
 }
 
 // --- MONITORAMENTO DE AUTH ---

@@ -7,11 +7,7 @@
     
     <script>
         (function() {
-            try {
-                const localTheme = localStorage.getItem('theme');
-                const sysTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (localTheme === 'dark' || (!localTheme && sysTheme)) document.documentElement.setAttribute('data-theme', 'dark');
-            } catch (e) {}
+            document.documentElement.setAttribute('data-theme', 'dark');
         })();
     </script>
 
@@ -111,7 +107,7 @@
                 <i class="fas fa-home"></i> <span>Visão Geral</span>
             </a>
             <a href="mural.html" class="sidebar-link">
-                <i class="fas fa-columns"></i> <span>Mural de Produção</span>
+                <i class="fas fa-columns"></i> <span>Mural</span>
             </a>
             <a href="coloracao.html" class="sidebar-link">
                 <i class="fas fa-stopwatch"></i> <span>Timers</span>
@@ -126,7 +122,7 @@
                 <i class="fas fa-layer-group"></i> <span>Lâminas</span>
             </a>
             <a href="planner.html" class="sidebar-link">
-                <i class="fas fa-calendar-alt"></i> <span>Planner Laboratorial</span>
+                <i class="fas fa-calendar-alt"></i> <span>Planner</span>
             </a>
 
             
@@ -163,9 +159,7 @@
                     <span class="brand-title">Contador<span class="brand-subtitle">Lâminas</span></span>
                 </div>
             </div>
-            <div style="display: flex; gap: 10px;">
-                <button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button>
-            </div>
+            <div style="display: flex; gap: 10px;"></div>
         </header>
 
         <main class="main-container" style="padding: 2rem; overflow-y: auto;">

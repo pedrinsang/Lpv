@@ -7,11 +7,7 @@
     
     <script>
         (function() {
-            try {
-                const localTheme = localStorage.getItem('theme');
-                const sysTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (localTheme === 'dark' || (!localTheme && sysTheme)) document.documentElement.setAttribute('data-theme', 'dark');
-            } catch (e) {}
+            document.documentElement.setAttribute('data-theme', 'dark');
         })();
     </script>
     

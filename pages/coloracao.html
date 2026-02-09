@@ -7,13 +7,7 @@
     
     <script>
         (function() {
-            try {
-                const localTheme = localStorage.getItem('theme');
-                const sysTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (localTheme === 'dark' || (!localTheme && sysTheme)) {
-                    document.documentElement.setAttribute('data-theme', 'dark');
-                }
-            } catch (e) {}
+            document.documentElement.setAttribute('data-theme', 'dark');
         })();
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -133,7 +127,7 @@
                 <i class="fas fa-history"></i> <span>Histórico</span>
             </a>
             <a href="planner.html" class="sidebar-link">
-                <i class="fas fa-calendar-alt"></i> <span>Planner Laboratorial</span>
+                <i class="fas fa-calendar-alt"></i> <span>Planner</span>
             </a>
 
             
@@ -173,7 +167,6 @@
                 </div>
                 
                 <div style="display: flex; gap: 10px;">
-                    <button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button>
                     <a href="hub.html" class="btn-icon desktop-hidden"><i class="fas fa-arrow-left"></i></a>
                 </div>
             </header>

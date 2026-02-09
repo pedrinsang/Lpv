@@ -27,7 +27,7 @@ let selectedSlotTime = null;
 let selectedSlotDate = null;
 
 window.addEventListener('DOMContentLoaded', async () => {
-    if(localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+    document.documentElement.setAttribute('data-theme', 'dark');
 
     auth.onAuthStateChanged(async (user) => {
         if (!user) return window.location.href = '../pages/auth.html';
@@ -190,6 +190,7 @@ function renderDayView(dateStr) {
         if(canEdit) {
             const btn = card.querySelector('.btn-delete-task');
             if(btn) btn.onclick = (e) => { e.stopPropagation(); deleteTask(task.id, task.protocolo); };
+            initPendingTouchDrag(card, task, dateStr);
         }
         modalPendingList.appendChild(card);
     });
@@ -252,6 +253,7 @@ function renderDayView(dateStr) {
             
             const handle = taskEl.querySelector('.resize-handle');
             initResizeLogic(handle, taskEl, task);
+            initTouchDragLogic(taskEl, task, dateStr);
         }
         dayTimeline.appendChild(taskEl);
     });
@@ -314,60 +316,243 @@ function createTimelineSlot(hour, minutes, dateStr) {
 }
 
 function initResizeLogic(handle, element, task) {
-    handle.addEventListener('mousedown', function(e) {
-        // 1. Para tudo para o navegador focar só no resize
-        e.preventDefault(); 
-        e.stopPropagation(); 
-        
-        // 2. Trava o Drag & Drop da tarefa inteira
+    function startResize(startY) {
         element.setAttribute('draggable', 'false');
         element.classList.add('resizing-active');
-        
-        const startY = e.clientY;
         const startHeight = parseInt(element.style.height, 10);
-        
-        function doDrag(moveEvent) {
-            // Calcula nova altura
-            let newHeight = startHeight + (moveEvent.clientY - startY);
-            
-            // Altura mínima (metade de um slot)
+
+        function calcHeight(currentY) {
+            let newHeight = startHeight + (currentY - startY);
             if (newHeight < (SLOT_HEIGHT_PX/2)) newHeight = (SLOT_HEIGHT_PX/2);
-            
-            // Limite máximo (18:00)
             const currentTop = element.offsetTop;
-            const maxTimelineHeight = ((END_HOUR - START_HOUR) * 60 * PIXELS_PER_MIN) + 20; // +20 do padding
-            
-            if (currentTop + newHeight > maxTimelineHeight) {
-                newHeight = maxTimelineHeight - currentTop;
-            }
-            
+            const maxTimelineHeight = ((END_HOUR - START_HOUR) * 60 * PIXELS_PER_MIN) + 20;
+            if (currentTop + newHeight > maxTimelineHeight) newHeight = maxTimelineHeight - currentTop;
             element.style.height = newHeight + 'px';
         }
 
-        function stopDrag() {
-            document.documentElement.removeEventListener('mousemove', doDrag, false);
-            document.documentElement.removeEventListener('mouseup', stopDrag, false);
-            
-            // 3. Destrava o Drag & Drop
+        function finishResize() {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.removeEventListener('touchmove', onTouchMove);
+            document.removeEventListener('touchend', onTouchEnd);
             element.classList.remove('resizing-active');
-            element.setAttribute('draggable', 'true'); // Devolve o poder de arrastar
+            element.setAttribute('draggable', 'true');
 
-            // 4. Salva no banco (Snap to Grid)
             let finalHeightPx = parseInt(element.style.height, 10);
-            
-            // Arredonda para o slot mais próximo (opcional, mas bom para UX)
             let snappedHeightPx = Math.round(finalHeightPx / (SLOT_HEIGHT_PX/2)) * (SLOT_HEIGHT_PX/2);
             if (snappedHeightPx < (SLOT_HEIGHT_PX/2)) snappedHeightPx = (SLOT_HEIGHT_PX/2);
-            
             element.style.height = snappedHeightPx + 'px';
-            
             const newDurationMins = Math.round(snappedHeightPx / PIXELS_PER_MIN);
             updateTaskDuration(task.id, newDurationMins);
         }
 
-        document.documentElement.addEventListener('mousemove', doDrag, false);
-        document.documentElement.addEventListener('mouseup', stopDrag, false);
+        function onMouseMove(e) { calcHeight(e.clientY); }
+        function onMouseUp() { finishResize(); }
+        function onTouchMove(e) { e.preventDefault(); calcHeight(e.touches[0].clientY); }
+        function onTouchEnd() { finishResize(); }
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener('touchmove', onTouchMove, { passive: false });
+        document.addEventListener('touchend', onTouchEnd);
+    }
+
+    handle.addEventListener('mousedown', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        startResize(e.clientY);
     }, false);
+
+    handle.addEventListener('touchstart', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        startResize(e.touches[0].clientY);
+    }, { passive: false });
+}
+
+function initTouchDragLogic(taskEl, task, dateStr) {
+    let touchStartY = 0;
+    let touchStartX = 0;
+    let origTop = 0;
+    let isDragging = false;
+    let ghost = null;
+    const DRAG_THRESHOLD = 8;
+
+    const taskContent = taskEl.querySelector('.task-content');
+    const dragTarget = taskContent || taskEl;
+
+    dragTarget.addEventListener('touchstart', function(e) {
+        if (e.target.closest('.resize-handle') || e.target.closest('.task-remove-btn')) return;
+        touchStartY = e.touches[0].clientY;
+        touchStartX = e.touches[0].clientX;
+        origTop = parseInt(taskEl.style.top, 10) || 0;
+        isDragging = false;
+    }, { passive: true });
+
+    dragTarget.addEventListener('touchmove', function(e) {
+        if (e.target.closest('.resize-handle') || e.target.closest('.task-remove-btn')) return;
+        const deltaY = e.touches[0].clientY - touchStartY;
+
+        if (!isDragging && Math.abs(deltaY) > DRAG_THRESHOLD) {
+            isDragging = true;
+            taskEl.style.opacity = '0.85';
+            taskEl.style.zIndex = '100';
+            taskEl.style.boxShadow = '0 10px 25px rgba(0,0,0,0.3)';
+            // Highlight da zona de pendentes
+            const pendingsCol = document.getElementById('modal-pendings-area');
+            if (pendingsCol) pendingsCol.classList.add('drag-over');
+        }
+
+        if (isDragging) {
+            e.preventDefault();
+            let newTop = origTop + deltaY;
+            const minTop = TIMELINE_PADDING_TOP;
+            const maxTop = ((END_HOUR - START_HOUR) * 60 * PIXELS_PER_MIN) + TIMELINE_PADDING_TOP - parseInt(taskEl.style.height, 10);
+            if (newTop < minTop) newTop = minTop;
+            if (newTop > maxTop) newTop = maxTop;
+            taskEl.style.top = newTop + 'px';
+
+            // Verifica se está sobre a coluna de pendentes
+            const touch = e.touches[0];
+            const pendingsCol = document.getElementById('modal-pendings-area');
+            if (pendingsCol) {
+                const rect = pendingsCol.getBoundingClientRect();
+                if (touch.clientX >= rect.left && touch.clientX <= rect.right && touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+                    pendingsCol.classList.add('drag-over');
+                } else {
+                    pendingsCol.classList.remove('drag-over');
+                }
+            }
+        }
+    }, { passive: false });
+
+    dragTarget.addEventListener('touchend', async function(e) {
+        const pendingsCol = document.getElementById('modal-pendings-area');
+        if (pendingsCol) pendingsCol.classList.remove('drag-over');
+
+        if (!isDragging) return;
+
+        taskEl.style.opacity = '';
+        taskEl.style.zIndex = '';
+        taskEl.style.boxShadow = '';
+
+        // Verifica se soltou sobre a coluna de pendentes
+        const lastTouch = e.changedTouches[0];
+        if (pendingsCol) {
+            const rect = pendingsCol.getBoundingClientRect();
+            if (lastTouch.clientX >= rect.left && lastTouch.clientX <= rect.right && lastTouch.clientY >= rect.top && lastTouch.clientY <= rect.bottom) {
+                isDragging = false;
+                await unscheduleTask(task.id, false);
+                return;
+            }
+        }
+
+        // Snap to nearest slot na timeline
+        const currentTop = parseInt(taskEl.style.top, 10);
+        const minsFromStart = (currentTop - TIMELINE_PADDING_TOP) / PIXELS_PER_MIN;
+        const snappedMins = Math.round(minsFromStart / MINS_PER_SLOT) * MINS_PER_SLOT;
+        const snappedTop = (snappedMins * PIXELS_PER_MIN) + TIMELINE_PADDING_TOP;
+        taskEl.style.top = snappedTop + 'px';
+
+        const totalMins = (START_HOUR * 60) + snappedMins;
+        const newHour = Math.floor(totalMins / 60);
+        const newMin = totalMins % 60;
+        const newTime = `${String(newHour).padStart(2,'0')}:${String(newMin).padStart(2,'0')}`;
+
+        const duration = task.duration || 60;
+        await scheduleTask(task.id, dateStr, newTime, duration);
+        isDragging = false;
+    });
+}
+
+// Touch drag para cards pendentes → timeline
+function initPendingTouchDrag(card, task, dateStr) {
+    let touchStartY = 0;
+    let touchStartX = 0;
+    let isDragging = false;
+    let ghost = null;
+    const DRAG_THRESHOLD = 8;
+
+    card.addEventListener('touchstart', function(e) {
+        if (e.target.closest('.btn-delete-task')) return;
+        touchStartY = e.touches[0].clientY;
+        touchStartX = e.touches[0].clientX;
+        isDragging = false;
+    }, { passive: true });
+
+    card.addEventListener('touchmove', function(e) {
+        if (e.target.closest('.btn-delete-task')) return;
+        const deltaX = e.touches[0].clientX - touchStartX;
+        const deltaY = e.touches[0].clientY - touchStartY;
+
+        if (!isDragging && (Math.abs(deltaX) > DRAG_THRESHOLD || Math.abs(deltaY) > DRAG_THRESHOLD)) {
+            isDragging = true;
+            draggingTask = task;
+            // Cria ghost flutuante
+            ghost = card.cloneNode(true);
+            ghost.className = 'touch-drag-ghost';
+            ghost.style.width = card.offsetWidth + 'px';
+            document.body.appendChild(ghost);
+            card.style.opacity = '0.3';
+        }
+
+        if (isDragging && ghost) {
+            e.preventDefault();
+            ghost.style.left = (e.touches[0].clientX - ghost.offsetWidth / 2) + 'px';
+            ghost.style.top = (e.touches[0].clientY - 20) + 'px';
+
+            // Highlight nos slots da timeline
+            highlightSlotUnderTouch(e.touches[0].clientX, e.touches[0].clientY);
+        }
+    }, { passive: false });
+
+    card.addEventListener('touchend', async function(e) {
+        if (!isDragging) return;
+        card.style.opacity = '';
+        clearSlotHighlights();
+
+        if (ghost) { ghost.remove(); ghost = null; }
+
+        const lastTouch = e.changedTouches[0];
+        const dropSlot = getSlotUnderPoint(lastTouch.clientX, lastTouch.clientY);
+
+        if (dropSlot && draggingTask) {
+            const timeLabel = dropSlot.dataset.time;
+            const duration = draggingTask.duration || 60;
+            const [slotH, slotM] = timeLabel.split(':').map(Number);
+            const startMins = slotH * 60 + slotM;
+            const endMins = startMins + duration;
+            const limitMins = END_HOUR * 60;
+
+            let finalDuration = duration;
+            if (endMins > limitMins) finalDuration = limitMins - startMins;
+            if (finalDuration > 0) {
+                await scheduleTask(draggingTask.id, dateStr, timeLabel, finalDuration);
+            }
+        }
+
+        draggingTask = null;
+        isDragging = false;
+    });
+}
+
+function highlightSlotUnderTouch(x, y) {
+    clearSlotHighlights();
+    const slot = getSlotUnderPoint(x, y);
+    if (slot) slot.classList.add('drag-over');
+}
+
+function clearSlotHighlights() {
+    document.querySelectorAll('.slot-content.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+function getSlotUnderPoint(x, y) {
+    const slots = document.querySelectorAll('.slot-content');
+    for (const slot of slots) {
+        const rect = slot.getBoundingClientRect();
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+            return slot;
+        }
+    }
+    return null;
 }
 
 function openQuickTaskModal(date, time) {
