@@ -145,9 +145,12 @@ function loadUserInterface(data, uid) {
 
         const pName = document.getElementById('profile-display-name');
         if (pName) {
-            document.getElementById('profile-display-role').textContent = displayRole;
-            document.getElementById('profile-display-email').textContent = auth.currentUser.email;
-            document.getElementById('profile-display-uid').textContent = uid;
+            const pRole = document.getElementById('profile-display-role');
+            const pEmail = document.getElementById('profile-display-email');
+            const pUid = document.getElementById('profile-display-uid');
+            if (pRole) pRole.textContent = displayRole;
+            if (pEmail) pEmail.textContent = auth.currentUser.email;
+            if (pUid) pUid.textContent = uid;
             pName.textContent = fullName;
         }
 

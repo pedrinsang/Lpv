@@ -2,30 +2,141 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planner Laboratorial</title>
-    
-    <link rel="stylesheet" href="../assets/css/global.css">
-    <link rel="stylesheet" href="../assets/css/pages/planner.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Planner Laboratorial | LPV</title>
+    <script>
+        (function() {
+            try {
+                const localTheme = localStorage.getItem('theme');
+                const sysTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (localTheme === 'dark' || (!localTheme && sysTheme)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="../assets/css/pages/planner.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="../manifest.json">
+    <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
 </head>
-<body>
-    <script>
-        if(localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
-    </script>
+<style>
+/* Esconde no Desktop por padrão */
+.mobile-menu-btn, .sidebar-overlay {
+    display: none !important;
+}
 
-    <div class="app-container">
-        <header class="app-header" style="background:transparent; border:none; padding:15px 20px;">
-            <div style="display:flex; align-items:center; gap:15px;">
-                <button class="btn-mini" onclick="history.back()" style="width:40px; height:40px;"><i class="fas fa-arrow-left"></i></button>
-                <h3 style="margin:0; font-size:1.1rem; font-weight:700; color:var(--text-secondary);">Planner LPV</h3>
+@media (max-width: 900px) {
+    .mobile-menu-btn {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        background: transparent;
+        border: none;
+        color: var(--text-primary, #333);
+        cursor: pointer;
+        padding: 8px;
+    }
+    [data-theme="dark"] .mobile-menu-btn {
+        color: #fff;
+    }
+    .desktop-sidebar {
+        display: flex !important;
+        flex-direction: column;
+        position: fixed;
+        top: 0;
+        left: -100%;
+        width: 280px;
+        height: 100vh;
+        z-index: 2000;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background-color: #ffffff;
+        box-shadow: 5px 0 25px rgba(0,0,0,0.2);
+    }
+    [data-theme="dark"] .desktop-sidebar {
+        background-color: #1e1e1e;
+        border-right: 1px solid #333;
+    }
+    .desktop-sidebar.active {
+        left: 0;
+    }
+    .sidebar-overlay {
+        display: block !important;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 1999;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s;
+        backdrop-filter: blur(3px);
+    }
+    .sidebar-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+</style>
+<body>
+
+    <aside class="desktop-sidebar">
+        <div class="sidebar-header">
+            <img src="../assets/images/lpvminilogo2.png" alt="LPV" class="light-mode-only" style="height: 40px;">
+            <img src="../assets/images/lpvminilogo.png" alt="LPV" class="dark-mode-only" style="height: 40px;">
+            <div style="line-height: 1;">
+                <div class="sidebar-brand-text">LPV Digital</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">Patologia Veterinária</div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="hub.html" class="sidebar-link"><i class="fas fa-home"></i> <span>Visão Geral</span></a>
+            <a href="mural.html" class="sidebar-link"><i class="fas fa-columns"></i> <span>Mural de Produção</span></a>
+            <a href="coloracao.html" class="sidebar-link"><i class="fas fa-stopwatch"></i> <span>Timers</span></a>
+            <a href="protocolos.html" class="sidebar-link"><i class="fas fa-book-medical"></i> <span>Protocolos</span></a>
+            <a href="historico.html" class="sidebar-link"><i class="fas fa-history"></i> <span>Histórico</span></a>
+            <a href="planner.html" class="sidebar-link active"><i class="fas fa-calendar-alt"></i> <span>Planner Laboratorial</span></a>
+            <button class="sidebar-link btn-sidebar-new"><i class="fas fa-plus"></i> <span>Nova Entrada</span></button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="sidebar-user-avatar"><i class="fas fa-user"></i></div>
+            <div class="sidebar-user-info">
+                <div id="sidebar-user-name" class="user-name-text">Carregando...</div>
+                <div id="sidebar-user-role" class="user-role-text">...</div>
+            </div>
+            <button class="btn-sidebar-settings" onclick="alert('Configurações de Perfil em breve!')" title="Configurações">
+                <i class="fas fa-cog"></i>
+            </button>
+        </div>
+    </aside>
+
+    <div class="layout-wrapper">
+
+        <header class="app-header">
+            <div class="header-brand" style="display: flex; align-items: center; gap: 10px;">
+                <button id="mobile-menu-btn" class="btn-icon mobile-menu-btn">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <img src="../assets/images/lpvminilogo2.png" alt="Logo" class="header-logo light-mode-only">
+                <img src="../assets/images/lpvminilogo.png" alt="Logo" class="header-logo dark-mode-only">
+                <div class="header-text-column">
+                    <span class="brand-title">LPV<span class="brand-subtitle">Planner</span></span>
+                    <span id="user-role-badge" class="user-badge">...</span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button id="theme-toggle" class="btn-icon"><i class="fas fa-moon"></i></button>
+                <button id="logout-btn" class="btn-icon" style="color: var(--color-error);"><i class="fas fa-sign-out-alt"></i></button>
             </div>
         </header>
 
-        <main class="planner-layout">
+        <main class="main-container">
+            <div class="planner-layout">
             <section class="calendar-section">
                 <div class="calendar-controls">
                     <button id="prev-month" class="btn-mini"><i class="fas fa-chevron-left"></i></button>
@@ -46,7 +157,6 @@
                 </div>
                 <div id="calendar-grid" class="calendar-grid"></div>
             </section>
-        </main>
 
         <div id="day-view-modal" class="day-view-overlay hidden">
             <div class="day-view-content">
@@ -104,8 +214,44 @@
                 </div>
             </div>
         </div>
+        </div>
+        </main>
+
     </div>
 
+    <nav class="bottom-nav">
+        <a href="hub.html" class="nav-item"><i class="fas fa-home"></i><span>Início</span></a>
+        <a href="mural.html" class="nav-item"><i class="fas fa-columns"></i><span>Mural</span></a>
+        <div class="nav-fab-container">
+            <button class="nav-fab"><i class="fas fa-plus"></i></button>
+        </div>
+        <a href="coloracao.html" class="nav-item"><i class="fas fa-stopwatch"></i><span>Timers</span></a>
+        <a href="perfil.html" class="nav-item" id="mobile-profile-link">
+            <i class="fas fa-user-circle" style="font-size: 1.4rem;"></i>
+            <span id="mobile-user-name" style="font-weight: 600;">Perfil</span>
+        </a>
+    </nav>
+
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('mobile-menu-btn');
+            const sidebar = document.querySelector('.desktop-sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            function toggleSidebar() {
+                if(!sidebar) return;
+                sidebar.classList.toggle('active');
+                if(overlay) overlay.classList.toggle('active');
+            }
+
+            if(btn) btn.addEventListener('click', (e) => { e.stopPropagation(); toggleSidebar(); });
+            if(overlay) overlay.addEventListener('click', toggleSidebar);
+        });
+    </script>
+
+    <script type="module" src="../assets/js/core.js"></script>
     <script type="module" src="../assets/js/pages/planner.js"></script>
 </body>
 </html>
