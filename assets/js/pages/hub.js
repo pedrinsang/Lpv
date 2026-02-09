@@ -195,12 +195,13 @@ function renderQueue(tasks) {
     // Ordena por data de atualização (mais recente primeiro) se existir, ou fallback
     tasks.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
 
-    tasks.forEach(task => {
+    tasks.forEach((task, index) => {
         const div = document.createElement('div');
         
         // Usa classes do CSS global
         const colorClass = task.k7Color ? `k7-${task.k7Color}` : '';
         div.className = `sample-ticket ${colorClass}`;
+        div.style.setProperty('--card-index', index);
 
         div.onclick = () => {
             // Verifica se existe a função global de abrir, senão redireciona

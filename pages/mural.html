@@ -92,7 +92,7 @@
             .kanban-board { 
                 height: calc(100vh - 160px); 
                 scroll-snap-type: none; /* Remove trava */
-                padding: 0 5px 15px 5px; /* Padding normal */
+                padding: 0 5px 15px 15px; /* Padding normal */
                 gap: 15px;
                 
                 /* MOSTRAR SCROLLBAR */
@@ -139,13 +139,22 @@
             background: var(--bg-glass); padding: 14px; border-radius: 12px;
             border: 1px solid var(--border-glass); cursor: pointer;
             box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: transform 0.35s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
+                        box-shadow 0.35s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
+                        border-color 0.3s ease;
             position: relative;
+            opacity: 0;
+            animation: cardSlideIn 0.45s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)) both;
+            animation-delay: calc(var(--card-index, 0) * 0.05s);
         }
         .mural-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
             border-color: var(--color-primary);
+        }
+        .mural-card:active {
+            transform: translateY(-1px) scale(0.98);
+            transition-duration: 0.1s;
         }
         .mural-tag { font-size: 0.7rem; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,0.05); font-weight: 600; }
         .k7-azul { border-left: 4px solid #3b82f6; }
@@ -191,7 +200,10 @@
 
     <div class="layout-wrapper">
         <header class="app-header">
-            <div class="header-brand">
+            <div class="header-brand" style="display: flex; align-items: center; gap: 10px;">
+                <button id="mobile-menu-btn" class="btn-icon mobile-menu-btn">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <img src="../assets/images/lpvminilogo2.png" alt="Logo" class="header-logo light-mode-only">
                 <img src="../assets/images/lpvminilogo.png" alt="Logo" class="header-logo dark-mode-only">
                 
@@ -243,7 +255,7 @@
         <a href="mural.html" class="nav-item active"><i class="fas fa-columns"></i><span>Mural</span></a>
         <div class="nav-fab-container"><button class="nav-fab"><i class="fas fa-plus"></i></button></div>
         <a href="coloracao.html" class="nav-item"><i class="fas fa-stopwatch"></i><span>Timers</span></a>
-        <a href="perfil.html" class="nav-item"><i class="fas fa-user-circle"></i><span>Perfil</span></a>
+        <a href="planner.html" class="nav-item"><i class="fas fa-calendar-alt"></i><span>Planner</span></a>
     </nav>
 
     <div id="task-manager-modal" class="modal-overlay hidden">
@@ -394,6 +406,8 @@
 
         </div>
     </div>
+
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
     <script type="module" src="../assets/js/core.js"></script>
     <script type="module" src="../assets/js/components/task-manager.js"></script>

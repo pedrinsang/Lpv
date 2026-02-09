@@ -91,14 +91,14 @@ function renderList(reports) {
         return;
     }
 
-    listContainer.innerHTML = reports.map(task => {
+    listContainer.innerHTML = reports.map((task, index) => {
         const dataLib = task.releaseDateObj.toLocaleDateString('pt-BR');
         const tipoClass = task.type === 'necropsia' ? 'color:#3b82f6;' : 'color:#ec4899;';
         const tipoLabel = task.type === 'necropsia' ? 'Necropsia' : 'Biópsia';
 
         // ALTERAÇÃO: Botão Baixar Documento (PDF)
         return `
-        <div class="report-card" onclick="window.openTaskManager('${task.id}')">
+        <div class="report-card" style="--card-index: ${index}" onclick="window.openTaskManager('${task.id}')">
             <div class="card-header">
                 <div class="card-code">${task.accessCode || '---'}</div>
                 <div class="card-date"><i class="far fa-calendar-alt"></i> ${dataLib}</div>

@@ -168,6 +168,25 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (logoutBtn) logoutBtn.addEventListener('click', logout);
     if (logoutProfile) logoutProfile.addEventListener('click', logout);
+
+    // 3. Stagger animation indices para sidebar links
+    document.querySelectorAll('.sidebar-link').forEach((link, i) => {
+        link.style.setProperty('--link-index', i);
+    });
+
+    // 4. Sidebar mobile toggle (global)
+    const menuBtn = document.getElementById('mobile-menu-btn');
+    const sidebar = document.querySelector('.desktop-sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+    function toggleSidebar() {
+        if (!sidebar) return;
+        sidebar.classList.toggle('active');
+        if (sidebarOverlay) sidebarOverlay.classList.toggle('active');
+    }
+
+    if (menuBtn) menuBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleSidebar(); });
+    if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleSidebar);
 });
 
 // EXPORTS

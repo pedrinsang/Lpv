@@ -9,6 +9,8 @@ let tasksCache = [];
 let draggingTask = null;
 let currentDateView = null;
 let canEdit = false;
+let animateGrid = true;
+let animateDayView = false;
 
 const SLOT_HEIGHT_PX = 50;     
 const MINS_PER_SLOT = 30;
@@ -25,6 +27,7 @@ const calendarGrid = document.getElementById('calendar-grid');
 
 let selectedSlotTime = null;
 let selectedSlotDate = null;
+let placementTask = null;
 
 window.addEventListener('DOMContentLoaded', async () => {
     document.documentElement.setAttribute('data-theme', 'dark');
@@ -47,6 +50,7 @@ function subscribeToTasks() {
         tasksCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderCalendarGrid();
         if (currentDateView) renderDayView(currentDateView);
+        animateGrid = false;
     });
 }
 
@@ -55,10 +59,12 @@ let currYear = new Date().getFullYear();
 
 function initCalendarControls() {
     renderCalendarGrid();
-    document.getElementById('prev-month').onclick = () => { currMonth--; if(currMonth<0){currMonth=11;currYear--}; renderCalendarGrid(); };
-    document.getElementById('next-month').onclick = () => { currMonth++; if(currMonth>11){currMonth=0;currYear++}; renderCalendarGrid(); };
-    document.getElementById('today-btn').onclick = () => { const d = new Date(); currMonth = d.getMonth(); currYear = d.getFullYear(); renderCalendarGrid(); };
+    document.getElementById('prev-month').onclick = () => { currMonth--; if(currMonth<0){currMonth=11;currYear--}; animateMonthChange(); };
+    document.getElementById('next-month').onclick = () => { currMonth++; if(currMonth>11){currMonth=0;currYear++}; animateMonthChange(); };
+    document.getElementById('today-btn').onclick = () => { const d = new Date(); currMonth = d.getMonth(); currYear = d.getFullYear(); animateMonthChange(); };
     document.getElementById('close-day-view').onclick = () => { dayModal.classList.add('hidden'); currentDateView = null; };
+    initSwipeNavigation();
+    initDayViewTabs();
 }
 
 function renderCalendarGrid() {
@@ -74,7 +80,10 @@ function renderCalendarGrid() {
     const daysInMonth = new Date(currYear, currMonth + 1, 0).getDate();
     const firstDay = new Date(currYear, currMonth, 1).getDay();
 
-    for(let i=0; i<firstDay; i++) calendarGrid.appendChild(document.createElement('div'));
+    for(let i=0; i<firstDay; i++) {
+        const emptyEl = document.createElement('div');
+        calendarGrid.appendChild(emptyEl);
+    }
 
     for(let d=1; d<=daysInMonth; d++) {
         const dateStr = `${currYear}-${String(currMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -120,31 +129,75 @@ function renderCalendarGrid() {
 
         const el = document.createElement('div');
         el.className = 'calendar-day';
+        if (!animateGrid) el.classList.add('no-anim');
+        el.style.setProperty('--day-index', firstDay + d - 1);
         if (dateStr === new Date().toISOString().split('T')[0]) el.classList.add('today');
 
+        const taskCountHtml = tasksForDay.length > 0 ? `<div class="mobile-task-count">${tasksForDay.length}</div>` : '';
         el.innerHTML = `
             <div class="day-number">${d}</div>
             ${densityBarHtml}
+            ${taskCountHtml}
             ${detailsHtml}
         `;
         
-        el.onclick = () => openDayView(dateStr);
+        el.onclick = () => { if (window._plannerSwipeOccurred) return; openDayView(dateStr); };
         calendarGrid.appendChild(el);
     }
+}
 
-    // Legenda
-    let legend = document.getElementById('calendar-legend');
-    if (!legend) {
-        legend = document.createElement('div');
-        legend.id = 'calendar-legend';
-        legend.className = 'calendar-legend-container';
-        legend.innerHTML = `
-            <div class="legend-item"><div class="legend-dot blue"></div> Necropsia</div>
-            <div class="legend-item"><div class="legend-dot pink"></div> Biópsia</div>
-            <div class="legend-item"><div class="legend-dot gray"></div> Outros</div>
-        `;
-        calendarGrid.parentNode.appendChild(legend);
+function animateMonthChange() {
+    const monthEl = document.getElementById('calendar-month');
+    if (monthEl) {
+        monthEl.classList.remove('animating');
+        void monthEl.offsetWidth; // force reflow
+        monthEl.classList.add('animating');
     }
+    animateGrid = true;
+    renderCalendarGrid();
+    animateGrid = false;
+}
+
+function initSwipeNavigation() {
+    const grid = document.getElementById('calendar-grid');
+    if (!grid) return;
+    let startX = 0, startY = 0;
+    window._plannerSwipeOccurred = false;
+
+    grid.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+    }, { passive: true });
+
+    grid.addEventListener('touchend', (e) => {
+        const diffX = e.changedTouches[0].clientX - startX;
+        const diffY = e.changedTouches[0].clientY - startY;
+        if (Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+            window._plannerSwipeOccurred = true;
+            setTimeout(() => { window._plannerSwipeOccurred = false; }, 300);
+            if (diffX < 0) { currMonth++; if (currMonth > 11) { currMonth = 0; currYear++; } }
+            else { currMonth--; if (currMonth < 0) { currMonth = 11; currYear--; } }
+            animateMonthChange();
+        }
+    });
+}
+
+function initDayViewTabs() {
+    document.querySelectorAll('.day-view-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.day-view-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const timeline = document.querySelector('.timeline-column');
+            const pendings = document.querySelector('.pendings-column');
+            if (tab.dataset.tab === 'timeline') {
+                timeline.classList.remove('tab-hidden');
+                pendings.classList.add('tab-hidden');
+            } else {
+                timeline.classList.add('tab-hidden');
+                pendings.classList.remove('tab-hidden');
+            }
+        });
+    });
 }
 
 function openDayView(dateStr) {
@@ -153,7 +206,17 @@ function openDayView(dateStr) {
     const dateObj = new Date(y, m-1, d);
     document.getElementById('selected-date-title').innerText = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', weekday: 'long' });
     dayModal.classList.remove('hidden');
+    // Reset tabs to Agenda
+    document.querySelectorAll('.day-view-tab').forEach(t => t.classList.remove('active'));
+    const agendaTab = document.querySelector('.day-view-tab[data-tab="timeline"]');
+    if (agendaTab) agendaTab.classList.add('active');
+    const tlCol = document.querySelector('.timeline-column');
+    const pdCol = document.querySelector('.pendings-column');
+    if (tlCol) tlCol.classList.remove('tab-hidden');
+    if (pdCol) pdCol.classList.add('tab-hidden');
+    animateDayView = true;
     renderDayView(dateStr);
+    animateDayView = false;
 }
 
 function renderDayView(dateStr) {
@@ -170,6 +233,8 @@ function renderDayView(dateStr) {
         else if ((task.type === 'necropsia') || (!task.type && task.k7Color === 'azul')) { colorClass = 'task-blue'; typeLabel = 'NECRO'; }
         
         card.className = `planner-task-card ${colorClass}`;
+        if (!animateDayView) card.classList.add('no-anim');
+        card.style.setProperty('--card-index', pendings.indexOf(task));
         card.draggable = canEdit;
         
         card.innerHTML = `
@@ -178,7 +243,7 @@ function renderDayView(dateStr) {
                 <span style="font-size:0.65rem; font-weight:700; color:var(--text-secondary); background:rgba(0,0,0,0.05); padding:2px 6px; border-radius:4px;">${typeLabel}</span>
             </div>
             <div style="font-size:0.8rem; color:var(--text-secondary); line-height:1.3; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${task.animalNome || ''}</div>
-            ${canEdit ? `<button class="btn-delete-task" title="Excluir"><i class="fas fa-trash-alt"></i></button>` : ''}
+            ${canEdit ? `<button class="btn-schedule-task" title="Agendar"><i class="fas fa-clock"></i></button><button class="btn-delete-task" title="Excluir"><i class="fas fa-trash-alt"></i></button>` : ''}
         `;
         
         card.addEventListener('dragstart', (e) => {
@@ -190,10 +255,23 @@ function renderDayView(dateStr) {
         if(canEdit) {
             const btn = card.querySelector('.btn-delete-task');
             if(btn) btn.onclick = (e) => { e.stopPropagation(); deleteTask(task.id, task.protocolo); };
+            const schedBtn = card.querySelector('.btn-schedule-task');
+            if(schedBtn) schedBtn.onclick = (e) => { e.stopPropagation(); enterPlacementMode(task); };
             initPendingTouchDrag(card, task, dateStr);
         }
         modalPendingList.appendChild(card);
     });
+
+    // Update pending count badge
+    const badge = document.getElementById('pendings-count');
+    if (badge) badge.textContent = pendings.length > 0 ? pendings.length : '';
+
+    // Empty state pendentes
+    const pendingsEmpty = document.getElementById('pendings-empty');
+    if (pendingsEmpty) {
+        if (pendings.length === 0) pendingsEmpty.classList.remove('hidden');
+        else pendingsEmpty.classList.add('hidden');
+    }
 
     // Renderiza Slots
     dayTimeline.innerHTML = "";
@@ -204,6 +282,7 @@ function renderDayView(dateStr) {
 
     // Renderiza Agendados (COM CORREÇÃO DE POSIÇÃO)
     const scheduled = tasksCache.filter(t => t.scheduledDate === dateStr);
+
     scheduled.forEach(task => {
         const startHour = parseInt(task.scheduledTime.split(':')[0]);
         const startMin = parseInt(task.scheduledTime.split(':')[1] || '0');
@@ -223,6 +302,8 @@ function renderDayView(dateStr) {
 
         const taskEl = document.createElement('div');
         taskEl.className = `scheduled-task ${colorClass}`;
+        if (!animateDayView) taskEl.classList.add('no-anim');
+        taskEl.style.setProperty('--task-index', scheduled.indexOf(task));
         taskEl.style.top = `${topPos}px`;
         taskEl.style.height = `${height}px`;
 
@@ -290,7 +371,15 @@ function createTimelineSlot(hour, minutes, dateStr) {
     contentDiv.dataset.time = timeLabel;
 
     if (canEdit) {
-        contentDiv.addEventListener('click', (e) => { if (e.target === contentDiv) openQuickTaskModal(dateStr, timeLabel); });
+        contentDiv.addEventListener('click', (e) => {
+            if (e.target === contentDiv) {
+                if (placementTask) {
+                    handlePlacementDrop(dateStr, timeLabel);
+                } else {
+                    openQuickTaskModal(dateStr, timeLabel);
+                }
+            }
+        });
         contentDiv.addEventListener('dragover', (e) => { e.preventDefault(); contentDiv.classList.add('drag-over'); });
         contentDiv.addEventListener('dragleave', () => contentDiv.classList.remove('drag-over'));
         
@@ -564,6 +653,7 @@ function openQuickTaskModal(date, time) {
 
 function setupQuickModal() {
     document.getElementById('cancel-quick-task').onclick = () => quickModal.classList.add('hidden');
+    document.getElementById('cancel-placement').onclick = () => exitPlacementMode();
     document.getElementById('save-quick-task').onclick = async () => {
         const title = document.getElementById('quick-task-title').value;
         const desc = document.getElementById('quick-task-desc').value;
@@ -592,7 +682,6 @@ async function scheduleTask(id, date, time, duration) {
 }
 
 async function unscheduleTask(id, confirmAction) {
-    if(confirmAction && !confirm("Desagendar tarefa?")) return;
     await updateDoc(doc(db, "tasks", id), { scheduledDate: null, scheduledTime: null, duration: null });
 }
 
@@ -602,4 +691,46 @@ async function deleteTask(id, title) {
     if(confirm(`Tem certeza que deseja excluir "${title}"?`)) {
         try { await deleteDoc(doc(db, "tasks", id)); } catch (e) { console.error(e); alert("Erro."); }
     }
+}
+
+// ====== PLACEMENT MODE (Mobile tap-to-schedule) ======
+function enterPlacementMode(task) {
+    placementTask = task;
+    // Switch to Agenda tab
+    document.querySelectorAll('.day-view-tab').forEach(t => t.classList.remove('active'));
+    const agendaTab = document.querySelector('.day-view-tab[data-tab="timeline"]');
+    if (agendaTab) agendaTab.classList.add('active');
+    const tlCol = document.querySelector('.timeline-column');
+    const pdCol = document.querySelector('.pendings-column');
+    if (tlCol) tlCol.classList.remove('tab-hidden');
+    if (pdCol) pdCol.classList.add('tab-hidden');
+    // Show banner
+    const banner = document.getElementById('placement-banner');
+    const taskName = document.getElementById('placement-task-name');
+    if (banner) banner.classList.remove('hidden');
+    if (taskName) taskName.textContent = task.protocolo || 'tarefa';
+    // Highlight slots
+    document.querySelectorAll('.slot-content').forEach(s => s.classList.add('placement-active'));
+}
+
+function exitPlacementMode() {
+    placementTask = null;
+    const banner = document.getElementById('placement-banner');
+    if (banner) banner.classList.add('hidden');
+    document.querySelectorAll('.slot-content').forEach(s => s.classList.remove('placement-active'));
+}
+
+async function handlePlacementDrop(dateStr, timeLabel) {
+    if (!placementTask) return;
+    const task = placementTask;
+    const duration = task.duration || 60;
+    const [slotH, slotM] = timeLabel.split(':').map(Number);
+    const startMins = slotH * 60 + slotM;
+    const endMins = startMins + duration;
+    const limitMins = END_HOUR * 60;
+    let finalDuration = duration;
+    if (endMins > limitMins) finalDuration = limitMins - startMins;
+    if (finalDuration <= 0) { exitPlacementMode(); return; }
+    exitPlacementMode();
+    await scheduleTask(task.id, dateStr, timeLabel, finalDuration);
 }

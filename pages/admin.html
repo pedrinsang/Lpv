@@ -208,8 +208,10 @@
 
     <div class="layout-wrapper">
         <header class="app-header">
-            <div class="header-brand" style="display: flex; align-items: center;">
-                <button class="mobile-back-btn" onclick="window.location.href='hub.html'"><i class="fas fa-arrow-left"></i></button>
+            <div class="header-brand" style="display: flex; align-items: center; gap: 10px;">
+                <button id="mobile-menu-btn" class="btn-icon mobile-menu-btn">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <img src="../assets/images/lpvminilogo2.png" class="header-logo light-mode-only">
                 <img src="../assets/images/lpvminilogo.png" class="header-logo dark-mode-only">
                 <div class="header-text-column">
@@ -369,6 +371,8 @@
 
         </div>
     </div>
+
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
     <script type="module" src="../assets/js/core.js"></script>
     <script type="module" src="../assets/js/components/entry-modal.js"></script>

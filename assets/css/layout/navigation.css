@@ -1,0 +1,105 @@
+/* ================================================================
+   LPV DESIGN SYSTEM — NAVEGAÇÃO INFERIOR (MOBILE)
+   Bottom nav bar com FAB central
+   ================================================================ */
+
+.bottom-nav {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 95%;
+  max-width: 420px;
+  height: 70px;
+  background: rgba(30, 41, 59, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 35px;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 999;
+  padding: 0 10px;
+  animation: navSlideUp 0.5s var(--ease-spring) 0.2s both;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  width: 50px;
+  text-align: center;
+  gap: 4px;
+  transition: color var(--duration-normal) ease,
+              transform var(--duration-normal) var(--ease-spring);
+  position: relative;
+}
+
+.nav-item i {
+  font-size: 1.2rem;
+  margin-bottom: 2px;
+  transition: transform var(--duration-normal) var(--ease-spring);
+}
+
+.nav-item:active {
+  transform: scale(0.88);
+  transition-duration: var(--duration-fast);
+}
+
+.nav-item.active {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.nav-item.active i {
+  transform: translateY(-2px);
+}
+
+/* Indicador ativo animado */
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  width: 20px;
+  height: 3px;
+  background: var(--color-primary);
+  border-radius: 2px;
+  animation: scaleIn var(--duration-normal) var(--ease-spring) both;
+}
+
+/* FAB Central */
+.nav-fab-container {
+  position: relative;
+  top: -25px;
+}
+
+.nav-fab {
+  width: 70px;
+  height: 70px;
+  background: var(--gradient-main);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.6rem;
+  border: 5px solid var(--bg-body);
+  box-shadow: 0 8px 20px rgba(2, 132, 199, 0.4);
+  cursor: pointer;
+  transition: transform var(--duration-normal) var(--ease-spring),
+              box-shadow var(--duration-normal) ease;
+}
+
+.nav-fab:hover {
+  transform: scale(1.08);
+  box-shadow: 0 10px 25px rgba(2, 132, 199, 0.5);
+}
+
+.nav-fab:active {
+  transform: scale(0.92);
+  transition-duration: var(--duration-fast);
+}

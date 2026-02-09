@@ -12,50 +12,26 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="../assets/css/pages/coloracao.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="manifest" href="../manifest.json">
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
 
     <style>
-        /* --- ESTILOS ESPECÍFICOS DESTA PÁGINA --- */
+        /* --- ESTILOS ESPECÍFICOS DESTA PÁGINA (Overrides) --- */
 
-        /* TIMER VISUAL (Círculo SVG) */
-        .timer-wrapper {
-            position: relative; width: 260px; height: 260px; margin: 2rem auto;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .progress-ring__circle {
-            transition: stroke-dashoffset 0.1s linear;
-            transform: rotate(-90deg); transform-origin: 50% 50%;
-            stroke: var(--color-primary);
-        }
-        .timer-digital {
-            position: absolute; font-size: 3.5rem; font-weight: 800;
-            color: var(--text-primary); font-variant-numeric: tabular-nums;
-        }
-
-        /* OVERLAY (Modo Execução) */
+        /* OVERLAY (Modo Execução) - override inline */
         .overlay-mode {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg-body); z-index: 2000;
             display: flex; flex-direction: column;
-            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: overlayEnter 0.4s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)) both;
         }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        /* LISTA DE PROTOCOLOS (Cards) */
+        /* LISTA DE PROTOCOLOS (Cards) - layout overrides */
         .protocol-card {
-            display: flex; align-items: center; gap: 15px;
-            padding: 16px; margin-bottom: 12px;
-            background: var(--bg-glass); border: 1px solid var(--border-glass);
-            border-radius: 18px; cursor: pointer; transition: 0.2s; margin: 10px;
-        }
-        .protocol-card:hover { transform: translateY(-3px); border-color: var(--color-primary); }
-        
-        .protocol-icon {
-            width: 50px; height: 50px; border-radius: 14px;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 800; color: white; font-size: 1.1rem; flex-shrink: 0;
+            gap: 15px;
+            margin: 10px;
         }
 
         /* BARRA DE CONTROLE (Footer do Timer) */
@@ -65,33 +41,39 @@
             border-top-left-radius: 30px; border-top-right-radius: 30px;
             box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
             display: flex; justify-content: center; gap: 20px;
+            animation: fadeInUp 0.4s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)) both;
+            animation-delay: 0.3s;
         }
-        .btn-round-large {
-            width: 70px; height: 70px; border-radius: 50%; border: none;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem; color: white; cursor: pointer;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2); transition: transform 0.1s;
-        }
-        .btn-round-large:active { transform: scale(0.95); }
         .btn-play { background: var(--color-primary); }
-        .btn-skip { background: transparent; border: 2px solid var(--border-glass); color: var(--text-secondary); width: 50px; height: 50px; font-size: 1rem; }
+        .btn-skip { 
+            background: transparent; border: 2px solid var(--border-glass); 
+            color: var(--text-secondary); width: 50px; height: 50px; font-size: 1rem;
+            transition: all 0.3s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1));
+        }
+        .btn-skip:hover {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+            transform: scale(1.08);
+        }
+        .btn-skip:active {
+            transform: scale(0.92);
+            transition-duration: 0.1s;
+        }
 
         /* --- CORREÇÕES PARA DESKTOP (GRID LAYOUT) --- */
         @media (min-width: 1024px) {
-            /* Transforma a lista vertical em Grade (Grid) */
             #protocol-list {
                 display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); /* Colunas automáticas */
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
                 gap: 20px;
             }
             
             .protocol-card {
-                margin-bottom: 0; /* Remove margem pois o grid usa gap */
-                height: 100%; /* Altura uniforme */
+                margin-bottom: 0;
+                height: 100%;
                 padding: 1.5rem;
             }
 
-            /* Sobrescreve o título "Dashboard" do CSS Global para "Timers" nesta página */
             .header-brand::after {
                 content: "Timers de Coloração" !important;
             }
@@ -157,7 +139,10 @@
 
         <div id="menu-view">
             <header class="app-header">
-                <div class="header-brand">
+                <div class="header-brand" style="display: flex; align-items: center; gap: 10px;">
+                    <button id="mobile-menu-btn" class="btn-icon mobile-menu-btn">
+                        <i class="fas fa-bars"></i>
+                    </button>
                     <img src="../assets/images/lpvminilogo2.png" class="header-logo light-mode-only">
                     <img src="../assets/images/lpvminilogo.png" class="header-logo dark-mode-only">
                     <div class="header-text-column">
@@ -228,11 +213,7 @@
             <button class="nav-fab"><i class="fas fa-plus"></i></button>
         </div>
         <a href="coloracao.html" class="nav-item active"><i class="fas fa-stopwatch"></i><span>Timers</span></a>
-        <a href="perfil.html" class="nav-item" id="mobile-profile-link">
-            <i class="fas fa-user-circle" style="font-size: 1.4rem;"></i>
-            
-            <span id="mobile-user-name" style="font-weight: 600;">Perfil</span>
-        </a>
+        <a href="planner.html" class="nav-item"><i class="fas fa-calendar-alt"></i><span>Planner</span></a>
     </nav>
 
     <div id="entry-modal" class="modal-overlay hidden">
@@ -349,6 +330,8 @@
 
         </div>
     </div>
+
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
     <script type="module" src="../assets/js/core.js"></script>
     <script type="module" src="../assets/js/components/entry-modal.js"></script>

@@ -1,0 +1,193 @@
+/* ================================================================
+   LPV DESIGN SYSTEM — SIDEBAR
+   Navegação lateral desktop + mobile drawer
+   ================================================================ */
+
+.desktop-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: var(--sidebar-width);
+  height: 100vh;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-glass);
+  z-index: 2000;
+  padding: 1.5rem;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.02);
+  transition: all var(--duration-normal) var(--ease-smooth);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 3rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-glass);
+  animation: fadeInLeft 0.4s var(--ease-spring) 0.1s both;
+}
+
+.sidebar-brand-text {
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: var(--color-primary-dark);
+}
+
+[data-theme="dark"] .sidebar-brand-text {
+  color: #ffffff;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all var(--duration-normal) var(--ease-spring);
+  opacity: 0;
+  animation: sidebarSlideIn 0.4s var(--ease-spring) both;
+  animation-delay: calc(var(--link-index, 0) * 40ms);
+}
+
+.sidebar-link:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-primary);
+  padding-left: 21px;
+  transform: translateX(3px);
+}
+
+.sidebar-link:active {
+  transform: scale(0.97);
+  transition-duration: var(--duration-fast);
+}
+
+.sidebar-link.active {
+  background: var(--gradient-main);
+  color: white;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+  transform: none;
+}
+
+.sidebar-link.active:hover {
+  background: var(--gradient-main);
+  color: white;
+  filter: brightness(1.1);
+  padding-left: 16px;
+  transform: none;
+}
+
+.sidebar-link i {
+  width: 24px;
+  text-align: center;
+  font-size: 1.1rem;
+  transition: transform var(--duration-normal) var(--ease-spring);
+}
+
+.sidebar-link:hover i {
+  transform: scale(1.1);
+}
+
+.btn-sidebar-new {
+  background: transparent;
+  border: 2px dashed var(--border-glass);
+  color: var(--color-primary);
+  margin-top: 1rem;
+  justify-content: center;
+  transition: all var(--duration-normal) var(--ease-spring);
+}
+
+.btn-sidebar-new:hover {
+  background: rgba(2, 132, 199, 0.05);
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+}
+
+
+/* ================================================================
+   SIDEBAR FOOTER (Perfil do Usuário)
+   ================================================================ */
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-glass);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  animation: fadeInUp 0.4s var(--ease-spring) 0.5s both;
+}
+
+.sidebar-user-avatar {
+  width: 40px;
+  height: 40px;
+  background: var(--gradient-main);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  transition: transform var(--duration-normal) var(--ease-spring);
+}
+
+.sidebar-user-avatar:hover {
+  transform: scale(1.1);
+}
+
+.sidebar-user-info {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.user-name-text {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-role-text {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.btn-sidebar-settings {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-normal) var(--ease-spring);
+}
+
+.btn-sidebar-settings:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-primary);
+  transform: rotate(45deg);
+}
+
+.btn-sidebar-settings:active {
+  transform: rotate(45deg) scale(0.85);
+}

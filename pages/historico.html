@@ -77,15 +77,24 @@
             border: 1px solid var(--border-glass);
             border-radius: 16px; 
             padding: 1.5rem;
-            transition: all 0.3s ease; 
+            transition: transform 0.35s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
+                        box-shadow 0.35s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
+                        border-color 0.3s ease;
             position: relative; 
             overflow: hidden;
             cursor: pointer;
+            opacity: 0;
+            animation: cardSlideIn 0.5s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)) both;
+            animation-delay: calc(var(--card-index, 0) * 0.06s);
         }
         .report-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-5px) scale(1.01);
             border-color: var(--color-primary);
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .report-card:active {
+            transform: translateY(-2px) scale(0.98);
+            transition-duration: 0.1s;
         }
 
         .report-card::before {
@@ -169,9 +178,9 @@
     <div class="layout-wrapper">
         
         <header class="app-header">
-            <div class="header-brand" style="display: flex; align-items: center;">
-                <button class="mobile-back-btn" onclick="window.location.href='hub.html'">
-                    <i class="fas fa-arrow-left"></i>
+            <div class="header-brand" style="display: flex; align-items: center; gap: 10px;">
+                <button id="mobile-menu-btn" class="btn-icon mobile-menu-btn">
+                    <i class="fas fa-bars"></i>
                 </button>
 
                 <img src="../assets/images/lpvminilogo2.png" alt="Logo" class="header-logo light-mode-only">
@@ -361,6 +370,8 @@
 
         </div>
     </div>
+
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.min.js"></script>
     <script type="module" src="../assets/js/components/task-manager.js"></script>

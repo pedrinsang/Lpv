@@ -65,10 +65,10 @@ function renderMenu() {
     if (!listContainer) return;
     listContainer.innerHTML = '';
     
-    Object.entries(PROTOCOLS_DATA).forEach(([key, data]) => {
+    Object.entries(PROTOCOLS_DATA).forEach(([key, data], index) => {
         const stepCount = data.steps.length;
         const html = `
-            <div class="protocol-card" onclick="startProtocol('${key}')">
+            <div class="protocol-card" style="--card-index: ${index}" onclick="startProtocol('${key}')">
                 <div class="protocol-icon" style="background: ${data.color}">
                     ${key.substring(0,2).toUpperCase()}
                 </div>
@@ -78,7 +78,7 @@ function renderMenu() {
                         ${stepCount === 1 ? 'Em breve' : stepCount + ' etapas'}
                     </p>
                 </div>
-                <div style="margin-left:auto; opacity:0.3;"><i class="fas fa-chevron-right"></i></div>
+                <div class="card-arrow" style="margin-left:auto;"><i class="fas fa-chevron-right"></i></div>
             </div>
         `;
         listContainer.insertAdjacentHTML('beforeend', html);
@@ -105,6 +105,28 @@ window.startProtocol = (key) => {
 
 function loadStep(index) {
     stopAlarm(); // Garante que o alarme pare ao trocar de passo
+    
+    const timerCard = document.querySelector('.timer-card');
+    const timerWrapper = document.querySelector('.timer-wrapper');
+    
+    // Step transition animation
+    if (timerCard && currentStepIndex !== index) {
+        timerCard.classList.remove('step-enter');
+        timerCard.classList.add('step-exit');
+        setTimeout(() => {
+            timerCard.classList.remove('step-exit');
+            timerCard.classList.add('step-enter');
+            applyStep(index);
+        }, 250);
+    } else {
+        applyStep(index);
+    }
+    
+    // Remove running glow when changing steps
+    if (timerWrapper) timerWrapper.classList.remove('running');
+}
+
+function applyStep(index) {
     currentStepIndex = index;
     const step = currentSteps[index];
     
@@ -175,6 +197,10 @@ function toggleTimer() {
         btn.innerHTML = '<i class="fas fa-pause"></i>';
         btn.style.background = 'var(--color-warning)';
         
+        // Add running glow to timer wrapper
+        const timerWrapper = document.querySelector('.timer-wrapper');
+        if (timerWrapper) timerWrapper.classList.add('running');
+        
         timerInterval = setInterval(tick, 1000);
     } else {
         // PAUSE
@@ -182,6 +208,10 @@ function toggleTimer() {
         clearInterval(timerInterval);
         btn.innerHTML = '<i class="fas fa-play"></i>';
         btn.style.background = 'var(--color-primary)';
+        
+        // Remove running glow
+        const timerWrapper = document.querySelector('.timer-wrapper');
+        if (timerWrapper) timerWrapper.classList.remove('running');
     }
 }
 
@@ -199,6 +229,23 @@ function tick() {
             const displayTime = Math.max(0, remainingTime);
             const offset = circumference - (displayTime / totalTime) * circumference;
             progressCircle.style.strokeDashoffset = offset;
+            
+            // Color change based on remaining time percentage
+            const pct = displayTime / totalTime;
+            progressCircle.classList.remove('time-warning', 'time-critical');
+            if (pct <= 0.1) {
+                progressCircle.classList.add('time-critical');
+            } else if (pct <= 0.25) {
+                progressCircle.classList.add('time-warning');
+            }
+        }
+        
+        // Tick animation on digital timer
+        const timerText = document.getElementById('timer-text');
+        if (timerText) {
+            timerText.classList.remove('tick');
+            void timerText.offsetWidth; // Force reflow
+            timerText.classList.add('tick');
         }
     } else {
         remainingTime = 0;
@@ -213,12 +260,16 @@ function finishStep() {
     playAlarm(); // Toca som e vibra
     sendNotification("LPV Timer", `Etapa ${currentSteps[currentStepIndex].nome} concluída!`);
     
-    // Configura botão para PARAR ALARME (Vermelho)
+    // Remove running glow
+    const timerWrapper = document.querySelector('.timer-wrapper');
+    if (timerWrapper) timerWrapper.classList.remove('running');
+    
+    // Configura botão para PARAR ALARME (Vermelho com CSS animation)
     const btn = document.getElementById('btn-main-action');
     btn.innerHTML = '<i class="fas fa-bell-slash"></i>';
     btn.style.background = 'var(--color-error)';
-    // Animação CSS inline para chamar atenção
-    btn.style.animation = "pulse 1s infinite";
+    btn.classList.add('alarm-active');
+    btn.style.animation = "none"; // Let CSS class handle it
 }
 
 function stopAlarm() {
@@ -228,10 +279,16 @@ function stopAlarm() {
     audioAlert.pause();
     audioAlert.currentTime = 0;
 
+    // Remove progress ring warning colors
+    if (progressCircle) {
+        progressCircle.classList.remove('time-warning', 'time-critical');
+    }
+
     // Configura botão para PRÓXIMO (Verde)
     const btn = document.getElementById('btn-main-action');
-    btn.innerHTML = '<i class="fas fa-arrow-right"></i>'; // Seta para direita indicando próximo
+    btn.innerHTML = '<i class="fas fa-arrow-right"></i>';
     btn.style.background = 'var(--color-success)';
+    btn.classList.remove('alarm-active');
     btn.style.animation = "none";
 }
 

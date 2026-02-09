@@ -1,0 +1,199 @@
+/* ================================================================
+   LPV DESIGN SYSTEM — GRID & LAYOUTS
+   Grids, report editor e estruturas de layout
+   ================================================================ */
+
+
+/* ================================================================
+   HUB GRID
+   ================================================================ */
+
+.hub-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  padding: 0.5rem;
+  width: 100%;
+}
+
+
+/* ================================================================
+   EDITOR DE LAUDO (REPORT EDITOR)
+   ================================================================ */
+
+.report-paper-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #525659;
+  padding: 20px;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Modo Edição */
+.report-paper-container.mode-edit {
+  background: rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(5px);
+  padding: 20px 0;
+}
+
+/* Wrapper do Formulário */
+.report-form-wrapper {
+  width: 95%;
+  max-width: 850px;
+  background: var(--bg-body);
+  padding: 3rem;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-glass);
+  margin: auto;
+  animation: fadeInUp 0.5s var(--ease-spring) both;
+}
+
+.report-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  border-bottom: 2px solid var(--border-glass);
+  padding-bottom: 1.5rem;
+}
+
+.report-header h4 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.5px;
+}
+
+/* Títulos de Seção */
+.form-section-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-tertiary);
+  margin: 2rem 0 1.2rem 0;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.form-section-title i {
+  color: var(--color-primary);
+  font-size: 1rem;
+}
+
+.form-section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-glass);
+  opacity: 0.5;
+}
+
+/* Layout */
+.form-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.form-col {
+  flex: 1;
+  min-width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-form-wrapper label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
+
+/* Papel A4 (Modo Legado) */
+.report-paper {
+  width: 21cm;
+  min-height: 29.7cm;
+  background: white;
+  padding: 2cm;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  color: black;
+}
+
+#print-area.mode-edit {
+  width: 100% !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Toolbar */
+.report-toolbar {
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-body);
+  padding: 10px 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  animation: fadeInDown var(--duration-normal) var(--ease-spring) both;
+}
+
+.report-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.report-section label {
+  font-weight: 800 !important;
+  font-size: 0.8rem;
+  color: #1e293b !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.report-textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-family: 'Times New Roman', serif;
+  font-size: 1.1rem;
+  line-height: 1.5;
+  background: #fff;
+  color: #000000 !important;
+  transition: border-color var(--duration-normal) ease,
+              background var(--duration-fast) ease,
+              box-shadow var(--duration-normal) ease;
+}
+
+.report-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: #f0f9ff;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+}
+
+.report-textarea::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1;
+}

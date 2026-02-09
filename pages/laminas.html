@@ -45,9 +45,14 @@
             display: grid;
             grid-template-columns: 1fr 1fr 1fr auto; /* Data | Qtd | Tipo | Delete */
             align-items: center;
-            transition: 0.2s;
+            transition: transform 0.3s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
+                        border-color 0.3s ease,
+                        box-shadow 0.3s ease;
+            opacity: 0;
+            animation: fadeInUp 0.4s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)) both;
+            animation-delay: calc(var(--card-index, 0) * 0.04s);
         }
-        .slide-row:hover { transform: translateX(5px); border-color: var(--color-primary); }
+        .slide-row:hover { transform: translateX(5px); border-color: var(--color-primary); box-shadow: var(--shadow-sm); }
 
         .slide-data { font-size: 0.9rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
         .slide-qtd { font-weight: 800; font-size: 1.1rem; color: var(--text-primary); }
@@ -151,8 +156,10 @@
 
     <div class="layout-wrapper">
         <header class="app-header">
-            <div class="header-brand" style="display: flex; align-items: center;">
-                <button class="mobile-back-btn" onclick="window.location.href='hub.html'"><i class="fas fa-arrow-left"></i></button>
+            <div class="header-brand" style="display: flex; align-items: center; gap: 10px;">
+                <button id="mobile-menu-btn" class="btn-icon mobile-menu-btn">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <img src="../assets/images/lpvminilogo2.png" class="header-logo light-mode-only">
                 <img src="../assets/images/lpvminilogo.png" class="header-logo dark-mode-only">
                 <div class="header-text-column">
@@ -235,6 +242,8 @@
             </div>
         </div>
     </div>
+
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
     <script type="module" src="../assets/js/core.js"></script>
     <script type="module" src="../assets/js/pages/laminas.js"></script>

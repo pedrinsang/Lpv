@@ -100,21 +100,26 @@ function renderBoard() {
     allTasks.forEach(task => {
         if (task.status === 'concluido' || task.status === 'arquivado') return;
 
+        // Só conta tarefas que pertencem ao fluxo do mural (possuem coluna válida e tipo definido)
+        const status = task.status;
+        const col = columns[status];
+        if (!col) return; // Ignora tarefas com status desconhecido (ex: planner-only)
+
         const isNecropsia = (task.type === 'necropsia') || (!task.type && task.k7Color === 'azul');
-        if (isNecropsia) countNecro++; else countBio++;
+        if (task.type) {
+            if (isNecropsia) countNecro++; else countBio++;
+        }
 
         if (currentFilter === 'mine') {
             const isMine = (task.docente === currentUserName) || (task.posGraduando === currentUserName);
             if (!isMine) return; 
         }
 
-        const status = task.status;
-        const col = columns[status];
-
-        if (col) {
+        {
             const card = document.createElement('div');
             const k7Class = task.k7Color ? `k7-${task.k7Color}` : '';
             card.className = `mural-card ${k7Class}`;
+            card.style.setProperty('--card-index', col.children.length);
             card.onclick = () => window.openTaskManager(task.id);
             
             const displayProtocol = task.protocolo || task.accessCode || "---";

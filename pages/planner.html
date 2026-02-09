@@ -145,6 +145,11 @@
                     </div>
                 </div>
                 
+                <div class="calendar-legend-container">
+                    <div class="legend-item"><div class="legend-dot blue"></div> Necropsia</div>
+                    <div class="legend-item"><div class="legend-dot pink"></div> Biópsia</div>
+                    <div class="legend-item"><div class="legend-dot gray"></div> Outros</div>
+                </div>
                 <div class="calendar-grid-header">
                     <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
                 </div>
@@ -165,15 +170,39 @@
                 </div>
                 <button id="close-day-view" class="btn-mini"><i class="fas fa-times"></i></button>
             </div>
+
+            <div class="day-view-tabs">
+                <button class="day-view-tab active" data-tab="timeline"><i class="fas fa-clock"></i> Agenda</button>
+                <button class="day-view-tab" data-tab="pendings"><i class="fas fa-inbox"></i> Pendentes <span class="tab-badge" id="pendings-count"></span></button>
+            </div>
             
             <div class="day-view-body">
+                <div id="placement-banner" class="placement-banner hidden">
+                    <div class="placement-banner-content">
+                        <i class="fas fa-calendar-plus"></i>
+                        <span>Toque num horário para agendar <strong id="placement-task-name"></strong></span>
+                    </div>
+                    <button id="cancel-placement" class="placement-cancel"><i class="fas fa-times"></i></button>
+                </div>
                 <div class="timeline-column">
+                    <div class="column-hint">
+                        <i class="fas fa-info-circle"></i>
+                        Toque num horário vazio para criar uma tarefa rápida
+                    </div>
                     <div class="day-timeline" id="day-timeline"></div>
                 </div>
                 <div class="pendings-column" id="modal-pendings-area">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <h4 style="margin:0; font-size:0.9rem; font-weight:700; color:var(--text-secondary);">Tarefas Pendentes</h4>
-                        <span style="font-size:0.7rem; color:var(--text-light);">Arraste para agendar</span>
+                    </div>
+                    <div class="column-hint">
+                        <i class="fas fa-info-circle"></i>
+                        <span class="hint-desktop">Arraste um card para a agenda, ou clique <i class="fas fa-clock"></i> para escolher o horário</span>
+                        <span class="hint-mobile">Toque <i class="fas fa-clock"></i> no card para escolher o horário na agenda</span>
+                    </div>
+                    <div id="pendings-empty" class="empty-state-small hidden">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Todas as tarefas foram agendadas!</span>
                     </div>
                     <div id="modal-pending-list" class="tasks-container" style="margin-top:15px;"></div>
                 </div>
@@ -220,30 +249,10 @@
             <button class="nav-fab"><i class="fas fa-plus"></i></button>
         </div>
         <a href="coloracao.html" class="nav-item"><i class="fas fa-stopwatch"></i><span>Timers</span></a>
-        <a href="perfil.html" class="nav-item" id="mobile-profile-link">
-            <i class="fas fa-user-circle" style="font-size: 1.4rem;"></i>
-            <span id="mobile-user-name" style="font-weight: 600;">Perfil</span>
-        </a>
+        <a href="planner.html" class="nav-item active"><i class="fas fa-calendar-alt"></i><span>Planner</span></a>
     </nav>
 
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const btn = document.getElementById('mobile-menu-btn');
-            const sidebar = document.querySelector('.desktop-sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
-
-            function toggleSidebar() {
-                if(!sidebar) return;
-                sidebar.classList.toggle('active');
-                if(overlay) overlay.classList.toggle('active');
-            }
-
-            if(btn) btn.addEventListener('click', (e) => { e.stopPropagation(); toggleSidebar(); });
-            if(overlay) overlay.addEventListener('click', toggleSidebar);
-        });
-    </script>
 
     <script type="module" src="../assets/js/core.js"></script>
     <script type="module" src="../assets/js/pages/planner.js"></script>

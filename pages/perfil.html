@@ -66,7 +66,10 @@
 
     <div class="layout-wrapper">
         <header class="app-header">
-            <div class="header-brand">
+            <div class="header-brand" style="display: flex; align-items: center; gap: 10px;">
+                <button id="mobile-menu-btn" class="btn-icon mobile-menu-btn">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <img src="../assets/images/lpvminilogo2.png" class="header-logo light-mode-only">
                 <img src="../assets/images/lpvminilogo.png" class="header-logo dark-mode-only">
                 <div class="header-text-column">
@@ -101,19 +104,9 @@
         </main>
     </div>
 
-    <nav class="bottom-nav">
-        <a href="hub.html" class="nav-item"><i class="fas fa-home"></i><span>Início</span></a>
-        <a href="mural.html" class="nav-item"><i class="fas fa-columns"></i><span>Mural</span></a>
-        <div class="nav-fab-container">
-            <button class="nav-fab"><i class="fas fa-plus"></i></button>
-        </div>
-        <a href="coloracao.html" class="nav-item"><i class="fas fa-stopwatch"></i><span>Timers</span></a>
-        
-        <a href="perfil.html" class="nav-item active">
-            <i class="fas fa-user-circle"></i>
-            <span id="mobile-user-name">Perfil</span>
-        </a>
-    </nav>
+
+
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
     <script type="module" src="../assets/js/core.js"></script>
     <script type="module">

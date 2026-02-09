@@ -69,11 +69,11 @@ function renderList(items) {
         return;
     }
 
-    listContainer.innerHTML = items.map(item => {
+    listContainer.innerHTML = items.map((item, index) => {
         const dateFormatted = new Date(item.date).toLocaleDateString('pt-BR');
         
         return `
-        <div class="slide-row fade-in">
+        <div class="slide-row fade-in" style="--card-index: ${index}">
             <div class="slide-data">
                 <i class="far fa-calendar-alt"></i> ${dateFormatted}
             </div>

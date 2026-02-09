@@ -1,0 +1,319 @@
+/* ================================================================
+   LPV DESIGN SYSTEM — ANIMAÇÕES
+   Keyframes e classes utilitárias de animação para todo o app
+   ================================================================ */
+
+
+/* ==========================================================
+   KEYFRAMES — FADE
+   ========================================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-15px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+
+/* ==========================================================
+   KEYFRAMES — SLIDE
+   ========================================================== */
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+
+/* ==========================================================
+   KEYFRAMES — SCALE
+   ========================================================== */
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes scaleOut {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.9); }
+}
+
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(0.85); }
+  60%  { opacity: 1; transform: scale(1.03); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+
+/* ==========================================================
+   KEYFRAMES — MODAIS
+   ========================================================== */
+
+@keyframes modalIn {
+  0%   { opacity: 0; transform: scale(0.9) translateY(30px); }
+  60%  { opacity: 1; transform: scale(1.02) translateY(-5px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes modalOut {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 0; transform: scale(0.92) translateY(20px); }
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to   { opacity: 1; backdrop-filter: blur(5px); }
+}
+
+@keyframes overlayOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+
+/* ==========================================================
+   KEYFRAMES — FEEDBACK & EFEITOS
+   ========================================================== */
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15); }
+  50%      { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.06); }
+}
+
+@keyframes pulseSoft {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.4); }
+  70%  { box-shadow: 0 0 0 12px rgba(2, 132, 199, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+
+@keyframes successPop {
+  0%   { transform: scale(0); opacity: 0; }
+  50%  { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px) scale(0.8); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes ripple {
+  from { transform: scale(0); opacity: 0.6; }
+  to   { transform: scale(2.5); opacity: 0; }
+}
+
+@keyframes densityGrow {
+  from { transform: scaleX(0); transform-origin: left; }
+  to   { transform: scaleX(1); transform-origin: left; }
+}
+
+@keyframes progressFill {
+  from { width: 0; }
+}
+
+@keyframes borderGlow {
+  0%, 100% { border-color: rgba(2, 132, 199, 0.3); }
+  50%      { border-color: rgba(2, 132, 199, 0.7); }
+}
+
+
+/* ==========================================================
+   KEYFRAMES — LAYOUT
+   ========================================================== */
+
+@keyframes navSlideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(30px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes headerSlideDown {
+  from { opacity: 0; transform: translateY(-100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sidebarSlideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+
+/* ==========================================================
+   CLASSES UTILITÁRIAS DE ANIMAÇÃO
+   ========================================================== */
+
+/* Fade-ins */
+.anim-fade-in       { animation: fadeIn var(--duration-normal) var(--ease-spring) both; }
+.anim-fade-in-up    { animation: fadeInUp var(--duration-normal) var(--ease-spring) both; }
+.anim-fade-in-down  { animation: fadeInDown var(--duration-normal) var(--ease-spring) both; }
+.anim-fade-in-left  { animation: fadeInLeft var(--duration-normal) var(--ease-spring) both; }
+.anim-fade-in-right { animation: fadeInRight var(--duration-normal) var(--ease-spring) both; }
+
+/* Escalas */
+.anim-scale-in  { animation: scaleIn var(--duration-normal) var(--ease-spring) both; }
+.anim-pop-in    { animation: popIn 0.4s var(--ease-spring) both; }
+.anim-card-in   { animation: cardSlideIn 0.4s var(--ease-spring) both; }
+
+/* Feedback */
+.anim-pulse     { animation: pulse 2s infinite; }
+.anim-shake     { animation: shake 0.5s ease; }
+.anim-success   { animation: successPop 0.4s var(--ease-bounce) both; }
+.anim-spin      { animation: spin 1s linear infinite; }
+.anim-shimmer   { 
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Stagger delays — aplique --stagger-index via JS ou nth-child */
+.anim-stagger { animation-delay: calc(var(--stagger-index, 0) * 50ms); }
+.anim-stagger-fast { animation-delay: calc(var(--stagger-index, 0) * 30ms); }
+.anim-stagger-slow { animation-delay: calc(var(--stagger-index, 0) * 80ms); }
+
+/* Transições reutilizáveis */
+.transition-fast   { transition: all var(--duration-fast) var(--ease-smooth); }
+.transition-normal { transition: all var(--duration-normal) var(--ease-smooth); }
+.transition-spring { transition: all var(--duration-normal) var(--ease-spring); }
+
+/* Hover transforms */
+.hover-lift {
+  transition: transform var(--duration-normal) var(--ease-spring),
+              box-shadow var(--duration-normal) var(--ease-spring);
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+.hover-lift:active {
+  transform: translateY(-1px) scale(0.98);
+  transition-duration: var(--duration-fast);
+}
+
+.hover-scale {
+  transition: transform var(--duration-normal) var(--ease-spring);
+}
+.hover-scale:hover  { transform: scale(1.03); }
+.hover-scale:active { transform: scale(0.97); transition-duration: var(--duration-fast); }
+
+/* Classe .fade-in legada (mantida para compatibilidade) */
+.fade-in {
+  animation: fadeInUp var(--duration-slow) ease-out forwards;
+}
+
+/* Mural card animation (legada) */
+.mural-card {
+  animation: cardSlideIn 0.45s var(--ease-spring) both;
+  animation-delay: calc(var(--card-index, 0) * 0.05s);
+}
+
+/* Status count animation */
+.count-animate {
+  animation: countUp 0.4s var(--ease-spring) both;
+}
+
+
+/* ==========================================================
+   MODAL ANIMATIONS (GLOBAL REUSABLE)
+   ========================================================== */
+
+.modal-overlay {
+  animation: overlayIn var(--duration-normal) var(--ease-spring) forwards;
+}
+
+.modal-overlay.closing {
+  animation: overlayOut 0.25s ease forwards;
+  pointer-events: none;
+}
+
+.modal-overlay .modal-glass {
+  animation: modalIn 0.4s var(--ease-spring) forwards;
+}
+
+.modal-overlay.closing .modal-glass {
+  animation: modalOut 0.25s ease forwards;
+}
+
+
+/* ==========================================================
+   ALERT ANIMATIONS
+   ========================================================== */
+
+.alert-message {
+  animation: fadeInDown var(--duration-normal) var(--ease-spring) both;
+}
+
+.alert-message.alert-exit {
+  animation: fadeOut 0.2s ease forwards;
+}
