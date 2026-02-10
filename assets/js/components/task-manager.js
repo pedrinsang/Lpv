@@ -233,7 +233,10 @@ function renderDetails(task) {
             <div class="info-card">
                 <div class="info-icon"><i class="fas fa-vial"></i></div>
                 <div class="info-label">Cassetes (Qtd/Cor)</div>
-                <div class="info-value">${task.k7Quantity || 0} un. <span class="tm-hero-modern ${typeClass}"style="font-size:0.8rem; margin-left:5px; padding:2px 6px; border-radius:4px;">${task.k7Color || '-'}</span></div>
+                <div class="info-value" style="display:flex; align-items:center; gap:8px;">
+                    ${task.k7Quantity || 0} un. <span class="tm-hero-modern ${typeClass}"style="font-size:0.8rem; margin-left:5px; padding:2px 6px; border-radius:4px;">${task.k7Color || '-'}</span>
+                    ${isStaff ? `<button onclick="window.openK7Edit()" style="background:transparent; border:1px solid var(--text-tertiary); border-radius:6px; padding:2px 8px; cursor:pointer; font-size:0.7rem; color:var(--text-secondary); margin-left:auto;" title="Editar K7"><i class="fas fa-pen"></i></button>` : ''}
+                </div>
             </div>
         </div>
         
@@ -418,18 +421,89 @@ async function updateStatus(newStatus) {
 
 function openK7FormSmart(task) {
     viewDetails.classList.add('hidden'); viewK7.classList.remove('hidden');
-    let optionsHTML = '';
-    const optionWhite = `<label class="color-option"><input type="radio" name="k7Color" value="branco"><span class="color-box" style="background:#f8fafc; border-color:#cbd5e1;"></span>Branco</label>`;
-    if (task.type === 'necropsia') { optionsHTML = `<label class="color-option"><input type="radio" name="k7Color" value="azul" checked><span class="color-box" style="background:#dbeafe; border-color:#3b82f6;"></span>Azul</label>${optionWhite}`; } 
-    else { optionsHTML = `<label class="color-option"><input type="radio" name="k7Color" value="rosa" checked><span class="color-box" style="background:#fce7f3; border-color:#ec4899;"></span>Rosa</label>${optionWhite}`; }
+    
+    const currentColor = task.k7Color || (task.type === 'necropsia' ? 'azul' : 'rosa');
+    const currentQty = task.k7Quantity || 1;
+    const isNecro = task.type === 'necropsia';
+    
+    // Restringir cores: necropsia = azul/branco, biópsia = rosa/branco
+    const mainColor = isNecro ? 'azul' : 'rosa';
+    const mainLabel = isNecro ? 'Azul' : 'Rosa';
+    const mainBg = isNecro ? '#3b82f6' : '#ec4899';
+    
+    const optionsHTML = `
+        <label class="k7-color-btn ${currentColor === mainColor ? 'selected' : ''}" style="--btn-color: ${mainBg};">
+            <input type="radio" name="k7Color" value="${mainColor}" ${currentColor === mainColor ? 'checked' : ''}>
+            <span class="k7-color-circle" style="background:${mainBg};"></span>
+            <span>${mainLabel}</span>
+        </label>
+        <label class="k7-color-btn ${currentColor === 'branco' ? 'selected' : ''}" style="--btn-color: #94a3b8;">
+            <input type="radio" name="k7Color" value="branco" ${currentColor === 'branco' ? 'checked' : ''}>
+            <span class="k7-color-circle" style="background:#f1f5f9; border:2px solid #cbd5e1;"></span>
+            <span>Branco</span>
+        </label>
+    `;
+    
     if(formK7) {
         formK7.innerHTML = `
-            <div class="form-group"><label>Qtd K7</label><input type="number" id="k7-quantity" class="input-field" min="1" value="1"></div>
-            <div class="form-group"><label>Cor</label><div class="color-selector">${optionsHTML}</div></div>
-            <div class="modal-footer"><button type="button" id="btn-cancel-k7-dyn" class="btn btn-secondary">Voltar</button><button type="submit" class="btn btn-primary">Salvar</button></div>
+            <style>
+                .k7-color-btn {
+                    display: flex; align-items: center; gap: 10px;
+                    padding: 12px 20px; border-radius: 12px; cursor: pointer;
+                    border: 2px solid var(--border-glass); background: var(--bg-glass);
+                    transition: all 0.25s ease; user-select: none; flex: 1;
+                }
+                .k7-color-btn input { display: none; }
+                .k7-color-btn .k7-color-circle {
+                    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+                    transition: transform 0.25s ease, box-shadow 0.25s ease;
+                }
+                .k7-color-btn span:last-child { font-weight: 600; font-size: 0.95rem; color: var(--text-primary); }
+                .k7-color-btn:hover { border-color: var(--btn-color); background: rgba(0,0,0,0.03); }
+                .k7-color-btn:hover .k7-color-circle { transform: scale(1.1); }
+                .k7-color-btn.selected {
+                    border-color: var(--btn-color);
+                    background: linear-gradient(135deg, rgba(0,0,0,0.02), rgba(0,0,0,0.06));
+                    box-shadow: 0 0 0 3px color-mix(in srgb, var(--btn-color) 25%, transparent);
+                }
+                .k7-color-btn.selected .k7-color-circle {
+                    transform: scale(1.2);
+                    box-shadow: 0 0 12px var(--btn-color);
+                }
+                .k7-color-btn.selected span:last-child { color: var(--btn-color); font-weight: 800; }
+                .k7-color-btn.selected::after {
+                    content: '\\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
+                    margin-left: auto; color: var(--btn-color); font-size: 1.1rem;
+                }
+            </style>
+            <div class="form-group"><label style="font-weight:700; margin-bottom:8px; display:block;">Quantidade de Cassetes</label><input type="number" id="k7-quantity" class="input-field" min="1" value="${currentQty}" style="font-size:1.2rem; text-align:center; max-width:120px;"></div>
+            <div class="form-group"><label style="font-weight:700; margin-bottom:8px; display:block;">Cor do Cassete</label><div style="display:flex; gap:12px;">${optionsHTML}</div></div>
+            <div class="modal-footer"><button type="button" id="btn-cancel-k7-dyn" class="btn btn-secondary">Voltar</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar</button></div>
         `;
+        
+        // Toggle visual selection on click
+        formK7.querySelectorAll('.k7-color-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                formK7.querySelectorAll('.k7-color-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+            });
+        });
+        
         document.getElementById('btn-cancel-k7-dyn').addEventListener('click', () => { viewK7.classList.add('hidden'); viewDetails.classList.remove('hidden'); });
-        formK7.onsubmit = async (e) => { e.preventDefault(); const qty = document.getElementById('k7-quantity').value; const color = document.querySelector('input[name="k7Color"]:checked').value; try { await updateDoc(doc(db, "tasks", currentTask.id), { status: 'processamento', k7Quantity: qty, k7Color: color }); currentTask.status='processamento'; renderDetails(currentTask); viewK7.classList.add('hidden'); viewDetails.classList.remove('hidden'); } catch(e){alert("Erro");} };
+        formK7.onsubmit = async (e) => { 
+            e.preventDefault(); 
+            const qty = parseInt(document.getElementById('k7-quantity').value, 10) || 1; 
+            const color = document.querySelector('input[name="k7Color"]:checked').value; 
+            const updateData = { k7Quantity: qty, k7Color: color };
+            if (currentTask.status === 'clivagem') updateData.status = 'processamento';
+            try { 
+                await updateDoc(doc(db, "tasks", currentTask.id), updateData); 
+                Object.assign(currentTask, updateData);
+                renderDetails(currentTask); 
+                viewK7.classList.add('hidden'); 
+                viewDetails.classList.remove('hidden'); 
+            } catch(err){ alert("Erro: " + err.message); } 
+        };
     }
 }
 
@@ -450,7 +524,8 @@ window.triggerEditEntry = function() {
 }
 
 window.openTaskManager = openTaskManager;
-window.exportToPDF = exportToPDF; // Exporta nova função
+window.exportToPDF = exportToPDF;
 window.openReportEditorWrapper = openReportEditorWrapper;
 window.finishReportWrapper = finishReportWrapper;
 window.toggleFinancialStatus = toggleFinancialStatus;
+window.openK7Edit = function() { if(currentTask) openK7FormSmart(currentTask); };
