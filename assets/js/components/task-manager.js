@@ -23,6 +23,8 @@ style.innerHTML = `
         .modal-footer { flex-direction: column-reverse; }
         .modal-footer button { width: 100%; }
     }
+    .tm-valor-badge span { filter: blur(5px); transition: filter 0.3s ease; }
+    .tm-valor-badge.revealed span { filter: none; }
 `;
 document.head.appendChild(style);
 
@@ -132,7 +134,10 @@ function renderDetails(task) {
                         <div style="font-size:0.8rem; opacity:0.9;">Bloqueia download público</div>
                     </div>
                 </div>
-                ${btnChangeFin}
+                <div style="display:flex; align-items:center; gap:8px;">
+                    ${task.valor ? `<span class="tm-valor-badge" onclick="this.classList.toggle('revealed')" style="cursor:pointer; font-size:0.85rem; font-weight:700; user-select:none;" title="Clique para ver"><i class="fas fa-eye"></i> <span style="filter:blur(5px); transition:filter 0.3s;">R$ ${task.valor}</span></span>` : ''}
+                    ${btnChangeFin}
+                </div>
             </div>`;
     } else {
         financialHtml = `
@@ -144,7 +149,10 @@ function renderDetails(task) {
                         <div style="font-size:0.8rem; opacity:0.9;">Liberado para download</div>
                     </div>
                 </div>
-                ${btnChangeFin}
+                <div style="display:flex; align-items:center; gap:8px;">
+                    ${task.valor ? `<span class="tm-valor-badge" onclick="this.classList.toggle('revealed')" style="cursor:pointer; font-size:0.85rem; font-weight:700; user-select:none;" title="Clique para ver"><i class="fas fa-eye"></i> <span style="filter:blur(5px); transition:filter 0.3s;">R$ ${task.valor}</span></span>` : ''}
+                    ${btnChangeFin}
+                </div>
             </div>`;
     }
 

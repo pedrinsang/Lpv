@@ -219,6 +219,7 @@ async function saveEntry(e, originType) {
             // --- MODO EDIÇÃO ---
             await updateDoc(doc(db, "tasks", editingTaskId), {
                 ...data,
+                financialStatus: data.situacao || undefined,
                 lastEditedAt: new Date().toISOString(),
                 lastEditor: auth.currentUser ? auth.currentUser.uid : 'anon'
             });
@@ -243,7 +244,8 @@ async function saveEntry(e, originType) {
                 type: taskType,         
                 k7Color: initialColor,  
                 k7Quantity: 0,          
-                status: 'clivagem',     
+                status: 'clivagem',
+                financialStatus: data.situacao || 'pendente',
                 createdBy: auth.currentUser ? auth.currentUser.uid : 'anon',
                 createdAt: new Date().toISOString() 
             };

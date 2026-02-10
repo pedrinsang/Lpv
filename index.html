@@ -41,12 +41,12 @@
         }
         .intro-logo-container {
             position: relative;
-            width: 280px;
-            height: 280px;
+            width: 200px;
+            height: 200px;
             transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
         }
         .intro-overlay.playing .intro-logo-container {
-            transform: translateX(-280px);
+            transform: translateX(-200px);
         }
         
         /* Fonte ITC Eras Std Bold */
@@ -76,7 +76,7 @@
         }
         .intro-overlay.playing .intro-text {
             opacity: 1;
-            transform: translate(-50%, -50%) translateX(50px);
+            transform: translate(-50%, -50%) translateX(120px);
         }
         
         /* Centro (pata) - Estado inicial: visível com glow */
@@ -84,8 +84,8 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 280px;
-            height: 280px;
+            width: 200px;
+            height: 200px;
             transform: translate(-50%, -50%);
             z-index: 10;
             animation: centerPulse 2s ease-in-out infinite;
@@ -381,7 +381,7 @@
                 transform: translate(-50%, -50%) translateX(15px);
             }
             .intro-overlay.playing .intro-text {
-                transform: translate(-50%, -50%) translateX(15px);
+                transform: translate(-50%, -50%) translateX(40px);
             }
             .intro-logo-container {
                 width: 100px;
@@ -394,16 +394,7 @@
                 width: 100px;
                 height: 100px;
             }
-            /* Bolinhas menores no mobile */
-            .intro-orb:nth-child(1) { width: 8px; height: 8px; }
-            .intro-orb:nth-child(2) { width: 12px; height: 12px; }
-            .intro-orb:nth-child(3) { width: 15px; height: 15px; }
-            .intro-orb:nth-child(4) { width: 18px; height: 18px; }
-            .intro-orb:nth-child(5) { width: 20px; height: 20px; }
-            .intro-orb:nth-child(6) { width: 22px; height: 22px; }
-            .intro-orb:nth-child(7) { width: 22px; height: 22px; }
-            .intro-orb:nth-child(8) { width: 20px; height: 20px; }
-            .intro-orb:nth-child(9) { width: 18px; height: 18px; }
+            /* Tamanhos das bolinhas controlados por JS */
             /* Órbita e posições controladas por JS */
             .intro-cta {
                 font-size: 0.9rem;
@@ -524,34 +515,40 @@
             const audio = document.getElementById('intro-audio');
             let started = false;
             
-            // Detect mobile and calculate scale factor
-            const isMobile = window.innerWidth <= 900;
-            const orbitRadius = Math.max(80, Math.min(200, window.innerWidth * 0.13));
-            
             // Orbit offsets (degrees) for each orb
             const orbitOffsets = [0, 40, 80, 120, 160, 200, 240, 280, 320];
             
-            // Base positions (desktop 1920px) - scaled dynamically
-            const basePositions = [
-                { x: 350, y: -130 },
-                { x: 390, y: -70 },
-                { x: 410, y: 10 },
-                { x: 390, y: 90 },
-                { x: 340, y: 160 },
-                { x: 270, y: 200 },
-                { x: 190, y: 200 },
-                { x: 120, y: 165 },
-                { x: 70, y: 110 }
+            // Use computed font-size as the SINGLE reference unit (no line-height inflation)
+            const textEl = intro.querySelector('.intro-text');
+            const fontSize = parseFloat(getComputedStyle(textEl).fontSize);
+            
+            // Orbit radius scales with font-size
+            const orbitRadius = fontSize * 0.7;
+            
+            // Orb sizes as fractions of fontSize (original 25-65px at 224px)
+            const orbSizeFractions = [0.112, 0.156, 0.201, 0.246, 0.268, 0.290, 0.290, 0.268, 0.246];
+            
+            // V-trace positions as fractions of fontSize (offsets from screen center)
+            // Calibrated at 1920px / fontSize 224px — scales perfectly to any size
+            const positionFractions = [
+                { xF: 1.563, yF: -0.580 },
+                { xF: 1.741, yF: -0.313 },
+                { xF: 1.830, yF:  0.045 },
+                { xF: 1.741, yF:  0.402 },
+                { xF: 1.518, yF:  0.714 },
+                { xF: 1.205, yF:  0.893 },
+                { xF: 0.848, yF:  0.893 },
+                { xF: 0.536, yF:  0.737 },
+                { xF: 0.313, yF:  0.491 }
             ];
             
-            // Scale proportionally to screen width (1 at 1920px)
-            const scale = Math.max(0.3, window.innerWidth / 1920);
-            const finalPositions = basePositions.map(p => ({
-                x: p.x * scale,
-                y: p.y * scale
-            }));
-            
-            console.log('LPV Intro Debug:', { isMobile, orbitRadius, scale, screenW: window.innerWidth, finalPositions });
+            // Compute final positions scaled by fontSize
+            function computeFinalPositions() {
+                return positionFractions.map(p => ({
+                    x: p.xF * fontSize,
+                    y: p.yF * fontSize
+                }));
+            }
             
             // Check if user has seen intro this session
             if (sessionStorage.getItem('lpv-intro-seen')) {
@@ -562,6 +559,14 @@
             
             // JS orbit animation
             const orbs = intro.querySelectorAll('.intro-orb');
+            
+            // Scale orb sizes proportionally to font-size
+            orbs.forEach((orb, i) => {
+                const size = Math.max(6, Math.round(fontSize * orbSizeFractions[i]));
+                orb.style.width = size + 'px';
+                orb.style.height = size + 'px';
+            });
+            
             let orbitAngle = 0;
             let orbiting = true;
             const speed = 0.8; // degrees per frame
@@ -584,6 +589,9 @@
                 if (started) return;
                 started = true;
                 orbiting = false;
+                
+                // Compute ball targets relative to the text element
+                const finalPositions = computeFinalPositions();
                 
                 // Play audio - unlock and play on user gesture
                 audio.muted = false;

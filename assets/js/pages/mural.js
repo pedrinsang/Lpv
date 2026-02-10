@@ -148,6 +148,13 @@ function renderBoard() {
                 <div style="margin-top:10px; display:flex; gap:6px; align-items:center; font-size:0.75rem; color:var(--text-tertiary);">
                     <i class="fas fa-user-graduate"></i> ${shortPos}
                 </div>
+                <div style="margin-top:8px; display:flex; gap:6px; align-items:center; justify-content:space-between;">
+                    <span class="mural-tag" style="font-size:0.65rem; font-weight:700; ${task.financialStatus === 'pago' || task.situacao === 'pago' ? 'color:#10b981; border:1px solid #10b98140;' : task.situacao === 'didatico' ? 'color:#8b5cf6; border:1px solid #8b5cf640;' : 'color:#f59e0b; border:1px solid #f59e0b40;'}">
+                        <i class="fas ${task.financialStatus === 'pago' || task.situacao === 'pago' ? 'fa-check-circle' : task.situacao === 'didatico' ? 'fa-graduation-cap' : 'fa-clock'}"></i>
+                        ${task.financialStatus === 'pago' || task.situacao === 'pago' ? ' PAGO' : task.situacao === 'didatico' ? ' DIDÁTICO' : ' PENDENTE'}
+                    </span>
+                    ${task.valor ? `<span class="mural-valor-hidden" onclick="event.stopPropagation(); this.classList.toggle('revealed')" style="font-size:0.7rem; font-weight:700; color:var(--text-tertiary); cursor:pointer; user-select:none;" title="Clique para ver o valor"><i class="fas fa-eye"></i> <span class="valor-text">R$ ${task.valor}</span></span>` : ''}
+                </div>
             `;
             col.appendChild(card);
             if (counts[status] !== undefined) counts[status]++;
