@@ -166,9 +166,7 @@ function isTaskRelevant(task, role) {
 
     if (cleanRole === 'admin' || cleanRole === 'professor') return true; 
     
-    if (cleanRole === 'pós graduando' || cleanRole === 'pos-graduando') {
-        return ['analise', 'liberar'].includes(task.status);
-    }
+    if (cleanRole === 'pós graduando' || cleanRole === 'pos-graduando') return true;
 
     if (cleanRole === 'estagiario') {
         return ['clivagem', 'processamento', 'emblocamento', 'corte', 'coloracao'].includes(task.status);

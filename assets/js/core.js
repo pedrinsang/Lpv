@@ -120,7 +120,7 @@ function loadUserInterface(data, uid) {
 function applyRolePermissions(role) {
     const newBtnSidebar = document.querySelector('.btn-sidebar-new');
     const newFabMobile = document.querySelector('.nav-fab');
-    const isSuperUser = (role === 'professor' || role === 'admin');
+    const isSuperUser = (role === 'professor' || role === 'admin' || role === 'pós graduando' || role === 'pos-graduando');
 
     if (role === 'estagiario') {
         if (newBtnSidebar) newBtnSidebar.style.display = 'none';

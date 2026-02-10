@@ -36,7 +36,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (!user) return window.location.href = '../pages/auth.html';
         const userSnap = await getDoc(doc(db, "users", user.uid));
         const role = userSnap.exists() ? (userSnap.data().role || 'student').toLowerCase() : 'student';
-        canEdit = (role === 'admin' || role === 'professor');
+        canEdit = (role === 'admin' || role === 'professor' || role === 'pós graduando' || role === 'pos-graduando');
         initCalendarControls();
         subscribeToTasks();
         setupQuickModal();

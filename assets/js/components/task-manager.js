@@ -81,7 +81,7 @@ function renderDetails(task) {
     const role = user.role || '';
     
     const isStaff = ['professor', 'pós graduando', 'pos-graduando', 'admin'].includes(role);
-    const canRelease = role === 'admin' || role === 'professor' || (role.includes('graduando') && user.canReleaseReports === true);
+    const canRelease = role === 'admin' || role === 'professor' || role.includes('graduando');
 
     if(btnNext) { 
         btnNext.classList.remove('hidden'); 

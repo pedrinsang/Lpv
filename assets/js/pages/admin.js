@@ -37,7 +37,7 @@ setTimeout(() => {
 }, 1000);
 
 function checkPermission(role) {
-    if (role !== 'professor' && role !== 'admin') {
+    if (role !== 'professor' && role !== 'admin' && role !== 'pós graduando' && role !== 'pos-graduando') {
         alert("Acesso Negado: Área restrita.");
         window.location.href = 'hub.html';
     }
