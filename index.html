@@ -136,10 +136,6 @@
         .intro-orb:nth-child(8) { width: 60px; height: 60px; --orbit-offset: 280deg; }
         .intro-orb:nth-child(9) { width: 55px; height: 55px; --orbit-offset: 320deg; }
         
-        /* Estado inicial: sem animação CSS, controlado por JS */
-        .intro-orb {
-            /* orbit and positioning handled by JS */
-        }
         
         /* Smooth transition handled by JavaScript */
         .intro-orb.settling {
@@ -511,43 +507,76 @@
     <!-- INTRO ANIMATION SCRIPT -->
     <script>
         (function() {
+            // =============================
+            // CONFIGURAÇÃO DAS ÓRBITAS DO LOGO
+            // Edite os valores abaixo para ajustar manualmente as órbitas das bolinhas:
+            // =============================
+            // Ângulos de órbita (graus) de cada bolinha
+            const orbitOffsets = [0, 40, 80, 120, 160, 200, 240, 280, 320];
+
+            // Tamanhos das bolinhas como fração do fontSize (ex: 0.112 = 11.2% do fontSize)
+            const orbSizeFractions = [0.112, 0.156, 0.201, 0.246, 0.268, 0.290, 0.290, 0.268, 0.246].map(f => f * 0.8);
+
+            // Posições finais (ao clicar) como fração do fontSize
+            // xF: fração horizontal, yF: fração vertical
+            // Exemplo: { xF: 1.563, yF: -0.580 }
+            const positionFractions = [
+                 { xF: 1.563, yF: -0.580 },
+                 { xF: 1.741, yF: -0.313 },
+                 { xF: 1.830, yF:  0.045 },
+                 { xF: 1.741, yF:  0.402 },
+                 { xF: 1.518, yF:  0.714 },
+                 { xF: 1.205, yF:  0.893 },
+                 { xF: 0.848, yF:  0.893 },
+                 { xF: 0.536, yF:  0.737 },
+                 { xF: 0.313, yF:  0.491 }
+            ];
+
+              // Fatores para ajuste manual
+              // offsetX: move o conjunto para a direita/esquerda (em px)
+              // offsetY: move o conjunto para cima/baixo (em px)
+              // radiusScale: aumenta/diminui o raio do conjunto
+              let offsetX, offsetY, radiusScale;
+              if (window.innerWidth <= 900) {
+                  // Mobile
+                  offsetX = 50; // ajuste para mobile
+                  offsetY = 0;
+                  radiusScale = 0.7;
+              } else {
+                  // Desktop
+                  offsetX = 120; // ajuste para desktop
+                  offsetY = 0;
+                  radiusScale = 0.8;
+              }
+
+            // Fim da configuração manual
+            // =============================
+
             const intro = document.getElementById('intro-overlay');
             const audio = document.getElementById('intro-audio');
             let started = false;
-            
-            // Orbit offsets (degrees) for each orb
-            const orbitOffsets = [0, 40, 80, 120, 160, 200, 240, 280, 320];
-            
+
             // Use computed font-size as the SINGLE reference unit (no line-height inflation)
             const textEl = intro.querySelector('.intro-text');
             const fontSize = parseFloat(getComputedStyle(textEl).fontSize);
-            
+
             // Orbit radius scales with font-size
-            const orbitRadius = fontSize * 0.7;
-            
-            // Orb sizes as fractions of fontSize (original 25-65px at 224px)
-            const orbSizeFractions = [0.112, 0.156, 0.201, 0.246, 0.268, 0.290, 0.290, 0.268, 0.246];
-            
-            // V-trace positions as fractions of fontSize (offsets from screen center)
-            // Calibrated at 1920px / fontSize 224px — scales perfectly to any size
-            const positionFractions = [
-                { xF: 1.563, yF: -0.580 },
-                { xF: 1.741, yF: -0.313 },
-                { xF: 1.830, yF:  0.045 },
-                { xF: 1.741, yF:  0.402 },
-                { xF: 1.518, yF:  0.714 },
-                { xF: 1.205, yF:  0.893 },
-                { xF: 0.848, yF:  0.893 },
-                { xF: 0.536, yF:  0.737 },
-                { xF: 0.313, yF:  0.491 }
-            ];
-            
+            // Ajuste automático do raio da órbita para mobile e desktop
+            let orbitRadius;
+            if (window.innerWidth <= 900) {
+                // Mobile
+                orbitRadius = fontSize * 1;
+            } else {
+                // Desktop
+                orbitRadius = fontSize * 0.7;
+            }
+
             // Compute final positions scaled by fontSize
             function computeFinalPositions() {
-                return positionFractions.map(p => ({
-                    x: p.xF * fontSize,
-                    y: p.yF * fontSize
-                }));
+                    return positionFractions.map(p => ({
+                        x: (p.xF * radiusScale * fontSize) + offsetX,
+                        y: (p.yF * radiusScale * fontSize) + offsetY
+                    }));
             }
             
             // Check if user has seen intro this session
