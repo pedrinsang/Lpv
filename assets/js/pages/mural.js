@@ -202,17 +202,31 @@ function initMobileCarousel() {
     });
 }
 
-// --- LÓGICA DESKTOP (SCROLL HORIZONTAL COM RODA) ---
 function initDesktopScroll() {
     if(!kanbanBoard) return;
     
     kanbanBoard.addEventListener("wheel", (evt) => {
-        // Apenas se for desktop (>=1024px) e scroll vertical (deltaY)
         if (window.innerWidth >= 1024 && evt.deltaY !== 0) {
+            // Verifica se o scroll está acontecendo dentro de uma coluna
+            const scrollableBody = evt.target.closest('.kanban-body');
+            
+            if (scrollableBody) {
+                const isScrollingDown = evt.deltaY > 0;
+                const canScrollMore = isScrollingDown 
+                    ? scrollableBody.scrollHeight > scrollableBody.scrollTop + scrollableBody.clientHeight
+                    : scrollableBody.scrollTop > 0;
+
+                // Se a coluna ainda pode scrollar verticalmente, não faz o scroll horizontal
+                if (canScrollMore) {
+                    return; 
+                }
+            }
+
+            // Se não for uma coluna ou se a coluna chegou ao fim/topo, scroll horizontal
             evt.preventDefault();
             kanbanBoard.scrollLeft += evt.deltaY;
         }
-    });
+    }, { passive: false });
 }
 
 // Filtros
@@ -236,3 +250,4 @@ function getShortName(fullName) {
     if (parts.length === 1) return parts[0];
     return `${parts[0]} ${parts[1][0]}.`;
 }
+

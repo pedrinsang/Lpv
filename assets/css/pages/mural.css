@@ -1,0 +1,156 @@
+/* --- ESTILO GERAL DO MURAL --- */
+
+.kanban-board {
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;
+    height: calc(100vh - 240px);
+    
+    /* Mobile Default: Snap e Esconde Scrollbar */
+    padding: 0 7.5vw 20px 7.5vw; 
+    scroll-snap-type: x mandatory; 
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox Mobile */
+}
+.kanban-board::-webkit-scrollbar { display: none; /* Chrome Mobile */ }
+/* Hack de espaçamento mobile */
+.kanban-board::after { content: ''; min-width: 1px; flex-shrink: 0; }
+.kanban-column {
+    min-width: 85vw; width: 85vw; /* Mobile width */
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    height: 100%;
+    
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-glass);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    
+    transition: all 0.3s ease;
+    opacity: 0.5; transform: scale(0.95); /* Mobile inactive state */
+}
+/* Estado Ativo (Focado) */
+.kanban-column.active-col { 
+    opacity: 1; transform: scale(1); 
+    border-color: var(--color-primary); 
+    background: var(--bg-card);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+.kanban-header {
+    padding: 15px;
+    font-weight: 800; color: var(--text-secondary); text-transform: uppercase; font-size: 0.9rem;
+    border-bottom: 1px solid var(--border-glass);
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(0,0,0,0.05);
+    border-radius: 16px 16px 0 0;
+    user-select: none; /* Evita seleção de texto ao arrastar */
+}
+.kanban-body {
+    padding: 10px;
+    overflow-y: auto; /* Garante scroll vertical */
+    flex: 1;
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px;
+    
+    /* MELHORIA: Impede que o scroll do card arraste o carrossel junto */
+    overscroll-behavior-y: contain; 
+    -webkit-overflow-scrolling: touch; /* Scroll suave no iOS */
+}
+/* Garante que a coluna tenha altura total disponível para o corpo scrollar */
+
+/* Customização da scrollbar interna das colunas (Desktop) */
+.kanban-body::-webkit-scrollbar {
+    width: 4px;
+    display: block;
+}
+.kanban-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+/* Dots Mobile */
+.carousel-indicators { display: flex; justify-content: center; gap: 8px; margin-top: 5px; margin-bottom: 10px; min-height: 10px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); opacity: 0.3; transition: 0.3s; }
+.dot.active { background: var(--color-primary); opacity: 1; width: 24px; border-radius: 4px; }
+/* --- DESKTOP PRO (Ajustes para PC) --- */
+@media (min-width: 1024px) {
+    .header-brand::after {
+        content: "Mural";
+    }
+    .kanban-board { 
+        height: calc(100vh - 160px); 
+        scroll-snap-type: none; /* Remove trava */
+        padding: 0 5px 15px 15px; /* Padding normal */
+        gap: 15px;
+        
+        /* MOSTRAR SCROLLBAR */
+        scrollbar-width: thin; /* Firefox Desktop */
+        scrollbar-color: var(--text-tertiary) transparent;
+    }
+    
+    /* Scrollbar Customizada (Chrome/Edge/Safari) */
+    .kanban-board::-webkit-scrollbar {
+        display: block; 
+        height: 8px;
+    }
+    .kanban-board::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .kanban-board::-webkit-scrollbar-thumb {
+        background: rgba(0,0,0,0.2); 
+        border-radius: 10px;
+    }
+    .kanban-board::-webkit-scrollbar-thumb:hover {
+        background: var(--color-primary); 
+    }
+    .kanban-column { 
+        min-width: 280px; width: 280px; /* Largura fixa menor para caber mais */
+        scroll-snap-align: none;
+        opacity: 1 !important; transform: none !important; /* Sempre visível */
+        background: var(--bg-card);
+        border-color: var(--border-glass);
+    }
+    
+    /* Remove sombra de foco no desktop (visual clean) */
+    .kanban-column.active-col {
+        box-shadow: none;
+        border-color: var(--border-glass);
+    }
+    .carousel-indicators { display: none; }
+    .mural-stats-row { margin-bottom: 15px; }
+}
+/* --- CARDS E DETALHES --- */
+.mural-card {
+    background: var(--bg-glass); padding: 14px; border-radius: 12px;
+    border: 1px solid var(--border-glass); cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    transition: transform 0.35s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
+                box-shadow 0.35s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
+                border-color 0.3s ease;
+    position: relative;
+    opacity: 0;
+    animation: cardSlideIn 0.45s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)) both;
+    animation-delay: calc(var(--card-index, 0) * 0.05s);
+}
+.mural-card:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    border-color: var(--color-primary);
+}
+.mural-card:active {
+    transform: translateY(-1px) scale(0.98);
+    transition-duration: 0.1s;
+}
+.mural-tag { font-size: 0.7rem; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,0.05); font-weight: 600; }
+.k7-azul { border-left: 4px solid #3b82f6; }
+.k7-rosa { border-left: 4px solid #ec4899; }
+.k7-branco { border-left: 4px solid #cbd5e1; }
+
+.mural-stats-row { display: flex; gap: 10px; margin-bottom: 10px; overflow-x: auto; padding: 5px; scrollbar-width: none; justify-content: center; }
+.mini-stat-card { background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: 12px; padding: 10px 15px; min-width: 140px; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+.mini-stat-val { font-size: 1.4rem; font-weight: 800; color: var(--text-primary); line-height: 1; }
+.mini-stat-label { font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; }
+.mini-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; }

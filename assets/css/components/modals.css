@@ -68,7 +68,19 @@
   border-bottom: 1px solid var(--border-glass);
   padding-bottom: 10px;
   margin-bottom: 20px;
-  overflow-x: auto;
+  
+  /* CORREÇÃO AQUI */
+  overflow-x: auto;  /* Permite scroll horizontal */
+  overflow-y: hidden; /* Bloqueia estritamente o scroll vertical */
+  
+  /* Melhora a suavidade no mobile */
+  -webkit-overflow-scrolling: touch; 
+}
+
+/* Garante que os botões não causem overflow vertical ao serem clicados/focados */
+.tabs-container .tab-btn {
+  flex-shrink: 0;
+  margin-bottom: 2px; /* Espaço de segurança para a linha ativa (::after) */
 }
 
 .tab-btn {

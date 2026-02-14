@@ -3,28 +3,62 @@ import {
     doc, getDoc, updateDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// ALTERAÇÃO: Importa a nova função de PDF
 import { generateLaudoPDF } from './docx-generator.js';
 
-console.log("Task Manager Loaded - vPDF Update");
+console.log("Task Manager Loaded - Mobile Layout Fix");
 
-// --- INJEÇÃO DE ESTILOS MOBILE (MANTIDO) ---
+// --- ESTILOS INJETADOS (Correções Específicas Mobile) ---
 const style = document.createElement('style');
 style.innerHTML = `
     @media (max-width: 768px) {
-        .modal-glass { width: 95% !important; max-height: 90vh; padding: 1rem !important; margin: 10px auto; overflow-y: auto; }
+        .modal-glass { 
+            width: 100% !important; 
+            height: 100% !important; 
+            max-height: 100vh !important; 
+            border-radius: 0 !important; 
+            margin: 0 !important; 
+            display: flex; 
+            flex-direction: column; 
+        }
         .tm-hero-modern { flex-direction: column; text-align: center; gap: 15px; }
         .tm-hero-modern > div:last-child { text-align: center !important; width: 100%; }
-        .tm-code-section { flex-direction: column; gap: 15px; align-items: stretch !important; }
+        
+        /* Layout Vertical para as seções principais */
+        .tm-code-section { flex-direction: column; gap: 20px; align-items: stretch !important; }
         .tm-code-section > div { text-align: left !important; width: 100%; }
+        
+        /* CORREÇÃO: Botão de Editar ocupa largura total */
+        .tm-code-section > button { margin-left: 0 !important; width: 100%; margin-top: 5px; }
+
+        /* CORREÇÃO CRÍTICA: Botão de Copiar no Mobile */
+        .btn-copy-code {
+            width: 40px !important; /* Tamanho fixo */
+            height: 40px !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex-shrink: 0 !important; /* Impede de encolher ou esticar */
+            background: rgba(0,0,0,0.05) !important; /* Fundo leve para área de toque */
+            border-radius: 8px !important;
+        }
+
+        .tm-code-row {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            gap: 10px !important;
+            width: 100%;
+        }
+
         .tm-info-cards { grid-template-columns: 1fr !important; }
         .tm-actions-footer { flex-direction: column; }
         .tm-actions-footer button { width: 100%; }
         .modal-footer { flex-direction: column-reverse; }
         .modal-footer button { width: 100%; }
     }
-    .tm-valor-badge span { filter: blur(5px); transition: filter 0.3s ease; }
-    .tm-valor-badge.revealed span { filter: none; }
+    
+    .btn-copy-code:active { transform: scale(0.9); }
 `;
 document.head.appendChild(style);
 
@@ -119,44 +153,54 @@ function renderDetails(task) {
         'liberar':'Aguardando Liberação', 'concluido':'Concluído' 
     };
 
+    // --- SEÇÃO FINANCEIRA ---
     let financialHtml = '';
-    const finStatus = task.financialStatus || 'pendente';
-    const btnChangeFin = isStaff ? 
-        `<button onclick="window.toggleFinancialStatus()" style="background:transparent; border:1px solid currentColor; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:0.75rem; color:inherit; opacity:0.8;">Mudar</button>` : '';
+    const finStatus = task.financialStatus || task.situacao || 'pendente';
+    
+    let alertStyle = '';
+    let iconClass = '';
+    let statusTitle = '';
+    let statusSub = '';
+    let btnHtml = '';
 
-    if (finStatus === 'pendente') {
-        financialHtml = `
-            <div class="finance-alert pending">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <i class="fas fa-exclamation-triangle" style="font-size:1.2rem;"></i>
-                    <div>
-                        <div style="font-weight:700;">Pagamento Pendente</div>
-                        <div style="font-size:0.8rem; opacity:0.9;">Bloqueia download público</div>
-                    </div>
-                </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    ${task.valor ? `<span class="tm-valor-badge" onclick="this.classList.toggle('revealed')" style="cursor:pointer; font-size:0.85rem; font-weight:700; user-select:none;" title="Clique para ver"><i class="fas fa-eye"></i> <span style="filter:blur(5px); transition:filter 0.3s;">R$ ${task.valor}</span></span>` : ''}
-                    ${btnChangeFin}
-                </div>
-            </div>`;
+    if (finStatus === 'didatico') {
+        alertStyle = 'background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a;'; 
+        iconClass = 'fa-graduation-cap';
+        statusTitle = 'Isento';
+        statusSub = 'Interesse Didático';
+        btnHtml = ''; 
+    } else if (finStatus === 'pago') {
+        alertStyle = 'background: #dcfce7; border: 1px solid #86efac; color: #14532d;';
+        iconClass = 'fa-check-circle';
+        statusTitle = 'Pago';
+        statusSub = 'Liberado';
+        if(isStaff) {
+            btnHtml = `<button onclick="window.toggleFinancialStatus()" style="background:transparent; border:1px solid currentColor; border-radius:4px; padding:2px 8px; font-size:0.65rem; font-weight:700; color:inherit; cursor:pointer; margin-top:3px; white-space:nowrap; opacity:0.8;">REVERTER</button>`;
+        }
     } else {
-        financialHtml = `
-            <div class="finance-alert paid">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <i class="fas fa-check-circle" style="font-size:1.2rem;"></i>
-                    <div>
-                        <div style="font-weight:700;">Pagamento Realizado</div>
-                        <div style="font-size:0.8rem; opacity:0.9;">Liberado para download</div>
-                    </div>
-                </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    ${task.valor ? `<span class="tm-valor-badge" onclick="this.classList.toggle('revealed')" style="cursor:pointer; font-size:0.85rem; font-weight:700; user-select:none;" title="Clique para ver"><i class="fas fa-eye"></i> <span style="filter:blur(5px); transition:filter 0.3s;">R$ ${task.valor}</span></span>` : ''}
-                    ${btnChangeFin}
-                </div>
-            </div>`;
+        alertStyle = 'background: #fffbeb; border: 1px solid #fcd34d; color: #78350f;';
+        iconClass = 'fa-exclamation-triangle';
+        statusTitle = 'Pendente';
+        statusSub = 'Bloqueia laudo';
+        if(isStaff) {
+            btnHtml = `<button onclick="window.toggleFinancialStatus()" style="background:transparent; border:1px solid currentColor; border-radius:4px; padding:2px 8px; font-size:0.65rem; font-weight:700; color:inherit; cursor:pointer; margin-top:3px; white-space:nowrap; opacity:0.8;">PAGAR</button>`;
+        }
     }
 
-    // ALTERAÇÃO: Botões agora chamam exportToPDF e têm ícone de PDF
+    financialHtml = `
+        <div class="finance-alert" style="${alertStyle} padding:8px 12px; border-radius:8px; margin-top:12px; display:flex; align-items:center; gap:10px;">
+            <div style="font-size:1.2rem; flex-shrink:0;"><i class="fas ${iconClass}"></i></div>
+            <div style="flex:1; min-width:0; line-height:1.2;">
+                <div style="font-weight:800; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${statusTitle}</div>
+                <div style="font-size:0.7rem; opacity:0.85; font-weight:600;">${statusSub}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:flex-end; flex-shrink:0;">
+                ${task.valor && task.valor !== '0,00' ? `<div style="font-size:1rem; font-weight:800; letter-spacing:-0.5px;">R$ ${task.valor}</div>` : ''}
+                ${btnHtml}
+            </div>
+        </div>`;
+
+    // --- BOTÕES DE AÇÃO ---
     let actionsHtml = '';
     if (task.status === 'analise' && isStaff) {
         actionsHtml = `
@@ -182,6 +226,7 @@ function renderDetails(task) {
         `;
     }
 
+    // --- HTML FINAL DO CARD ---
     const html = `
         <div class="tm-hero-modern ${typeClass}">
             <div class="tm-hero-content">
@@ -200,8 +245,19 @@ function renderDetails(task) {
         <div class="tm-code-section">
             <div>
                 <div class="tm-code-label">Código de Acesso Público</div>
-                <div class="tm-code-value">${task.accessCode || "---"}</div>
+                
+                <div class="tm-code-row" style="display:flex; align-items:center; gap:8px;">
+                    <div class="tm-code-value" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${task.accessCode || "---"}
+                    </div>
+                    
+                    ${task.accessCode ? `
+                    <button class="btn-copy-code" onclick="window.copyToClipboard('${task.accessCode}', this)" style="background:transparent; border:none; cursor:pointer; color:var(--text-secondary); padding:4px;" title="Copiar">
+                        <i class="far fa-copy" style="font-size:1.1rem;"></i>
+                    </button>` : ''}
+                </div>
             </div>
+            
             <div style="text-align:right;">
                 <div class="tm-code-label" style="margin-bottom:4px;">Protocolo Interno</div>
                 <div style="font-weight:600; color:var(--text-secondary);">${task.protocolo || "---"}</div>
@@ -246,12 +302,28 @@ function renderDetails(task) {
     infoGrid.innerHTML = html;
 }
 
+window.copyToClipboard = async function(text, btn) {
+    if(!text) return;
+    try {
+        await navigator.clipboard.writeText(text);
+        const icon = btn.querySelector('i');
+        icon.className = 'fas fa-check';
+        icon.style.color = '#10b981'; 
+        setTimeout(() => {
+            icon.className = 'far fa-copy';
+            icon.style.color = '';
+        }, 2000);
+    } catch(e) { console.error(e); }
+}
+
 async function toggleFinancialStatus() {
     if(!currentTask) return;
     const currentStatus = currentTask.financialStatus || 'pendente';
+    if(currentStatus === 'didatico') return; 
+    
     const newStatus = currentStatus === 'pago' ? 'pendente' : 'pago'; 
 
-    if(!confirm(`Mudar status financeiro de ${currentStatus.toUpperCase()} para ${newStatus.toUpperCase()}?`)) return;
+    if(!confirm(`Mudar status financeiro para ${newStatus.toUpperCase()}?`)) return;
 
     try {
         await updateDoc(doc(db, "tasks", currentTask.id), { financialStatus: newStatus });
@@ -282,7 +354,7 @@ if(btnSaveReport) {
 async function finishReportWrapper() {
     if(!currentTask) return;
     const finStatus = currentTask.financialStatus || 'pendente';
-    if (finStatus !== 'pago' && finStatus !== 'isento') {
+    if (finStatus !== 'pago' && finStatus !== 'didatico') {
         if(!confirm("⚠️ AVISO FINANCEIRO: Status PENDENTE.\nDeseja liberar o laudo mesmo assim?")) return;
     }
     if(!confirm("Tem certeza que deseja LIBERAR e FINALIZAR este laudo?\nA data será congelada e ele irá para os Concluídos.")) return;
@@ -300,7 +372,6 @@ async function finishReportWrapper() {
     } catch(e) { console.error(e); alert("Erro ao liberar: " + e.message); }
 }
 
-// ALTERAÇÃO: Função agora chama generateLaudoPDF
 async function exportToPDF() {
     if (!currentTask) return alert("Nenhuma tarefa selecionada.");
     const form = document.getElementById('form-report-data');
@@ -310,7 +381,6 @@ async function exportToPDF() {
         const formObj = Object.fromEntries(formData.entries());
         finalData = { ...finalData, ...formObj };
     }
-    // Mudança de nome e função
     try { await generateLaudoPDF(currentTask, finalData); } catch (e) { alert("Erro PDF: " + e.message); }
 }
 

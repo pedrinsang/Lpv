@@ -269,7 +269,7 @@
   width: 100%;
   overflow-x: auto;
   padding-bottom: 15px;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   scrollbar-width: thin;
   scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
 }

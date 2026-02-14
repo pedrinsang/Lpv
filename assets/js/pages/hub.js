@@ -191,7 +191,13 @@ function renderQueue(tasks) {
     }
 
     // Ordena por data de atualização (mais recente primeiro) se existir, ou fallback
-    tasks.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+    tasks.sort((b, a) => {
+        const protA = a.protocolo || '';
+        const protB = b.protocolo || '';
+        
+        // Usa localeCompare com 'numeric: true' para que V-2 venha antes de V-10
+        return protA.localeCompare(protB, undefined, { numeric: true, sensitivity: 'base' });
+    });
 
     tasks.forEach((task, index) => {
         const div = document.createElement('div');

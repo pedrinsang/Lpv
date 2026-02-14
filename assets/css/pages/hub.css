@@ -1,0 +1,103 @@
+/* Estilização do Container da Fila */
+#queue-list-container {
+    max-height: 300px; /* Define uma altura máxima (ajuste conforme preferir) */
+    overflow-y: auto;  /* Ativa o scroll vertical */
+    padding-right: 8px; /* Espaço para a scrollbar não sobrepor o conteúdo */
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Customização da Scrollbar para manter o design moderno */
+#queue-list-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+#queue-list-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+}
+
+#queue-list-container::-webkit-scrollbar-thumb {
+    background: var(--color-primary, #3b82f6);
+    border-radius: 10px;
+    opacity: 0.5;
+}
+
+
+ /* =========================================
+   SIDEBAR MOBILE (CORREÇÃO DE FUNDO)
+   ========================================= */
+
+/* Esconde no Desktop por padrão */
+.mobile-menu-btn, .sidebar-overlay {
+    display: none !important;
+}
+
+/* APENAS PARA MOBILE (Telas menores que 900px) */
+@media (max-width: 900px) {
+    
+    /* 1. Botão Hambúrguer Visível */
+    .mobile-menu-btn {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        background: transparent;
+        border: none;
+        color: var(--bg-glass-heavy); /* Cor padrão caso a variavel falhe */
+        cursor: pointer;
+        padding: 8px;
+    }
+
+    /* Ajuste para Dark Mode (se usar atributo data-theme) */
+    [data-theme="dark"] .mobile-menu-btn {
+        color: #fff;
+    }
+
+    /* 2. Sidebar Transformada (Off-Canvas) */
+    .desktop-sidebar {
+        display: flex !important;
+        flex-direction: column;
+        position: fixed;
+        top: 0;
+        left: -100%; /* Escondido para a esquerda */
+        width: 280px;
+        height: 100vh;
+        z-index: 2000;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        
+        /* COR DE FUNDO OBRIGATÓRIA (Para não ficar transparente) */
+        background-color: #ffffff; 
+        box-shadow: 5px 0 25px rgba(0,0,0,0.2);
+    }
+
+    /* Cor de fundo no Dark Mode */
+    [data-theme="dark"] .desktop-sidebar {
+        background-color: var(--bg-sidebar); /* Cinza escuro */
+        border-right: 1px solid #333;
+    }
+
+    /* Classe que ABRE o menu */
+    .desktop-sidebar.active {
+        left: 0;
+    }
+
+    /* 3. Fundo Escuro (Overlay) */
+    .sidebar-overlay {
+        display: block !important;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 1999;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s;
+        backdrop-filter: blur(3px);
+    }
+
+    .sidebar-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+}

@@ -9,91 +9,13 @@
             document.documentElement.setAttribute('data-theme', 'dark');
         })();
     </script>
-    
+    <link rel="stylesheet" href="../assets/css/pages/hub.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="manifest" href="../manifest.json">
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
 </head>
-<style>
- /* =========================================
-   SIDEBAR MOBILE (CORREÇÃO DE FUNDO)
-   ========================================= */
-
-/* Esconde no Desktop por padrão */
-.mobile-menu-btn, .sidebar-overlay {
-    display: none !important;
-}
-
-/* APENAS PARA MOBILE (Telas menores que 900px) */
-@media (max-width: 900px) {
-    
-    /* 1. Botão Hambúrguer Visível */
-    .mobile-menu-btn {
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        background: transparent;
-        border: none;
-        color: var(--text-primary, #333); /* Cor padrão caso a variavel falhe */
-        cursor: pointer;
-        padding: 8px;
-    }
-
-    /* Ajuste para Dark Mode (se usar atributo data-theme) */
-    [data-theme="dark"] .mobile-menu-btn {
-        color: #fff;
-    }
-
-    /* 2. Sidebar Transformada (Off-Canvas) */
-    .desktop-sidebar {
-        display: flex !important;
-        flex-direction: column;
-        position: fixed;
-        top: 0;
-        left: -100%; /* Escondido para a esquerda */
-        width: 280px;
-        height: 100vh;
-        z-index: 2000;
-        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        
-        /* COR DE FUNDO OBRIGATÓRIA (Para não ficar transparente) */
-        background-color: #ffffff; 
-        box-shadow: 5px 0 25px rgba(0,0,0,0.2);
-    }
-
-    /* Cor de fundo no Dark Mode */
-    [data-theme="dark"] .desktop-sidebar {
-        background-color: #1e1e1e; /* Cinza escuro */
-        border-right: 1px solid #333;
-    }
-
-    /* Classe que ABRE o menu */
-    .desktop-sidebar.active {
-        left: 0;
-    }
-
-    /* 3. Fundo Escuro (Overlay) */
-    .sidebar-overlay {
-        display: block !important;
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.6);
-        z-index: 1999;
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.3s;
-        backdrop-filter: blur(3px);
-    }
-
-    .sidebar-overlay.active {
-        opacity: 1;
-        visibility: visible;
-    }
-}
-</style>
 <body>
 
     <aside class="desktop-sidebar">
@@ -230,44 +152,47 @@
                 </div>
             </div>
 
-            <div style="margin-bottom: 2rem; padding: 10px;">
+            <div style="padding: 10px;">
                 <h3 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px; font-weight: 700; text-transform: uppercase;">
                     <i class="fas fa-tasks me-2"></i> Minha Fila
                 </h3>
                 <div id="queue-list-container"></div>
             </div>
 
-            <div>
-                <h3 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px; font-weight: 700; text-transform: uppercase; padding: 10px;">
-                    Acesso Rápido
-                </h3>
-                <div class="hub-grid">
-                    <a href="historico.html" class="tool-card" style="--card-index: 0">
-                        <div class="tool-icon" style="background: linear-gradient(135deg, #3f853f, #7bc47b);"><i class="fas fa-history"></i></div>
-                        <div><strong>Histórico de Laudos</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Lista de Laudos Antigos</span></div>
-                    </a>
-                    <a href="planner.html" class="tool-card" style="--card-index: 1">
-                        <div class="tool-icon" style="background: linear-gradient(135deg, #f97316, #fb923c);"><i class="fas fa-calendar-alt"></i></div>
-                        <div><strong>Planner</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Agenda de Tarefas</span></div>
-                    </a>
-                    <a href="laminas.html" class="tool-card" style="--card-index: 2">
-                        <div class="tool-icon"><i class="fas fa-layer-group"></i></div>
-                        <div><strong>Contador de Lâminas</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Registro de Coloração de Lâminas</span></div>
-                    </a>
-                    <a href="coloracao.html" class="tool-card" style="--card-index: 3">
-                        <div class="tool-icon" style="background: linear-gradient(135deg, #8b5cf6, #a78bfa);"><i class="fas fa-stopwatch"></i></div>
-                        <div><strong>Timers</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Coloração</span></div>
-                    </a>
-                    <a href="protocolos.html" class="tool-card" style="--card-index: 4">
-                        <div class="tool-icon"><i class="fas fa-book-medical"></i></div>
-                        <div><strong>Protocolos</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Guias Técnicos</span></div>
-                    </a>
-                    <a href="admin.html" class="tool-card hidden" id="admin-card" style="--card-index: 5">
-                        <div class="tool-icon" style="background: #333;"><i class="fas fa-shield-alt"></i></div>
-                        <div><strong>Admin</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Gestão</span></div>
-                    </a>
+            <!-- Gaveta de Acesso Rápido -->
+            <div id="quick-access-drawer" class="quick-access-drawer">
+                <div class="drawer-handle"></div>
+                <div class="drawer-content">
+                    <h3 style="font-size: 1.25rem; color: var(--text-secondary); margin-bottom: 18px; font-weight: 800; text-transform: uppercase; padding: 10px 0; text-align: center; letter-spacing: 1px;">
+                        Acesso Rápido
+                    </h3>
+                    <div class="hub-grid">
+                        <a href="historico.html" class="tool-card" style="--card-index: 0">
+                            <div class="tool-icon" style="background: linear-gradient(135deg, #3f853f, #7bc47b);"><i class="fas fa-history"></i></div>
+                            <div><strong>Histórico de Laudos</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Lista de Laudos Antigos</span></div>
+                        </a>
+                        <a href="planner.html" class="tool-card" style="--card-index: 1">
+                            <div class="tool-icon" style="background: linear-gradient(135deg, #f97316, #fb923c);"><i class="fas fa-calendar-alt"></i></div>
+                            <div><strong>Planner</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Agenda de Tarefas</span></div>
+                        </a>
+                        <a href="laminas.html" class="tool-card" style="--card-index: 2">
+                            <div class="tool-icon"><i class="fas fa-layer-group"></i></div>
+                            <div><strong>Contador de Lâminas</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Registro de Coloração de Lâminas</span></div>
+                        </a>
+                        <a href="coloracao.html" class="tool-card" style="--card-index: 3">
+                            <div class="tool-icon" style="background: linear-gradient(135deg, #8b5cf6, #a78bfa);"><i class="fas fa-stopwatch"></i></div>
+                            <div><strong>Timers</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Coloração</span></div>
+                        </a>
+                        <a href="protocolos.html" class="tool-card" style="--card-index: 4">
+                            <div class="tool-icon"><i class="fas fa-book-medical"></i></div>
+                            <div><strong>Protocolos</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Guias Técnicos</span></div>
+                        </a>
+                        <a href="admin.html" class="tool-card hidden" id="admin-card" style="--card-index: 5">
+                            <div class="tool-icon" style="background: #333;"><i class="fas fa-shield-alt"></i></div>
+                            <div><strong>Admin</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Gestão</span></div>
+                        </a>
+                    </div>
                 </div>
-            </div>
         </main>
 
     </div> <nav class="bottom-nav">
@@ -372,11 +297,20 @@
 
                     </div>
 
-                    <div class="modal-footer">
-                        <div class="code-preview">
-                            Código Público Gerado: <span id="display-code" style="font-family: monospace; font-weight: 700; color: var(--color-primary);">...</span>
+                    <div class="modal-footer" style="flex-direction: column; align-items: flex-start; gap: 15px;">
+                        <div class="code-preview" style="width: 100%;">
+                            <span style="font-size: 1rem; color: var(--text-secondary); display: block; margin-bottom: 5px;">Código Público Gerado:</span>
+                            
+                            <div class="tm-code-row" style="display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.05); padding: 2px 0px; border-radius: 8px; width: fit-content;">
+                                <span id="display-code" style="font-family: monospace; font-weight: 700; color: var(--color-primary); font-size: 1.1rem; white-space: nowrap;">...</span>
+                                
+                                <button type="button" id="btn-copy-code" class="btn-copy-code" onclick="window.copyToClipboard(document.getElementById('display-code').textContent, this)" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Copiar código">
+                                    <i class="far fa-copy" style="font-size: 1rem;"></i>
+                                </button>
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-primary">
+
+                        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
                             <i class="fas fa-save"></i> Salvar Entrada
                         </button>
                     </div>
@@ -399,13 +333,15 @@
     </div>
 
     <div id="task-manager-modal" class="modal-overlay hidden">
-        <div class="modal-glass">
+        <div class="modal-glass" style="display: flex; flex-direction: column; max-height: 90vh; padding: 0; overflow: hidden;">
             
-            <div style="text-align: right; margin-bottom: 5px;">
-                <button id="close-tm-btn" class="btn-close-modal"><i class="fas fa-times"></i></button>
+            <div style="flex-shrink: 0; display: flex; justify-content: flex-end; background: var(--background-glass);">
+                <button id="close-tm-btn" class="btn-close-modal" style="position: relative; top: auto; right: auto; background: rgba(0,0,0,0.1); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
 
-            <div id="view-details-content">
+            <div id="view-details-content" style="flex: 1; overflow-y: auto;">
                 <div id="tm-info-grid"></div>
 
                 <div class="modal-footer" style="justify-content: space-between; margin-top: 2rem; gap: 10px;">
@@ -427,7 +363,7 @@
                 </div>
             </div>
 
-            <div id="view-k7-form" class="hidden">
+            <div id="view-k7-form" class="hidden" style="padding: 20px; overflow-y: auto;">
                 <form id="form-k7"></form>
             </div>
 
@@ -554,6 +490,32 @@
     <script type="module" src="../assets/js/components/entry-modal.js"></script>
     <script type="module" src="../assets/js/components/task-manager.js"></script> 
     <script type="module" src="../assets/js/pages/hub.js"></script>
+<script>
+// Drawer logic
+const drawer = document.getElementById('quick-access-drawer');
+const handle = drawer.querySelector('.drawer-handle');
+let isOpen = false;
+handle.addEventListener('click', () => {
+    isOpen = !isOpen;
+    drawer.classList.toggle('open', isOpen);
+});
+// Suporte a arrastar para abrir/fechar (mobile)
+let startY = null, currentY = null;
+handle.addEventListener('touchstart', e => {
+    startY = e.touches[0].clientY;
+});
+handle.addEventListener('touchmove', e => {
+    if (startY !== null) {
+        currentY = e.touches[0].clientY;
+        const delta = currentY - startY;
+        if (delta < -30) { drawer.classList.add('open'); isOpen = true; }
+        if (delta > 30) { drawer.classList.remove('open'); isOpen = false; }
+    }
+});
+handle.addEventListener('touchend', () => {
+    startY = null; currentY = null;
+});
+</script>
 
 </body>
 </html>
