@@ -1,24 +1,22 @@
 import { db, auth, logout } from '../core.js';
-import { collection, query, where, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-
-// ALTERAÇÃO: Importa nova função PDF
+import { collection, query, where, getDocs, deleteDoc, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { generateLaudoPDF } from '../components/docx-generator.js';
-
 import '../components/task-manager.js'; 
 
-console.log("Historico Module Loaded - vPDF");
+console.log("Historico Module Loaded - vFinal");
 
 const listContainer = document.getElementById('reports-list');
 const searchInput = document.getElementById('history-search');
 const cleanupNotice = document.getElementById('cleanup-notice');
-const deletedCountSpan = document.getElementById('deleted-count');
+const btnExport = document.getElementById('btn-export-excel');
+const btnClear = document.getElementById('btn-clear-history');
 
 let allReports = [];
 
 window.addEventListener('DOMContentLoaded', async () => {
     auth.onAuthStateChanged(async (user) => {
         if (user) {
-            await loadAndCleanupHistory();
+            await loadHistory();
         } else {
             window.location.href = '../pages/auth.html';
         }
@@ -31,45 +29,26 @@ window.addEventListener('DOMContentLoaded', async () => {
     if(btnLogoutHeader) btnLogoutHeader.addEventListener('click', logout);
 });
 
-async function loadAndCleanupHistory() {
+// Lógica de carregamento sem exclusão automática
+async function loadHistory() {
     try {
-        const oneYearAgo = new Date();
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-        
         const q = query(
             collection(db, "tasks"), 
             where("status", "==", "concluido")
         );
         
         const querySnapshot = await getDocs(q);
-        let deletedCount = 0;
         allReports = [];
 
-        const promises = querySnapshot.docs.map(async (documento) => {
+        allReports = querySnapshot.docs.map((documento) => {
             const data = documento.data();
             const taskId = documento.id;
-            
             let releaseDate = data.releasedAt ? new Date(data.releasedAt) : (data.updatedAt ? new Date(data.updatedAt) : new Date());
 
-            if (releaseDate < oneYearAgo) {
-                await deleteDoc(doc(db, "tasks", taskId));
-                deletedCount++;
-                return null;
-            }
-
             return { id: taskId, ...data, releaseDateObj: releaseDate };
-        });
+        }).sort((a, b) => b.releaseDateObj - a.releaseDateObj);
 
-        const results = await Promise.all(promises);
-        
-        allReports = results
-            .filter(item => item !== null)
-            .sort((a, b) => b.releaseDateObj - a.releaseDateObj);
-
-        if (deletedCount > 0 && cleanupNotice) {
-            if(deletedCountSpan) deletedCountSpan.innerText = deletedCount;
-            cleanupNotice.classList.remove('hidden');
-        }
+        if (cleanupNotice) cleanupNotice.classList.add('hidden');
 
         renderList(allReports);
 
@@ -79,6 +58,7 @@ async function loadAndCleanupHistory() {
     }
 }
 
+// Mantém o design original dos cards com as cores azul/rosa
 function renderList(reports) {
     if (!listContainer) return;
 
@@ -96,11 +76,10 @@ function renderList(reports) {
         const tipoClass = task.type === 'necropsia' ? 'color:#3b82f6;' : 'color:#ec4899;';
         const tipoLabel = task.type === 'necropsia' ? 'Necropsia' : 'Biópsia';
 
-        // ALTERAÇÃO: Botão Baixar Documento (PDF)
         return `
         <div class="report-card" style="--card-index: ${index}" onclick="window.openTaskManager('${task.id}')">
             <div class="card-header">
-                <div class="card-code">${task.accessCode || '---'}</div>
+                <div class="card-code">${task.protocolo || '---'}</div>
                 <div class="card-date"><i class="far fa-calendar-alt"></i> ${dataLib}</div>
             </div>
             
@@ -124,9 +103,10 @@ function renderList(reports) {
     }).join('');
 }
 
+// Download de PDF Individual
 window.downloadDoc = async (taskId) => {
     const task = allReports.find(t => t.id === taskId);
-    if (!task) return alert("Erro: Tarefa não encontrada na memória.");
+    if (!task) return alert("Erro: Tarefa não encontrada.");
 
     try {
         const btn = event.currentTarget; 
@@ -135,10 +115,7 @@ window.downloadDoc = async (taskId) => {
         btn.disabled = true;
 
         const reportData = task.report || {};
-        const finalData = { ...reportData, ...task };
-
-        // ALTERAÇÃO: Chama geração PDF
-        await generateLaudoPDF(task, finalData);
+        await generateLaudoPDF(task, { ...reportData, ...task });
 
         btn.innerHTML = originalText;
         btn.disabled = false;
@@ -148,13 +125,101 @@ window.downloadDoc = async (taskId) => {
     }
 };
 
+// Exportação Excel Estilizada
+if (btnExport) {
+    btnExport.addEventListener('click', () => {
+        if (allReports.length === 0) return alert("Não há dados para exportar.");
+
+        const rows = allReports.map(task => [
+            task.protocolo || "---",
+            task.dataEntrada ? new Date(task.dataEntrada + 'T12:00:00').toLocaleDateString('pt-BR') : "---",
+            task.animalNome || "---",
+            task.animalRg || "---",
+            task.especie || "---",
+            task.raca || "---",
+            task.sexo || "---",
+            task.idade || "---",
+            task.proprietario || "---",
+            task.docente || "---",
+            task.posGraduando || "---",
+            task.type === 'necropsia' ? 'Necropsia' : 'Biópsia',
+            task.report?.diagnostico || "---",
+            task.origem || "---",
+            parseFloat(task.valor?.replace(',', '.') || 0)
+        ]);
+
+        const totalValue = rows.reduce((sum, row) => sum + row[14], 0);
+        const header = ["PROTOCOLO", "DATA ENTRADA", "NOME", "RG", "ESPÉCIE", "RAÇA", "SEXO", "IDADE", "PROPRIETÁRIO", "DOCENTE", "PÓS-GRADUANDO", "TIPO", "DIAGNÓSTICO", "HVU/EXTERNO", "VALOR (R$)"];
+        const footer = ["TOTAL", "", "", "", "", "", "", "", "", "", "", "", "", "", totalValue];
+        const dataMatrix = [header, ...rows, footer];
+
+        const ws = XLSX.utils.aoa_to_sheet(dataMatrix);
+        const range = XLSX.utils.decode_range(ws['!ref']);
+
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                if (!ws[cellRef]) continue;
+                ws[cellRef].s = {
+                    border: {
+                        top: { style: "thin", color: { rgb: "CCCCCC" } },
+                        bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+                        left: { style: "thin", color: { rgb: "CCCCCC" } },
+                        right: { style: "thin", color: { rgb: "CCCCCC" } }
+                    },
+                    alignment: { vertical: "center", horizontal: "center" },
+                    font: { name: "Arial", sz: 10 }
+                };
+                if (R === 0) {
+                    ws[cellRef].s.fill = { fgColor: { rgb: "2F75B5" } };
+                    ws[cellRef].s.font = { color: { rgb: "FFFFFF" }, bold: true };
+                } else if (R === range.e.r) {
+                    ws[cellRef].s.fill = { fgColor: { rgb: "D9D9D9" } };
+                    ws[cellRef].s.font = { bold: true };
+                } else if (R % 2 === 0) {
+                    ws[cellRef].s.fill = { fgColor: { rgb: "F2F2F2" } };
+                }
+                if ([2, 4, 5, 6].includes(C) && R !== 0) ws[cellRef].s.alignment.horizontal = "left";
+            }
+        }
+
+        ws['!cols'] = [{wch:15},{wch:15},{wch:20},{wch:15},{wch:15},{wch:15},{wch:15},{wch:12},{wch:25},{wch:25},{wch:25},{wch:20},{wch:30},{wch:20},{wch:15}];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Resumo LPV");
+        XLSX.writeFile(wb, `Resumo_Anual_LPV_${new Date().getFullYear()}.xlsx`);
+
+        if (btnClear) btnClear.classList.remove('hidden');
+    });
+}
+
+// Apagar Histórico Manual
+if (btnClear) {
+    btnClear.addEventListener('click', async () => {
+        if (confirm("ATENÇÃO: Deseja apagar permanentemente TODO o histórico concluído?")) {
+            try {
+                btnClear.disabled = true;
+                btnClear.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Apagando...';
+                const batch = writeBatch(db);
+                allReports.forEach(report => batch.delete(doc(db, "tasks", report.id)));
+                await batch.commit();
+                alert("Histórico limpo com sucesso!");
+                window.location.reload();
+            } catch (e) {
+                console.error(e);
+                alert("Erro ao apagar histórico.");
+                btnClear.disabled = false;
+            }
+        }
+    });
+}
+
+// Busca
 if (searchInput) {
     searchInput.addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
         const filtered = allReports.filter(task => 
             (task.animalNome && task.animalNome.toLowerCase().includes(term)) ||
             (task.proprietario && task.proprietario.toLowerCase().includes(term)) ||
-            (task.accessCode && task.accessCode.toLowerCase().includes(term)) ||
             (task.protocolo && task.protocolo.toLowerCase().includes(term))
         );
         renderList(filtered);

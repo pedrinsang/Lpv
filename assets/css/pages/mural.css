@@ -4,7 +4,7 @@
     display: flex;
     gap: 15px;
     overflow-x: auto;
-    height: calc(100vh - 240px);
+    height: calc(100vh - 290px);
     
     /* Mobile Default: Snap e Esconde Scrollbar */
     padding: 0 7.5vw 20px 7.5vw; 

@@ -22,7 +22,6 @@
         <div class="sidebar-header">
             <img src="../assets/images/lpvminilogo2.png" alt="LPV" class="light-mode-only" style="height: 40px;">
             <img src="../assets/images/lpvminilogo.png" alt="LPV" class="dark-mode-only" style="height: 40px;">
-            
             <div style="line-height: 1;">
                 <div class="sidebar-brand-text">LPV Digital</div>
                 <div style="font-size: 0.75rem; color: var(--text-secondary);">Patologia Veterinária</div>
@@ -30,51 +29,30 @@
         </div>
 
         <nav class="sidebar-nav">
-            <a href="hub.html" class="sidebar-link active">
-                <i class="fas fa-home"></i> <span>Visão Geral</span>
-            </a>
-            <a href="mural.html" class="sidebar-link">
-                <i class="fas fa-columns"></i> <span>Mural</span>
-            </a>
-            <a href="coloracao.html" class="sidebar-link">
-                <i class="fas fa-stopwatch"></i> <span>Timers</span>
-            </a>
-            <a href="protocolos.html" class="sidebar-link">
-                <i class="fas fa-book-medical"></i> <span>Protocolos</span>
-            </a>
-            <a href="historico.html" class="sidebar-link">
-                <i class="fas fa-history"></i> <span>Histórico</span>
-            </a>
-            <a href="planner.html" class="sidebar-link">
-                <i class="fas fa-calendar-alt"></i> <span>Planner</span>
-            </a>
-
-            
-            
-            <button class="sidebar-link btn-sidebar-new">
+            <a href="hub.html" class="sidebar-link active"><i class="fas fa-home"></i> <span>Visão Geral</span></a>
+            <a href="mural.html" class="sidebar-link"><i class="fas fa-columns"></i> <span>Mural</span></a>
+            <a href="coloracao.html" class="sidebar-link"><i class="fas fa-stopwatch"></i> <span>Timers</span></a>
+            <a href="protocolos.html" class="sidebar-link"><i class="fas fa-book-medical"></i> <span>Protocolos</span></a>
+            <a href="historico.html" class="sidebar-link"><i class="fas fa-history"></i> <span>Histórico</span></a>
+            <a href="planner.html" class="sidebar-link"><i class="fas fa-calendar-alt"></i> <span>Planner</span></a>
+            <button class="sidebar-link btn-sidebar-new" id="open-entry-modal">
                 <i class="fas fa-plus"></i> <span>Nova Entrada</span>
             </button>
         </nav>
 
         <div class="sidebar-footer">
-            <div class="sidebar-user-avatar">
-                <i class="fas fa-user"></i>
-            </div>
-            
+            <div class="sidebar-user-avatar"><i class="fas fa-user"></i></div>
             <div class="sidebar-user-info">
                 <div id="sidebar-user-name" class="user-name-text">Carregando...</div>
                 <div id="sidebar-user-role" class="user-role-text">...</div>
             </div>
-
             <button class="btn-sidebar-settings" onclick="alert('Configurações de Perfil em breve!')" title="Configurações">
                 <i class="fas fa-cog"></i>
             </button>
         </div>
     </aside>
 
-
     <div class="layout-wrapper">
-
         <header class="app-header">
             <div class="header-brand" style="display: flex; align-items: center; gap: 10px;">
                 <button id="mobile-menu-btn" class="btn-icon mobile-menu-btn">
@@ -82,73 +60,66 @@
                 </button>
                 <img src="../assets/images/lpvminilogo2.png" alt="Logo" class="header-logo light-mode-only">
                 <img src="../assets/images/lpvminilogo.png" alt="Logo" class="header-logo dark-mode-only">
-                
                 <div class="header-text-column">
                     <span class="brand-title">LPV<span class="brand-subtitle">Hub</span></span>
                     <span id="user-role-badge" class="user-badge">...</span>
                 </div>
             </div>    
-            
             <div style="display: flex; gap: 10px;">
                 <button id="logout-btn" class="btn-icon" style="color: var(--color-error);"><i class="fas fa-sign-out-alt"></i></button>
             </div>
         </header>
 
-        
         <main class="main-container">
-            
             <div class="production-wrapper">
                 <div class="status-production-line">
-                    
                     <div class="status-card" data-status="necropsias" style="--card-index: 0">
                         <div class="status-count" id="count-necropsias">0</div>
                         <div class="status-label">Necropsias</div>
-                        <div class="status-bar" style="background: #3b82f6;"></div> </div>
-
+                        <div class="status-bar" style="background: #3b82f6;"></div> 
+                    </div>
                     <div class="status-card" data-status="biopsias" style="--card-index: 1">
                         <div class="status-count" id="count-biopsias">0</div>
                         <div class="status-label">Biopsias</div>
-                        <div class="status-bar" style="background: #ec4899;"></div> </div>
-
+                        <div class="status-bar" style="background: #ec4899;"></div> 
+                    </div>
                     <div class="status-arrow"><i class="fas fa-chevron-right"></i></div>
-
                     <div class="status-card" data-status="clivagem" style="--card-index: 2">
                         <div class="status-count" id="count-clivagem">0</div>
                         <div class="status-label">Clivagem</div>
-                        <div class="status-bar" style="background: #eab308;"></div> </div>
-
+                        <div class="status-bar" style="background: #eab308;"></div> 
+                    </div>
                     <div class="status-card" data-status="processamento" style="--card-index: 3">
                         <div class="status-count" id="count-processamento">0</div>
                         <div class="status-label">Processamento</div>
-                        <div class="status-bar" style="background: #84cc16;"></div> </div>
-
+                        <div class="status-bar" style="background: #84cc16;"></div> 
+                    </div>
                     <div class="status-card" data-status="emblocamento" style="--card-index: 4">
                         <div class="status-count" id="count-emblocamento">0</div>
                         <div class="status-label">Emblocamento</div>
-                        <div class="status-bar" style="background: #22c55e;"></div> </div>
-
+                        <div class="status-bar" style="background: #22c55e;"></div> 
+                    </div>
                     <div class="status-card" data-status="corte" style="--card-index: 5">
                         <div class="status-count" id="count-corte">0</div>
                         <div class="status-label">Desbaste/Corte</div>
-                        <div class="status-bar" style="background: #14b8a6;"></div> </div>
-
+                        <div class="status-bar" style="background: #14b8a6;"></div> 
+                    </div>
                     <div class="status-card" data-status="coloracao" style="--card-index: 6">
                         <div class="status-count" id="count-coloracao">0</div>
                         <div class="status-label">Coloração</div>
-                        <div class="status-bar" style="background: #06b6d4;"></div> </div>
-
+                        <div class="status-bar" style="background: #06b6d4;"></div> 
+                    </div>
                     <div class="status-arrow"><i class="fas fa-chevron-right"></i></div>
-
                     <div class="status-card" data-status="analise" style="--card-index: 7">
                         <div class="status-count" id="count-analise">0</div>
                         <div class="status-label">Análise</div>
-                        <div class="status-bar" style="background: #3b82f6;"></div> </div>
-
+                        <div class="status-bar" style="background: #3b82f6;"></div> 
+                    </div>
                     <div class="status-card" data-status="liberar" style="--card-index: 8">
                         <div class="status-count" id="count-liberar">0</div>
                         <div class="status-label">Liberar Laudo</div>
-                        <div class="status-bar" style="background: #6366f1;"></div> </div>
-
+                        <div class="status-bar" style="background: #6366f1;"></div> 
+                    </div>
                 </div>
             </div>
 
@@ -159,12 +130,11 @@
                 <div id="queue-list-container"></div>
             </div>
 
-            <!-- Gaveta de Acesso Rápido -->
             <div id="quick-access-drawer" class="quick-access-drawer">
                 <div class="drawer-handle"></div>
                 <div class="drawer-content">
                     <h3 style="font-size: 1.25rem; color: var(--text-secondary); margin-bottom: 18px; font-weight: 800; text-transform: uppercase; padding: 10px 0; text-align: center; letter-spacing: 1px;">
-                        Acesso Rápido
+                        <span style="opacity: 0.6;">▼</span> Acesso Rápido <span style="opacity: 0.6;">▼</span>
                     </h3>
                     <div class="hub-grid">
                         <a href="historico.html" class="tool-card" style="--card-index: 0">
@@ -193,329 +163,78 @@
                         </a>
                     </div>
                 </div>
+            </div>
         </main>
+    </div>
 
-    </div> <nav class="bottom-nav">
+    <nav class="bottom-nav">
         <a href="hub.html" class="nav-item active"><i class="fas fa-home"></i><span>Início</span></a>
         <a href="mural.html" class="nav-item"><i class="fas fa-columns"></i><span>Mural</span></a>
         <div class="nav-fab-container">
-            <button class="nav-fab" ><i class="fas fa-plus"></i></button>
+            <button class="nav-fab" id="mobile-open-entry"><i class="fas fa-plus"></i></button>
         </div>
         <a href="coloracao.html" class="nav-item"><i class="fas fa-stopwatch"></i><span>Timers</span></a>
         <a href="planner.html" class="nav-item"><i class="fas fa-calendar-alt"></i><span>Planner</span></a>
     </nav>
-    <div id="entry-modal" class="modal-overlay hidden">
-        <div class="modal-glass">
-            
-            <div class="modal-header-tabs">
-                <h2 style="margin-bottom: 1rem;">Nova Entrada</h2>
-                <div class="tabs-container">
-                    <button class="tab-btn active" data-tab="tab-v">Novo V</button>
-                    <button class="tab-btn" data-tab="tab-vn">Novo Vn</button>
-                    <button class="tab-btn" data-tab="tab-special">Coloração Especial</button>
-                </div>
-                <button id="close-modal-btn" class="btn-close-modal"><i class="fas fa-times"></i></button>
-            </div>
 
-            <div id="tab-v" class="tab-content active">
-                <form id="form-new-v">
-                    <div class="form-grid">
-                        
-                        <div class="form-group">
-                            <label>Nº Protocolo Interno</label>
-                            <input type="text" name="protocolo" placeholder="Ex: V-123/26" class="input-field" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Data Entrada</label>
-                            <input type="date" name="dataEntrada" id="date-v" class="input-field" required>
-                        </div>
-
-                        <div class="form-group span-2">
-                            <label>Remetente (Clínica/Vet)</label>
-                            <input type="text" name="remetente" class="input-field" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Situação Financeira</label>
-                            <select name="situacao" class="input-field">
-                                <option value="pendente">Pendente</option>
-                                <option value="pago">Pago</option>
-                                <option value="didatico">Interesse Didático (Isento)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Valor (R$)</label>
-                            <input type="text" name="valor" placeholder="0,00" class="input-field" inputmode="decimal">
-                        </div>
-
-                        <div class="form-group">
-                            <label>Docente Responsável</label>
-                            <select name="docente" id="select-docente" class="input-field" required>
-                                <option value="" disabled selected>Carregando...</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Pós-Graduando</label>
-                            <select name="posGraduando" id="select-pos" class="input-field" required>
-                                <option value="" disabled selected>Carregando...</option>
-                            </select>
-                        </div>
-
-                        <div class="span-3 divider-text">Dados do Animal</div>
-
-                        <div class="form-group span-2">
-                            <label>Nome do Animal / RG</label>
-                            <input type="text" name="animalNome" class="input-field" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Proprietário</label>
-                            <input type="text" name="proprietario" class="input-field" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Espécie</label>
-                            <input type="text" name="especie" placeholder="Canina" class="input-field" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Raça</label>
-                            <input type="text" name="raca" class="input-field">
-                        </div>
-                        <div class="form-group" style="display: flex; gap: 10px;">
-                            <div style="flex: 1;">
-                                <label>Sexo</label>
-                                <select name="sexo" class="input-field">
-                                    <option value="M">M</option>
-                                    <option value="F">F</option>
-                                </select>
-                            </div>
-                            <div style="flex: 1;">
-                                <label>Idade</label>
-                                <input type="text" name="idade" class="input-field">
-                            </div>
-                        </div>
-
-                        <input type="hidden" name="accessCode" id="generated-access-code">
-
-                    </div>
-
-                    <div class="modal-footer" style="flex-direction: column; align-items: flex-start; gap: 15px;">
-                        <div class="code-preview" style="width: 100%;">
-                            <span style="font-size: 1rem; color: var(--text-secondary); display: block; margin-bottom: 5px;">Código Público Gerado:</span>
-                            
-                            <div class="tm-code-row" style="display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.05); padding: 2px 0px; border-radius: 8px; width: fit-content;">
-                                <span id="display-code" style="font-family: monospace; font-weight: 700; color: var(--color-primary); font-size: 1.1rem; white-space: nowrap;">...</span>
-                                
-                                <button type="button" id="btn-copy-code" class="btn-copy-code" onclick="window.copyToClipboard(document.getElementById('display-code').textContent, this)" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Copiar código">
-                                    <i class="far fa-copy" style="font-size: 1rem;"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
-                            <i class="fas fa-save"></i> Salvar Entrada
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <div id="tab-vn" class="tab-content">
-                <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-                    <i class="fas fa-tools"></i> Funcionalidade em desenvolvimento.
-                </div>
-            </div>
-
-            <div id="tab-special" class="tab-content">
-                <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-                    <i class="fas fa-tools"></i> Funcionalidade em desenvolvimento.
-                </div>
-            </div>
-
-        </div>
-    </div>
+    <lpv-entry-form></lpv-entry-form>
 
     <div id="task-manager-modal" class="modal-overlay hidden">
         <div class="modal-glass" style="display: flex; flex-direction: column; max-height: 90vh; padding: 0; overflow: hidden;">
-            
             <div style="flex-shrink: 0; display: flex; justify-content: flex-end; background: var(--background-glass);">
                 <button id="close-tm-btn" class="btn-close-modal" style="position: relative; top: auto; right: auto; background: rgba(0,0,0,0.1); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-
             <div id="view-details-content" style="flex: 1; overflow-y: auto;">
                 <div id="tm-info-grid"></div>
-
                 <div class="modal-footer" style="justify-content: space-between; margin-top: 2rem; gap: 10px;">
-                    
                     <button id="btn-delete-task" class="btn btn-secondary" style="color: var(--color-error); border-color: var(--color-error); margin-right: auto;">
                         <i class="fas fa-trash"></i>
                     </button>
-                    
                     <div style="display: flex; gap: 10px;">
-                        <button id="btn-prev-stage" class="btn btn-secondary hidden">
-                            <i class="fas fa-undo"></i> Voltar
-                        </button>
-
-                        <button id="btn-next-stage" class="btn btn-primary">
-                            Próxima <i class="fas fa-arrow-right"></i>
-                        </button>
+                        <button id="btn-prev-stage" class="btn btn-secondary hidden"><i class="fas fa-undo"></i> Voltar</button>
+                        <button id="btn-next-stage" class="btn btn-primary">Próxima <i class="fas fa-arrow-right"></i></button>
                     </div>
-
                 </div>
             </div>
-
             <div id="view-k7-form" class="hidden" style="padding: 20px; overflow-y: auto;">
                 <form id="form-k7"></form>
             </div>
-
         </div>
     </div>
 
-    <div id="report-editor-modal" class="modal-overlay hidden" style="z-index: 3000;">
-        <div class="report-paper-container">
-            
-            <div class="report-toolbar">
-                <h3 style="color: var(--text-primary);"><i class="fas fa-file-medical"></i> Editor de Laudo</h3>
-                <div style="display: flex; gap: 10px;">
-                    <button id="btn-download-word" class="btn btn-secondary btn-sm hidden" onclick="window.exportToWord()">
-                        <i class="fas fa-file-word"></i> Baixar Word
-                    </button>
-                    <button id="btn-save-report" class="btn btn-primary btn-sm">
-                        <i class="fas fa-save"></i> Salvar
-                    </button>
-                </div>
-            </div>
-
-            <div class="report-paper" id="print-area">
-                
-                <table class="header-table">
-                    <tr>
-                        <td>
-                            <img src="../assets/images/Logo-UFSM.png" alt="UFSM" style="width: 75px; height: auto;">
-                        </td>
-                        <td>
-                            <div class="univ-title" style="color: black;">UNIVERSIDADE FEDERAL DE SANTA MARIA</div>
-                            <div class="dept-title">DEPARTAMENTO DE PATOLOGIA</div>
-                            <div class="lab-title">Laboratório de Patologia Veterinária</div>
-                            <div class="address-text">Prédio 97B, 97105-900 Santa Maria, RS, Brasil</div>
-                            <div class="address-text">lpv@ufsm.br | 55 3220-8168</div>
-                        </td>
-                        <td>
-                            <img src="../assets/images/lpvminilogo2.png" alt="LPV" style="width: 90px; height: auto;">
-                        </td>
-                    </tr>
-                </table>
-
-                <div style="text-align: center; margin: 15px 0;">
-                    <span style="font-family: Arial, sans-serif; font-weight: bold; font-size: 16px; text-decoration: underline;">
-                        LAUDO HISTOPATOLÓGICO (<span id="rep-protocol-header">V-000</span>)
-                    </span>
-                </div>
-
-                <div class="info-block">
-                    <table class="info-table" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11px;">
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 4px; background: #f0f0f0;" colspan="4"><strong>DADOS DO ANIMAL</strong></td>
-                        </tr>
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 4px;"><strong>Nome:</strong> <span id="rep-animal">...</span></td>
-                            <td style="border: 1px solid #000; padding: 4px;"><strong>Espécie:</strong> <span id="rep-especie">...</span></td>
-                            <td style="border: 1px solid #000; padding: 4px;"><strong>Raça:</strong> <span id="rep-raca">...</span></td>
-                            <td style="border: 1px solid #000; padding: 4px;"><strong>Sexo:</strong> <span id="rep-sexo">...</span></td>
-                        </tr>
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 4px;" colspan="4"><strong>Idade:</strong> <span id="rep-idade">...</span></td>
-                        </tr>
-                        
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 4px; background: #f0f0f0;" colspan="4"><strong>DADOS DO REQUISITANTE / PROPRIETÁRIO</strong></td>
-                        </tr>
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 4px;" colspan="2"><strong>Requisitante:</strong> <span id="rep-req">...</span></td>
-                            <td style="border: 1px solid #000; padding: 4px;" colspan="2"><strong>Proprietário:</strong> <span id="rep-proprietario">...</span></td>
-                        </tr>
-                        <tr>
-                            <td style="border: 1px solid #000; padding: 4px;" colspan="4"><strong>Data Recebimento:</strong> <span id="rep-data">...</span></td>
-                        </tr>
-                    </table>
-                </div>
-
-                <form id="form-report-content" style="margin-top: 15px; font-family: 'Times New Roman', serif;">
-                    
-                    <div class="report-section">
-                        <label>HISTÓRICO CLÍNICO</label>
-                        <textarea name="historico" class="report-textarea" rows="2"></textarea>
-                    </div>
-
-                    <div class="report-section">
-                        <label>DESCRIÇÃO MACROSCÓPICA</label>
-                        <textarea name="macroscopia" class="report-textarea" rows="3"></textarea>
-                    </div>
-
-                    <div class="report-section">
-                        <label>DESCRIÇÃO MICROSCÓPICA</label>
-                        <textarea name="microscopia" class="report-textarea" rows="5"></textarea>
-                    </div>
-
-                    <div class="report-section">
-                        <label>DIAGNÓSTICO(S)</label>
-                        <textarea name="diagnostico" class="report-textarea" rows="2" style="font-weight: bold;"></textarea>
-                    </div>
-                    
-                    <div class="report-section">
-                        <label>COMENTÁRIOS / NOTAS</label>
-                        <textarea name="notas" class="report-textarea" rows="2"></textarea>
-                    </div>
-
-                </form>
-
-                <div class="report-footer-signature" style="margin-top: 40px; font-family: 'Times New Roman', serif; font-size: 12px;">
-                    <p>Data de emissão: <span id="rep-date-emission">Em andamento</span></p>
-                    <br>
-                    <div class="signature-line">
-                        <strong>Dra. Mariana Martins Flores</strong><br>
-                        Patologista / CRMV 14.636
-                    </div>
-                    <div class="signature-line" style="margin-top: 20px;">
-                        <strong>Pós-Graduando(a):</strong> <span id="rep-pos-graduando">...</span>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </div>
+    <lpv-form-laudo></lpv-form-laudo>
 
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
-    <script type="module" src="../assets/js/core.js"></script>
+    <script type="module" src="../assets/js/components/form-laudo.js"></script>
+    <script type="module" src="../assets/js/components/entry-form.js"></script>
     <script type="module" src="../assets/js/components/entry-modal.js"></script>
+    <script type="module" src="../assets/js/core.js"></script>
     <script type="module" src="../assets/js/components/task-manager.js"></script> 
     <script type="module" src="../assets/js/pages/hub.js"></script>
-<script>
-// Drawer logic
-const drawer = document.getElementById('quick-access-drawer');
-const handle = drawer.querySelector('.drawer-handle');
-let isOpen = false;
-handle.addEventListener('click', () => {
-    isOpen = !isOpen;
-    drawer.classList.toggle('open', isOpen);
-});
-// Suporte a arrastar para abrir/fechar (mobile)
-let startY = null, currentY = null;
-handle.addEventListener('touchstart', e => {
-    startY = e.touches[0].clientY;
-});
-handle.addEventListener('touchmove', e => {
-    if (startY !== null) {
-        currentY = e.touches[0].clientY;
-        const delta = currentY - startY;
-        if (delta < -30) { drawer.classList.add('open'); isOpen = true; }
-        if (delta > 30) { drawer.classList.remove('open'); isOpen = false; }
-    }
-});
-handle.addEventListener('touchend', () => {
-    startY = null; currentY = null;
-});
-</script>
 
+    <script>
+        const drawer = document.getElementById('quick-access-drawer');
+        const handle = drawer.querySelector('.drawer-handle');
+        let isOpen = false;
+        handle.addEventListener('click', () => {
+            isOpen = !isOpen;
+            drawer.classList.toggle('open', isOpen);
+        });
+
+        let startY = null, currentY = null;
+        handle.addEventListener('touchstart', e => { startY = e.touches[0].clientY; });
+        handle.addEventListener('touchmove', e => {
+            if (startY !== null) {
+                currentY = e.touches[0].clientY;
+                const delta = currentY - startY;
+                if (delta < -30) { drawer.classList.add('open'); isOpen = true; }
+                if (delta > 30) { drawer.classList.remove('open'); isOpen = false; }
+            }
+        });
+        handle.addEventListener('touchend', () => { startY = null; currentY = null; });
+    </script>
 </body>
 </html>

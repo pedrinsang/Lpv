@@ -152,7 +152,7 @@ export async function generateLaudoPDF(task, reportData) {
                     body: [
                         [{ text: 'DADOS DO ANIMAL', style: 'tableHeaderGray', colSpan: 4, border: [false, false, false, false] }, {}, {}, {}],
                         [
-                            { text: 'Nome:', style: 'label' }, { text: task.animalNome || "-", style: 'value' },
+                            { text: 'Nome / RG:', style: 'label' }, { text: `${task.animalNome || "-"} / ${task.animalRg || "-"}`, style: 'value' },
                             { text: 'Espécie:', style: 'label' }, { text: task.especie || "-", style: 'value' }
                         ],
                         [
