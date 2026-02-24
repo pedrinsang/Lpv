@@ -226,8 +226,12 @@ function applyQueueFilter() {
 
     let tasksToRender = queueSourceTasks;
     if (isPosGrad && queueFilterMode === 'mine') {
-        const currentUserName = (currentUserData?.name || '').trim().toLowerCase();
-        tasksToRender = queueSourceTasks.filter((task) => (task.posGraduando || '').trim().toLowerCase() === currentUserName);
+        const currentUserName = normalizeText(currentUserData?.name || '');
+        if (!currentUserName) {
+            tasksToRender = [];
+        } else {
+            tasksToRender = queueSourceTasks.filter((task) => normalizeText(task.posGraduando || '') === currentUserName);
+        }
     }
 
     renderQueue(tasksToRender);
@@ -414,4 +418,13 @@ function getShortName(fullName) {
     const parts = fullName.trim().split(/\s+/);
     if (parts.length === 1) return parts[0]; 
     return `${parts[0]} ${parts[1][0]}.`;
+}
+
+function normalizeText(value) {
+    return (value || '')
+        .toString()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
 }

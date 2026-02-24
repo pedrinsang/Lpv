@@ -11,6 +11,19 @@
     text-transform: uppercase;
 }
 
+.queue-filter {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.queue-filter .btn {
+    flex: 1;
+    white-space: nowrap;
+    font-size: 0.78rem;
+    padding: 7px 10px;
+}
+
 .queue-board {
     display: flex;
     flex-direction: column;
@@ -108,6 +121,15 @@
 
 /* APENAS PARA MOBILE (Telas menores que 900px) */
 @media (max-width: 900px) {
+    .queue-filter {
+        overflow-x: auto;
+        padding-bottom: 2px;
+    }
+
+    .queue-filter .btn {
+        flex: 0 0 auto;
+    }
+
     .queue-dots {
         display: flex;
     }
