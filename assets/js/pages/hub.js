@@ -7,6 +7,9 @@ const els = {
     userBadge: document.getElementById('user-role-badge'),
     adminCard: document.getElementById('admin-card'),
     queueContainer: document.getElementById('queue-list-container'),
+    queueFilterContainer: document.getElementById('queue-filter-container'),
+    queueFilterAll: document.getElementById('queue-filter-all'),
+    queueFilterMine: document.getElementById('queue-filter-mine'),
     
     // Totalizadores (Casos Ativos)
     cNecropsias: document.getElementById('count-necropsias'),
@@ -24,6 +27,8 @@ const els = {
 
 let currentUserData = null;
 let unsubscribeTasks = null;
+let queueSourceTasks = [];
+let queueFilterMode = 'all';
 
 // 2. INICIALIZAÇÃO
 onAuthStateChanged(auth, async (user) => {
@@ -44,8 +49,8 @@ async function loadUserProfile(uid) {
         if (docSnap.exists()) {
             currentUserData = docSnap.data();
             updateUserBadge(currentUserData.role);
-            
-            
+            setupQueueFilters();
+
         }
     } catch (e) { console.error(e); }
 }
@@ -137,7 +142,8 @@ function initRealTimeDashboard() {
         });
 
         updateCounters(counts);
-        renderQueue(myQueue);
+        queueSourceTasks = myQueue;
+        applyQueueFilter();
 
     }, (error) => console.warn(error));
 }
@@ -172,6 +178,59 @@ function isTaskRelevant(task, role) {
         return ['clivagem', 'processamento', 'emblocamento', 'corte', 'coloracao'].includes(task.status);
     }
     return false;
+}
+
+function setupQueueFilters() {
+    const cleanRole = (currentUserData?.role || '').toLowerCase();
+    const isPosGrad = cleanRole === 'pós graduando' || cleanRole === 'pos-graduando';
+
+    if (els.queueFilterContainer) {
+        els.queueFilterContainer.classList.toggle('hidden', !isPosGrad);
+    }
+
+    if (!isPosGrad) return;
+
+    if (els.queueFilterAll && !els.queueFilterAll.dataset.bound) {
+        els.queueFilterAll.addEventListener('click', () => {
+            queueFilterMode = 'all';
+            updateQueueFilterButtons();
+            applyQueueFilter();
+        });
+        els.queueFilterAll.dataset.bound = 'true';
+    }
+
+    if (els.queueFilterMine && !els.queueFilterMine.dataset.bound) {
+        els.queueFilterMine.addEventListener('click', () => {
+            queueFilterMode = 'mine';
+            updateQueueFilterButtons();
+            applyQueueFilter();
+        });
+        els.queueFilterMine.dataset.bound = 'true';
+    }
+
+    updateQueueFilterButtons();
+}
+
+function updateQueueFilterButtons() {
+    if (!els.queueFilterAll || !els.queueFilterMine) return;
+    const allActive = queueFilterMode === 'all';
+    els.queueFilterAll.classList.toggle('btn-primary', allActive);
+    els.queueFilterAll.classList.toggle('btn-secondary', !allActive);
+    els.queueFilterMine.classList.toggle('btn-primary', !allActive);
+    els.queueFilterMine.classList.toggle('btn-secondary', allActive);
+}
+
+function applyQueueFilter() {
+    const cleanRole = (currentUserData?.role || '').toLowerCase();
+    const isPosGrad = cleanRole === 'pós graduando' || cleanRole === 'pos-graduando';
+
+    let tasksToRender = queueSourceTasks;
+    if (isPosGrad && queueFilterMode === 'mine') {
+        const currentUserName = (currentUserData?.name || '').trim().toLowerCase();
+        tasksToRender = queueSourceTasks.filter((task) => (task.posGraduando || '').trim().toLowerCase() === currentUserName);
+    }
+
+    renderQueue(tasksToRender);
 }
 
 // 7. RENDERIZAR A LISTA LATERAL
