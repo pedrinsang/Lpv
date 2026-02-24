@@ -123,11 +123,29 @@
                 </div>
             </div>
 
-            <div style="padding: 10px;">
-                <h3 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px; font-weight: 700; text-transform: uppercase;">
-                    <i class="fas fa-tasks me-2"></i> Minha Fila
-                </h3>
-                <div id="queue-list-container"></div>
+            <div class="queue-panel">
+                <div class="queue-header-row">
+                    <h3 class="queue-title">
+                        <i class="fas fa-tasks me-2"></i> Minha Fila
+                    </h3>
+                    <div id="queue-filter-container" class="queue-filter hidden" aria-label="Filtro da minha fila">
+                        <button id="queue-filter-all" class="btn btn-sm btn-primary" type="button">Todas amostras</button>
+                        <button id="queue-filter-mine" class="btn btn-sm btn-secondary" type="button">Minhas amostras</button>
+                    </div>
+                </div>
+                <div id="queue-list-container" class="queue-board">
+                    <div class="queue-dots" id="queue-mobile-dots" aria-hidden="true"></div>
+                    <div class="queue-carousel" id="queue-mobile-carousel">
+                        <section class="queue-column" data-queue-type="necropsia">
+                            <div class="queue-column-header">Necropsias <span id="queue-count-necropsia">0</span></div>
+                            <div class="queue-column-body" id="queue-necropsia-list"></div>
+                        </section>
+                        <section class="queue-column" data-queue-type="biopsia">
+                            <div class="queue-column-header">Biópsias <span id="queue-count-biopsia">0</span></div>
+                            <div class="queue-column-body" id="queue-biopsia-list"></div>
+                        </section>
+                    </div>
+                </div>
             </div>
 
             <div id="quick-access-drawer" class="quick-access-drawer">
