@@ -176,68 +176,81 @@ function isTaskRelevant(task, role) {
 
 // 7. RENDERIZAR A LISTA LATERAL
 function renderQueue(tasks) {
-    const container = document.getElementById('queue-list-container');
-    if (!container) return;
-    
-    container.innerHTML = '';
+    const necropsiaList = document.getElementById('queue-necropsia-list');
+    const biopsiaList = document.getElementById('queue-biopsia-list');
+    const necropsiaCount = document.getElementById('queue-count-necropsia');
+    const biopsiaCount = document.getElementById('queue-count-biopsia');
+    if (!necropsiaList || !biopsiaList) return;
 
+    necropsiaList.innerHTML = '';
+    biopsiaList.innerHTML = '';
+
+    const activeTasks = [...tasks].sort((a, b) => {
+        const protA = a.protocolo || a.accessCode || '';
+        const protB = b.protocolo || b.accessCode || '';
+        return protA.localeCompare(protB, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    const queueByType = { necropsia: [], biopsia: [] };
+
+    activeTasks.forEach((task) => {
+        const isNecropsia = (task.type === 'necropsia') || (!task.type && task.k7Color === 'azul');
+        queueByType[isNecropsia ? 'necropsia' : 'biopsia'].push(task);
+    });
+
+    necropsiaCount.textContent = queueByType.necropsia.length;
+    biopsiaCount.textContent = queueByType.biopsia.length;
+
+    renderQueueColumn(necropsiaList, queueByType.necropsia, 'necropsia');
+    renderQueueColumn(biopsiaList, queueByType.biopsia, 'biopsia');
+
+    initQueueMobileCarousel();
+}
+
+function renderQueueColumn(container, tasks, type) {
     if (tasks.length === 0) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 2rem; color: var(--text-tertiary);">
+            <div class="queue-empty">
                 <i class="far fa-check-circle fa-2x" style="margin-bottom: 10px; opacity: 0.5;"></i>
-                <p>Nenhuma amostra na sua fila.</p>
+                <p>Nenhuma amostra de ${type === 'necropsia' ? 'necropsia' : 'biópsia'}.</p>
             </div>`;
         return;
     }
 
-    // Ordena por data de atualização (mais recente primeiro) se existir, ou fallback
-    tasks.sort((b, a) => {
-        const protA = a.protocolo || '';
-        const protB = b.protocolo || '';
-        
-        // Usa localeCompare com 'numeric: true' para que V-2 venha antes de V-10
-        return protA.localeCompare(protB, undefined, { numeric: true, sensitivity: 'base' });
-    });
-
     tasks.forEach((task, index) => {
         const div = document.createElement('div');
-        
-        // Usa classes do CSS global
         const colorClass = task.k7Color ? `k7-${task.k7Color}` : '';
         div.className = `sample-ticket ${colorClass}`;
         div.style.setProperty('--card-index', index);
+        div.setAttribute('role', 'button');
+        div.setAttribute('tabindex', '0');
 
-        div.onclick = () => {
-            // Verifica se existe a função global de abrir, senão redireciona
-            if(window.openTaskManager) {
-                window.openTaskManager(task.id);
-            } else {
-                console.log("Abrindo tarefa:", task.id);
-                // Fallback ou navegação
+        const openDetails = () => openTaskManagerWithRetry(task.id);
+        div.addEventListener('click', openDetails);
+        div.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openDetails();
             }
-        };
+        });
 
         const protocol = task.protocolo || task.accessCode || '---';
-        const isNecropsia = (task.type === 'necropsia') || (!task.type && task.k7Color === 'azul');
-        
+        const isNecropsia = type === 'necropsia';
         const typeLabel = isNecropsia ? 'NECROPSIA' : 'BIÓPSIA';
-        // Cores do CSS Global
         const typeColor = isNecropsia ? '#3b82f6' : '#ec4899';
-        
-        const shortPos = getShortName(task.posGraduando || "Sem Pós");
+
+        const shortPos = getShortName(task.posGraduando || 'Sem Pós');
 
         const statusMap = {
-            'clivagem': 'Clivagem', 'processamento': 'Processamento', 'emblocamento': 'Emblocamento',
-            'corte': 'Corte', 'coloracao': 'Coloração', 'analise': 'Análise', 'liberar': 'Liberar'
+            clivagem: 'Clivagem', processamento: 'Processamento', emblocamento: 'Emblocamento',
+            corte: 'Corte', coloracao: 'Coloração', analise: 'Análise', liberar: 'Liberar'
         };
         const statusName = statusMap[task.status] || task.status;
 
         div.innerHTML = `
             <div style="width: 100%;">
                 <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                     <span style="font-weight: 800; font-size: 1rem; color: var(--text-primary);">
-                        ${protocol}
-                     </span>
+                     <span style="font-weight: 800; font-size: 1rem; color: var(--text-primary);">${protocol}</span>
                      <span style="font-size: 0.65rem; font-weight: 800; color: ${typeColor}; padding: 2px 8px; border-radius: 4px; border: 1px solid ${typeColor}30;">
                         ${typeLabel}
                      </span>
@@ -253,16 +266,75 @@ function renderQueue(tasks) {
                         <span style="width: 8px; height: 8px; background: var(--color-primary); border-radius: 50%; display: inline-block;"></span>
                         ${statusName}
                     </div>
-                    
                     <div style="font-size: 0.75rem; color: var(--text-tertiary); display: flex; align-items: center; gap: 4px;">
                         <i class="fas fa-user-graduate"></i> ${shortPos}
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
 
         container.appendChild(div);
     });
+}
+
+function initQueueMobileCarousel() {
+    const carousel = document.getElementById('queue-mobile-carousel');
+    const dots = document.getElementById('queue-mobile-dots');
+    if (!carousel || !dots) return;
+
+    if (!dots.dataset.ready) {
+        dots.innerHTML = `
+            <span class="queue-dot active" data-index="0"></span>
+            <span class="queue-dot" data-index="1"></span>`;
+        dots.dataset.ready = 'true';
+    }
+
+    const columns = Array.from(carousel.querySelectorAll('.queue-column'));
+    const dotItems = Array.from(dots.querySelectorAll('.queue-dot'));
+
+    const syncActive = () => {
+        if (window.innerWidth > 900) {
+            columns.forEach((col) => col.classList.remove('active'));
+            dotItems.forEach((dot, idx) => dot.classList.toggle('active', idx === 0));
+            return;
+        }
+
+        const colWidth = columns[0]?.offsetWidth || 1;
+        const activeIndex = Math.round(carousel.scrollLeft / (colWidth + 10));
+        columns.forEach((col, idx) => col.classList.toggle('active', idx === activeIndex));
+        dotItems.forEach((dot, idx) => dot.classList.toggle('active', idx === activeIndex));
+    };
+
+    if (!carousel.dataset.bound) {
+        carousel.addEventListener('scroll', syncActive, { passive: true });
+        window.addEventListener('resize', syncActive);
+        dotItems.forEach((dot) => {
+            dot.addEventListener('click', () => {
+                const idx = Number(dot.dataset.index);
+                const offset = (columns[0]?.offsetWidth || 0) + 10;
+                carousel.scrollTo({ left: offset * idx, behavior: 'smooth' });
+            });
+        });
+        carousel.dataset.bound = 'true';
+    }
+
+    syncActive();
+}
+
+async function openTaskManagerWithRetry(taskId) {
+    if (typeof window.openTaskManager === 'function') {
+        window.openTaskManager(taskId);
+        return;
+    }
+
+    for (let attempt = 0; attempt < 8; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        if (typeof window.openTaskManager === 'function') {
+            window.openTaskManager(taskId);
+            return;
+        }
+    }
+
+    console.warn('Task manager indisponível no momento.');
 }
 
 // SCROLL HORIZONTAL
