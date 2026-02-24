@@ -26,14 +26,14 @@ const dateInputV = document.getElementById('date-v');
 const tabs = document.querySelectorAll('.tab-btn');
 const contents = document.querySelectorAll('.tab-content');
 
-// Selects de Equipe
-const selectDocente = document.getElementById('select-docente');
-const selectPos = document.getElementById('select-pos');
 
-// Código Aleatório
-const displayCode = document.getElementById('display-code');
-const hiddenCodeInput = document.getElementById('generated-access-code');
+// Selects de Equipe (Agora capturando de ambos os formulários)
+const selectsDocente = document.querySelectorAll('#select-docente, #select-docente-vn');
+const selectsPos = document.querySelectorAll('#select-pos, #select-pos-vn');
 
+// Código Aleatório (Capturando múltiplos displays e inputs hidden)
+const displayCodes = document.querySelectorAll('#display-code, #display-code-vn');
+const hiddenCodeInputs = document.querySelectorAll('#generated-access-code, #generated-access-code-vn');
 // --- ESTADO LOCAL ---
 let editingTaskId = null; // null = Modo Criação | ID = Modo Edição
 
@@ -52,26 +52,28 @@ if (closeBtn) closeBtn.addEventListener('click', closeModal);
 function openModal() {
     if (!modal) return;
     
-    // RESET PARA MODO CRIAÇÃO
     editingTaskId = null; 
-    if(modalTitle) modalTitle.textContent = "Nova Entrada";
-    
     modal.classList.remove('hidden');
-    
-    // Reseta formulários
-    if(formV) { formV.reset(); setupSubmitButton(formV, 'Salvar Entrada'); }
-    if(formVn) { formVn.reset(); setupSubmitButton(formVn, 'Salvar Entrada'); }
 
-    // Define data de hoje no campo data (se existir)
+    // Ativa a aba padrão (primeira)
+    const defaultTab = document.querySelector('.tab-btn[data-tab="tab-v"]');
+    if (defaultTab) defaultTab.click();
+
+    // Reseta ambos os formulários
+    [formV, formVn].forEach(f => {
+        if(f) {
+            f.reset();
+            setupSubmitButton(f, f.id === 'form-new-v' ? 'Salvar Entrada' : 'Salvar Necropsia');
+        }
+    });
+
+    // Seta data de hoje para ambos os campos de data
     const today = new Date().toISOString().split('T')[0];
-    if (dateInputV) dateInputV.value = today;
-    
-    // Gera novo código
+    const dateInputs = document.querySelectorAll('#date-v, #date-vn');
+    dateInputs.forEach(i => i.value = today);
+
     generateRandomCode();
     loadTeamData();
-    
-    // Reseta para a primeira aba (Biópsia)
-    if(tabs[0]) tabs[0].click();
 }
 
 function closeModal() {
@@ -153,7 +155,8 @@ tabs.forEach(tab => {
 // 4. CARREGAR EQUIPE (DOCENTES E PÓS)
 // ==========================================================================
 async function loadTeamData() {
-    if (selectDocente && selectDocente.options.length > 1) return; // Evita recarregar sem necessidade
+    // Se o primeiro select já tem opções, assumimos que já foi carregado
+    if (selectsDocente[0] && selectsDocente[0].options.length > 1) return;
 
     try {
         const q = query(
@@ -163,27 +166,35 @@ async function loadTeamData() {
         
         const snapshot = await getDocs(q);
         
-        if(selectDocente) selectDocente.innerHTML = '<option value="" disabled selected>Selecione...</option>';
-        if(selectPos) selectPos.innerHTML = '<option value="" disabled selected>Selecione...</option>';
+        // Limpa todos os selects antes de popular
+        selectsDocente.forEach(s => s.innerHTML = '<option value="" disabled selected>Selecione...</option>');
+        selectsPos.forEach(s => s.innerHTML = '<option value="" disabled selected>Selecione...</option>');
         
         snapshot.forEach(docSnap => {
             const data = docSnap.data();
             const role = (data.role || "").toLowerCase();
-            const option = document.createElement('option');
-            option.value = data.name;
-            option.textContent = data.name;
+            
+            const createOption = () => {
+                const opt = document.createElement('option');
+                opt.value = data.name;
+                opt.textContent = data.name;
+                return opt;
+            };
 
-            if (role === 'professor' && selectDocente) selectDocente.appendChild(option);
-            else if ((role.includes('graduando')) && selectPos) selectPos.appendChild(option);
+            if (role === 'professor') {
+                selectsDocente.forEach(s => s.appendChild(createOption()));
+            } else if (role.includes('graduando')) {
+                selectsPos.forEach(s => s.appendChild(createOption()));
+            }
         });
-    } catch (error) { console.error("Erro equipe:", error); }
+    } catch (error) { console.error("Erro ao carregar equipe:", error); }
 }
 
 // ==========================================================================
 // 5. GERAR CÓDIGO
 // ==========================================================================
 window.generateRandomCode = function() {
-    if (editingTaskId) return; // Não muda código na edição
+    if (editingTaskId) return; 
 
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; 
     let code = "LPV-";
@@ -191,8 +202,10 @@ window.generateRandomCode = function() {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     
-    if (displayCode) displayCode.textContent = code;
-    if (hiddenCodeInput) hiddenCodeInput.value = code;
+    // Atualiza todos os locais onde o código deve aparecer
+    displayCodes.forEach(el => el.textContent = code);
+    hiddenCodeInputs.forEach(el => el.value = code);
+    
     return code;
 }
 
