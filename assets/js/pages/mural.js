@@ -120,7 +120,16 @@ function renderBoard() {
             const k7Class = task.k7Color ? `k7-${task.k7Color}` : '';
             card.className = `mural-card ${k7Class}`;
             card.style.setProperty('--card-index', col.children.length);
-            card.onclick = () => window.openTaskManager(task.id);
+            const openDetails = () => openTaskManagerWithRetry(task.id);
+            card.addEventListener('click', openDetails);
+            card.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openDetails();
+                }
+            });
+            card.setAttribute('role', 'button');
+            card.setAttribute('tabindex', '0');
             
             const displayProtocol = task.protocolo || task.accessCode || "---";
             const shortPos = getShortName(task.posGraduando || "Sem Pós");
@@ -171,35 +180,52 @@ function renderBoard() {
 // --- LÓGICA DO CARROSSEL MOBILE ---
 function initMobileCarousel() {
     if(!dotsContainer || !kanbanBoard) return;
-    
-    // Cria as bolinhas (dots)
+
     dotsContainer.innerHTML = '';
     columnWrappers.forEach((_, index) => {
-        const dot = document.createElement('div');
+        const dot = document.createElement('button');
+        dot.type = 'button';
         dot.className = index === 0 ? 'dot active' : 'dot';
+        dot.dataset.index = String(index);
+        dot.setAttribute('aria-label', `Ir para coluna ${index + 1}`);
+        dot.addEventListener('click', () => {
+            const colWidth = columnWrappers[0]?.offsetWidth || 1;
+            kanbanBoard.scrollTo({ left: (colWidth + 15) * index, behavior: 'smooth' });
+        });
         dotsContainer.appendChild(dot);
     });
 
-    // Evento de Scroll Mobile (Sincroniza bolinhas)
-    kanbanBoard.addEventListener('scroll', () => {
-        // Verifica se é mobile (snap ativo)
+    const syncCarouselState = () => {
         if (window.innerWidth >= 1024) return;
-
         const scrollLeft = kanbanBoard.scrollLeft;
-        const colWidth = columnWrappers[0].offsetWidth + 15; 
-        const activeIndex = Math.round(scrollLeft / colWidth);
+        const colWidth = (columnWrappers[0]?.offsetWidth || 1) + 15;
+        const activeIndex = Math.max(0, Math.min(columnWrappers.length - 1, Math.round(scrollLeft / colWidth)));
 
         const dots = document.querySelectorAll('.dot');
-        dots.forEach((d, i) => {
-            if (i === activeIndex) d.classList.add('active');
-            else d.classList.remove('active');
-        });
+        dots.forEach((d, i) => d.classList.toggle('active', i === activeIndex));
+        columnWrappers.forEach((col, i) => col.classList.toggle('active-col', i === activeIndex));
+    };
 
-        columnWrappers.forEach((col, i) => {
-            if (i === activeIndex) col.classList.add('active-col');
-            else col.classList.remove('active-col');
-        });
-    });
+    kanbanBoard.addEventListener('scroll', syncCarouselState, { passive: true });
+    window.addEventListener('resize', syncCarouselState);
+    syncCarouselState();
+}
+
+async function openTaskManagerWithRetry(taskId) {
+    if (typeof window.openTaskManager === 'function') {
+        window.openTaskManager(taskId);
+        return;
+    }
+
+    for (let attempt = 0; attempt < 8; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        if (typeof window.openTaskManager === 'function') {
+            window.openTaskManager(taskId);
+            return;
+        }
+    }
+
+    console.warn('Task manager indisponível no momento.');
 }
 
 function initDesktopScroll() {
