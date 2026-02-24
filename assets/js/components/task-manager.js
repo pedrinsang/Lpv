@@ -104,11 +104,29 @@ async function openTaskManager(taskId) {
         if(viewK7) viewK7.classList.add('hidden');
         if(reportModal) reportModal.classList.add('hidden'); 
         if(modal) modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
 
     } catch (e) { console.error(e); alert("Erro ao abrir: " + e.message); }
 }
 
-if(closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+function closeTaskModal() {
+    if(modal) modal.classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+if(closeBtn) closeBtn.addEventListener('click', closeTaskModal);
+
+if (modal) {
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) closeTaskModal();
+    });
+}
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+        closeTaskModal();
+    }
+});
 
 function renderDetails(task) {
     const user = currentUserData || {};
@@ -367,7 +385,7 @@ async function finishReportWrapper() {
             releasedAt: dataCongelada 
         });
         alert("Laudo Liberado com Sucesso!"); 
-        modal.classList.add('hidden'); 
+        closeTaskModal();
         if(window.location.reload) window.location.reload(); 
     } catch(e) { console.error(e); alert("Erro ao liberar: " + e.message); }
 }
@@ -578,7 +596,7 @@ function openK7FormSmart(task) {
 }
 
 if(btnDelete) {
-    btnDelete.addEventListener('click', async () => { if(confirm("Excluir?")) { try { await deleteDoc(doc(db, "tasks", currentTask.id)); modal.classList.add('hidden'); } catch(e){} } });
+    btnDelete.addEventListener('click', async () => { if(confirm("Excluir?")) { try { await deleteDoc(doc(db, "tasks", currentTask.id)); closeTaskModal(); } catch(e){} } });
 }
 
 function openReportEditorWrapper() { openReportEditor(currentTask); }

@@ -11,6 +11,7 @@
     scroll-snap-type: x mandatory; 
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
     scrollbar-width: none; /* Firefox Mobile */
 }
 .kanban-board::-webkit-scrollbar { display: none; /* Chrome Mobile */ }
@@ -58,7 +59,8 @@
     
     /* MELHORIA: Impede que o scroll do card arraste o carrossel junto */
     overscroll-behavior-y: contain; 
-    -webkit-overflow-scrolling: touch; /* Scroll suave no iOS */
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x; /* Scroll suave no iOS */
 }
 /* Garante que a coluna tenha altura total disponível para o corpo scrollar */
 
@@ -73,7 +75,7 @@
 }
 /* Dots Mobile */
 .carousel-indicators { display: flex; justify-content: center; gap: 8px; margin-top: 5px; margin-bottom: 10px; min-height: 10px; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); opacity: 0.3; transition: 0.3s; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); opacity: 0.3; transition: 0.3s; border: 0; padding: 0; }
 .dot.active { background: var(--color-primary); opacity: 1; width: 24px; border-radius: 4px; }
 /* --- DESKTOP PRO (Ajustes para PC) --- */
 @media (min-width: 1024px) {
@@ -124,6 +126,7 @@
 }
 /* --- CARDS E DETALHES --- */
 .mural-card {
+    touch-action: manipulation;
     background: var(--bg-glass); padding: 14px; border-radius: 12px;
     border: 1px solid var(--border-glass); cursor: pointer;
     box-shadow: 0 2px 5px rgba(0,0,0,0.02);
@@ -154,3 +157,43 @@
 .mini-stat-val { font-size: 1.4rem; font-weight: 800; color: var(--text-primary); line-height: 1; }
 .mini-stat-label { font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; }
 .mini-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; }
+
+/* Modal do task manager no mural (mobile first) */
+.mural-task-modal {
+    align-items: flex-end;
+}
+
+@media (max-width: 900px) {
+    .mural-task-modal {
+        padding: 0;
+    }
+
+    .mural-task-modal .mural-modal-glass {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        border-radius: 16px 16px 0 0 !important;
+        margin: 0;
+        border-bottom: 0;
+    }
+
+    .mural-task-modal .mural-modal-topbar {
+        padding: 8px 10px;
+    }
+
+    .mural-task-modal .mural-modal-footer {
+        padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+    }
+
+    .mural-task-modal .mural-modal-actions {
+        width: 100%;
+        display: grid !important;
+        grid-template-columns: 1fr;
+    }
+
+    .mural-task-modal #btn-delete-task,
+    .mural-task-modal .mural-modal-actions button {
+        width: 100%;
+    }
+}

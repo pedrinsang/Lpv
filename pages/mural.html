@@ -108,24 +108,26 @@
 
     <lpv-entry-form></lpv-entry-form>
 
-    <div id="task-manager-modal" class="modal-overlay hidden">
-        <div class="modal-glass">
-            <div style="text-align: right; margin-bottom: 5px;">
-                <button id="close-tm-btn" class="btn-close-modal"><i class="fas fa-times"></i></button>
+    <div id="task-manager-modal" class="modal-overlay hidden mural-task-modal">
+        <div class="modal-glass mural-modal-glass" style="display: flex; flex-direction: column; max-height: 90vh; padding: 0; overflow: hidden;">
+            <div class="mural-modal-topbar" style="flex-shrink: 0; display: flex; justify-content: flex-end; background: var(--background-glass);">
+                <button id="close-tm-btn" class="btn-close-modal" style="position: relative; top: auto; right: auto; background: rgba(0,0,0,0.1); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div id="view-details-content">
+            <div id="view-details-content" style="flex: 1; overflow-y: auto;">
                 <div id="tm-info-grid"></div>
-                <div class="modal-footer" style="justify-content: space-between; margin-top: 2rem; gap: 10px;">
+                <div class="modal-footer mural-modal-footer" style="justify-content: space-between; margin-top: 2rem; gap: 10px;">
                     <button id="btn-delete-task" class="btn btn-secondary" style="color: var(--color-error); border-color: var(--color-error); margin-right: auto;">
                         <i class="fas fa-trash"></i>
                     </button>
-                    <div style="display: flex; gap: 10px;">
+                    <div class="mural-modal-actions" style="display: flex; gap: 10px;">
                         <button id="btn-prev-stage" class="btn btn-secondary hidden"><i class="fas fa-undo"></i> Voltar</button>
                         <button id="btn-next-stage" class="btn btn-primary">Próxima <i class="fas fa-arrow-right"></i></button>
                     </div>
                 </div>
             </div>
-            <div id="view-k7-form" class="hidden"><form id="form-k7"></form></div>
+            <div id="view-k7-form" class="hidden" style="padding: 20px; overflow-y: auto;"><form id="form-k7"></form></div>
         </div>
     </div>
 
