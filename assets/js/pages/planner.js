@@ -43,8 +43,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     auth.onAuthStateChanged(async (user) => {
         if (!user) return window.location.href = '../pages/auth.html';
         const userSnap = await getDoc(doc(db, "users", user.uid));
-        const role = userSnap.exists() ? (userSnap.data().role || 'student').toLowerCase() : 'student';
-        canEdit = (role === 'admin' || role === 'professor' || role === 'pós graduando' || role === 'pos-graduando');
+        const roleData = userSnap.exists() ? userSnap.data().role : 'student';
+        const roles = Array.isArray(roleData) ? roleData.map(r => r.toLowerCase()) : [(roleData || 'student').toLowerCase()];
+        canEdit = roles.some(r => ['admin', 'professor', 'pós graduando', 'pos-graduando'].includes(r));
         
         initCalendarControls();
         subscribeToTasks();

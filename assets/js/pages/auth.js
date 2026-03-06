@@ -149,7 +149,7 @@ if (registerForm) {
             await setDoc(doc(db, "users", user.uid), {
                 name: name,
                 email: email,
-                role: 'estagiario', 
+                role: ['estagiario'], 
                 status: 'pending',
                 createdAt: new Date()
             });

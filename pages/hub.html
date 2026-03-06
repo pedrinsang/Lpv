@@ -35,6 +35,7 @@
             <a href="protocolos.html" class="sidebar-link"><i class="fas fa-book-medical"></i> <span>Protocolos</span></a>
             <a href="historico.html" class="sidebar-link"><i class="fas fa-history"></i> <span>Histórico</span></a>
             <a href="planner.html" class="sidebar-link"><i class="fas fa-calendar-alt"></i> <span>Planner</span></a>
+            <a href="admin.html" class="sidebar-link hidden" id="sidebar-admin-link"><i class="fas fa-shield-alt"></i> <span>Admin</span></a>
             <button class="sidebar-link btn-sidebar-new" id="open-entry-modal">
                 <i class="fas fa-plus"></i> <span>Nova Entrada</span>
             </button>
@@ -146,38 +147,63 @@
                 </div>
             </div>
 
-            <div id="quick-access-drawer" class="quick-access-drawer">
-                <div class="drawer-handle"></div>
-                <div class="drawer-content">
-                    <h3 style="font-size: 1.25rem; color: var(--text-secondary); margin-bottom: 18px; font-weight: 800; text-transform: uppercase; padding: 10px 0; text-align: center; letter-spacing: 1px;">
-                        <span style="opacity: 0.6;">▼</span> Acesso Rápido <span style="opacity: 0.6;">▼</span>
+            <!-- PLANNER SEMANAL -->
+            <div class="weekly-planner-panel">
+                <div class="weekly-planner-header">
+                    <h3 class="weekly-planner-title">
+                        <i class="fas fa-calendar-week"></i> Planner Semanal
                     </h3>
-                    <div class="hub-grid">
-                        <a href="historico.html" class="tool-card" style="--card-index: 0">
-                            <div class="tool-icon" style="background: linear-gradient(135deg, #3f853f, #7bc47b);"><i class="fas fa-history"></i></div>
-                            <div><strong>Histórico de Laudos</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Lista de Laudos Antigos</span></div>
-                        </a>
-                        <a href="planner.html" class="tool-card" style="--card-index: 1">
-                            <div class="tool-icon" style="background: linear-gradient(135deg, #f97316, #fb923c);"><i class="fas fa-calendar-alt"></i></div>
-                            <div><strong>Planner</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Agenda de Tarefas</span></div>
-                        </a>
-                        <a href="laminas.html" class="tool-card" style="--card-index: 2">
-                            <div class="tool-icon"><i class="fas fa-layer-group"></i></div>
-                            <div><strong>Contador de Lâminas</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Registro de Coloração de Lâminas</span></div>
-                        </a>
-                        <a href="coloracao.html" class="tool-card" style="--card-index: 3">
-                            <div class="tool-icon" style="background: linear-gradient(135deg, #8b5cf6, #a78bfa);"><i class="fas fa-stopwatch"></i></div>
-                            <div><strong>Timers</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Coloração</span></div>
-                        </a>
-                        <a href="protocolos.html" class="tool-card" style="--card-index: 4">
-                            <div class="tool-icon"><i class="fas fa-book-medical"></i></div>
-                            <div><strong>Protocolos</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Guias Técnicos</span></div>
-                        </a>
-                        <a href="admin.html" class="tool-card hidden" id="admin-card" style="--card-index: 5">
-                            <div class="tool-icon" style="background: #333;"><i class="fas fa-shield-alt"></i></div>
-                            <div><strong>Admin</strong><br><span style="font-size: 0.8rem; opacity: 0.7;">Gestão</span></div>
-                        </a>
+                    <div class="weekly-nav">
+                        <button id="week-prev" class="btn-icon btn-week-nav"><i class="fas fa-chevron-left"></i></button>
+                        <span id="week-range-label" class="week-range-label">---</span>
+                        <button id="week-next" class="btn-icon btn-week-nav"><i class="fas fa-chevron-right"></i></button>
+                        <button id="week-today" class="btn btn-secondary btn-week-today">Hoje</button>
                     </div>
+                </div>
+                <div id="weekly-grid" class="weekly-grid"></div>
+            </div>
+
+            <!-- ESCALA DE ESTAGIÁRIOS -->
+            <div class="intern-schedule-panel">
+                <div class="intern-schedule-header">
+                    <h3 class="intern-schedule-title">
+                        <i class="fas fa-user-clock"></i> Escala de Estagiários
+                    </h3>
+                    <button id="btn-add-schedule" class="btn btn-primary btn-sm btn-add-schedule hidden">
+                        <i class="fas fa-plus"></i> Adicionar
+                    </button>
+                </div>
+                <div id="intern-week-grid" class="intern-week-grid"></div>
+            </div>
+
+            <!-- Modal de adição/edição de escala -->
+            <div id="schedule-modal" class="modal-overlay hidden">
+                <div class="modal-glass" style="max-width: 420px; width: 90%; padding: 24px; height: auto; align-self: center; max-height: 85vh;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 18px;">
+                        <h3 id="sched-modal-title" style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary);">Escala</h3>
+                        <button id="close-schedule-modal" class="btn-close-modal"><i class="fas fa-times"></i></button>
+                    </div>
+                    <form id="schedule-form" style="display:flex; flex-direction:column; gap: 14px;">
+                        <div>
+                            <label style="font-size:0.8rem; font-weight:700; color:var(--text-secondary); margin-bottom:4px; display:block;">Estagiário</label>
+                            <select id="sched-intern" class="input-field" style="margin-bottom:0;" required>
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:0.8rem; font-weight:700; color:var(--text-secondary); margin-bottom:4px; display:block;">Tarefa</label>
+                            <input type="text" id="sched-task" class="input-field" style="margin-bottom:0;" placeholder="Ex: Clivagem, Coloração..." required>
+                        </div>
+                        <input type="hidden" id="sched-id" value="">
+                        <input type="hidden" id="sched-day" value="">
+                        <input type="hidden" id="sched-shift" value="">
+                        <div style="display:flex; gap:10px; margin-top:6px;">
+                            <button type="button" id="sched-delete-btn" class="btn btn-secondary hidden" style="color:var(--color-error); border-color:var(--color-error);">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <button type="submit" class="btn btn-primary" style="flex:1;">Salvar</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </main>
@@ -231,26 +257,6 @@
     <script type="module" src="../assets/js/components/task-manager.js"></script> 
     <script type="module" src="../assets/js/pages/hub.js"></script>
 
-    <script>
-        const drawer = document.getElementById('quick-access-drawer');
-        const handle = drawer.querySelector('.drawer-handle');
-        let isOpen = false;
-        handle.addEventListener('click', () => {
-            isOpen = !isOpen;
-            drawer.classList.toggle('open', isOpen);
-        });
 
-        let startY = null, currentY = null;
-        handle.addEventListener('touchstart', e => { startY = e.touches[0].clientY; });
-        handle.addEventListener('touchmove', e => {
-            if (startY !== null) {
-                currentY = e.touches[0].clientY;
-                const delta = currentY - startY;
-                if (delta < -30) { drawer.classList.add('open'); isOpen = true; }
-                if (delta > 30) { drawer.classList.remove('open'); isOpen = false; }
-            }
-        });
-        handle.addEventListener('touchend', () => { startY = null; currentY = null; });
-    </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-import { db, auth, logout } from '../core.js';
+import { db, auth, logout, normalizeRoles, hasAnyRole } from '../core.js';
 import { 
     collection, 
     query, 
@@ -37,7 +37,8 @@ setTimeout(() => {
 }, 1000);
 
 function checkPermission(role) {
-    if (role !== 'professor' && role !== 'admin' && role !== 'pós graduando' && role !== 'pos-graduando') {
+    const roles = window.currentUserRoles || normalizeRoles(role);
+    if (!roles.some(r => ['professor','admin','pós graduando','pos-graduando'].includes(r))) {
         alert("Acesso Negado: Área restrita.");
         window.location.href = 'hub.html';
     }
@@ -119,11 +120,13 @@ function renderActive(users) {
     activeGrid.innerHTML = users.map(u => {
         const isMe = u.id === auth.currentUser?.uid;
         const initials = getInitials(u.name);
+        const roles = normalizeRoles(u.role);
+        const displayRole = roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(' / ');
         
         return `
         <div class="admin-card fade-in">
             <div class="card-header">
-                <div class="card-role">${u.role}</div>
+                <div class="card-role">${displayRole}</div>
                 ${isMe ? '<div class="card-date" style="font-weight:bold; color:var(--color-primary);">VOCÊ</div>' : `<div class="card-date">Membro</div>`}
             </div>
             
@@ -136,11 +139,24 @@ function renderActive(users) {
             </div>
 
             <div class="card-actions">
-                <select class="role-select" onchange="window.updateRole('${u.id}', this.value)" ${isMe ? 'disabled' : ''}>
-                    <option value="estagiario" ${u.role === 'estagiario' ? 'selected' : ''}>Estagiário</option>
-                    <option value="pós graduando" ${u.role === 'pós graduando' || u.role === 'pos-graduando' ? 'selected' : ''}>Pós-Graduando</option>
-                    <option value="professor" ${u.role === 'professor' ? 'selected' : ''}>Professor</option>
-                </select>
+                <div class="role-checkboxes" style="display:flex;gap:8px;flex-wrap:wrap;flex:1;" ${isMe ? 'data-disabled="true"' : ''}>
+                    <label class="role-check-label" style="display:flex;align-items:center;gap:4px;font-size:.85rem;cursor:pointer;color:var(--text-secondary);">
+                        <input type="checkbox" value="estagiario" ${roles.includes('estagiario') ? 'checked' : ''}
+                            onchange="window.toggleRole('${u.id}', this)" ${isMe ? 'disabled' : ''}> Estagiário
+                    </label>
+                    <label class="role-check-label" style="display:flex;align-items:center;gap:4px;font-size:.85rem;cursor:pointer;color:var(--text-secondary);">
+                        <input type="checkbox" value="pós graduando" ${roles.includes('pós graduando') || roles.includes('pos-graduando') ? 'checked' : ''}
+                            onchange="window.toggleRole('${u.id}', this)" ${isMe ? 'disabled' : ''}> Pós-Grad
+                    </label>
+                    <label class="role-check-label" style="display:flex;align-items:center;gap:4px;font-size:.85rem;cursor:pointer;color:var(--text-secondary);">
+                        <input type="checkbox" value="professor" ${roles.includes('professor') ? 'checked' : ''}
+                            onchange="window.toggleRole('${u.id}', this)" ${isMe ? 'disabled' : ''}> Professor
+                    </label>
+                    <label class="role-check-label" style="display:flex;align-items:center;gap:4px;font-size:.85rem;cursor:pointer;color:var(--text-secondary);">
+                        <input type="checkbox" value="admin" ${roles.includes('admin') ? 'checked' : ''}
+                            onchange="window.toggleRole('${u.id}', this)" ${isMe ? 'disabled' : ''}> Admin
+                    </label>
+                </div>
 
                 ${!isMe ? `
                 <button class="btn-icon-action btn-delete" onclick="window.deleteUser('${u.id}', '${u.name}')" title="Remover Acesso">
@@ -167,12 +183,39 @@ if(searchInput) {
 // --- FUNÇÕES GLOBAIS ---
 window.approveUser = async (uid) => {
     if (!confirm("Aprovar este usuário?")) return;
-    try { await updateDoc(doc(db, "users", uid), { status: 'active', role: 'estagiario' }); } 
-    catch (e) { alert("Erro ao aprovar."); }
+    try { 
+        console.log("Aprovando usuário:", uid);
+        await updateDoc(doc(db, "users", uid), { 
+            status: 'active', 
+            role: ['estagiario'] 
+        });
+        console.log("Usuário aprovado com sucesso!");
+        alert("Usuário aprovado com sucesso! ✓");
+    } catch (e) { 
+        console.error("Erro ao aprovar usuário:", e);
+        alert("Erro ao aprovar: " + (e.message || "Erro desconhecido"));
+    }
+};
+
+window.toggleRole = async (uid, checkbox) => {
+    try {
+        // Encontra todos os checkboxes deste card
+        const container = checkbox.closest('.role-checkboxes');
+        const checked = Array.from(container.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);
+        if (checked.length === 0) {
+            alert('O usuário precisa ter pelo menos uma role.');
+            checkbox.checked = true;
+            return;
+        }
+        await updateDoc(doc(db, "users", uid), { role: checked });
+    } catch (e) {
+        alert("Erro ao mudar cargo.");
+        console.error(e);
+    }
 };
 
 window.updateRole = async (uid, newRole) => {
-    try { await updateDoc(doc(db, "users", uid), { role: newRole }); } 
+    try { await updateDoc(doc(db, "users", uid), { role: Array.isArray(newRole) ? newRole : [newRole] }); } 
     catch (e) { alert("Erro ao mudar cargo."); }
 };
 

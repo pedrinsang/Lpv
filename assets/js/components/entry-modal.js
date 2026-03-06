@@ -4,9 +4,7 @@ import {
     addDoc, 
     updateDoc,
     doc,
-    getDocs,
-    query, 
-    where 
+    getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 console.log("Entry Modal Module Loaded - vFinal (Create/Edit Unified)");
@@ -159,12 +157,8 @@ async function loadTeamData() {
     if (selectsDocente[0] && selectsDocente[0].options.length > 1) return;
 
     try {
-        const q = query(
-            collection(db, "users"), 
-            where("role", "in", ["professor", "pós graduando"])
-        );
-        
-        const snapshot = await getDocs(q);
+        // Busca todos os usuários e filtra client-side (compatível com role string ou array)
+        const snapshot = await getDocs(collection(db, "users"));
         
         // Limpa todos os selects antes de popular
         selectsDocente.forEach(s => s.innerHTML = '<option value="" disabled selected>Selecione...</option>');
@@ -172,7 +166,9 @@ async function loadTeamData() {
         
         snapshot.forEach(docSnap => {
             const data = docSnap.data();
-            const role = (data.role || "").toLowerCase();
+            const roles = Array.isArray(data.role)
+                ? data.role.map(r => r.toLowerCase())
+                : [(data.role || '').toLowerCase()];
             
             const createOption = () => {
                 const opt = document.createElement('option');
@@ -181,9 +177,10 @@ async function loadTeamData() {
                 return opt;
             };
 
-            if (role === 'professor') {
+            if (roles.includes('professor')) {
                 selectsDocente.forEach(s => s.appendChild(createOption()));
-            } else if (role.includes('graduando')) {
+            }
+            if (roles.some(r => r.includes('graduando'))) {
                 selectsPos.forEach(s => s.appendChild(createOption()));
             }
         });

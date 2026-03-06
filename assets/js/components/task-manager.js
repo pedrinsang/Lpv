@@ -85,7 +85,13 @@ async function fetchCurrentUserData() {
         const userSnap = await getDoc(doc(db, "users", auth.currentUser.uid));
         if (userSnap.exists()) {
             currentUserData = userSnap.data();
-            if(currentUserData.role) currentUserData.role = currentUserData.role.toLowerCase();
+            // Normaliza role para array lowercase
+            if (currentUserData.role) {
+                const r = currentUserData.role;
+                currentUserData._roles = Array.isArray(r) ? r.map(x => x.toLowerCase()) : [r.toLowerCase()];
+            } else {
+                currentUserData._roles = [];
+            }
         }
     } catch(e) { console.error("Erro user data:", e); }
     return currentUserData;
@@ -130,10 +136,10 @@ document.addEventListener('keydown', (event) => {
 
 function renderDetails(task) {
     const user = currentUserData || {};
-    const role = user.role || '';
+    const roles = user._roles || [];
     
-    const isStaff = ['professor', 'pós graduando', 'pos-graduando', 'admin'].includes(role);
-    const canRelease = role === 'admin' || role === 'professor' || role.includes('graduando');
+    const isStaff = roles.some(r => ['professor', 'pós graduando', 'pos-graduando', 'admin'].includes(r));
+    const canRelease = roles.some(r => r === 'admin' || r === 'professor' || r.includes('graduando'));
 
     if(btnNext) { 
         btnNext.classList.remove('hidden'); 

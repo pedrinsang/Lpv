@@ -1,11 +1,10 @@
-import { auth, db } from '../core.js';
+import { auth, db, normalizeRoles, hasRole, hasAnyRole, primaryRole } from '../core.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { doc, getDoc, collection, query, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { doc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 // 1. MAPEAMENTO DOS ELEMENTOS
 const els = {
     userBadge: document.getElementById('user-role-badge'),
-    adminCard: document.getElementById('admin-card'),
     queueContainer: document.getElementById('queue-list-container'),
     queueFilterContainer: document.getElementById('queue-filter-container'),
     queueFilterAll: document.getElementById('queue-filter-all'),
@@ -34,7 +33,11 @@ let queueFilterMode = 'all';
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         await loadUserProfile(user.uid);
-        if (currentUserData) initRealTimeDashboard();
+        if (currentUserData) {
+            initRealTimeDashboard();
+            initWeeklyPlanner();
+            initInternSchedule();
+        }
     } else {
         window.location.href = '../pages/auth.html';
     }
@@ -57,40 +60,9 @@ async function loadUserProfile(uid) {
 
 function updateUserBadge(role) {
     if(!els.userBadge) return;
-    const display = role.charAt(0).toUpperCase() + role.slice(1).replace('-', ' ');
+    const roles = normalizeRoles(role);
+    const display = roles.map(r => r.charAt(0).toUpperCase() + r.slice(1).replace('-', ' ')).join(' / ');
     els.userBadge.textContent = display;
-}
-
-// Renderiza botão do Planner dinamicamente
-function checkAndRenderAdminButtons() {
-    // Evita duplicatas
-    if(document.getElementById('btn-planner-menu')) return;
-
-    // Busca a grid principal (Hub Grid)
-    const grid = document.querySelector('.hub-grid');
-    
-    if(grid) {
-        const btn = document.createElement('div');
-        // Usa as classes nativas do seu CSS (tool-card)
-        btn.className = 'tool-card'; 
-        btn.id = 'btn-planner-menu';
-        btn.style.cursor = 'pointer';
-        btn.style.borderLeft = '4px solid #f97316'; // Laranja para destaque
-        btn.onclick = () => window.location.href = '../pages/planner.html';
-        
-        btn.innerHTML = `
-            <div class="tool-icon" style="background: linear-gradient(135deg, #f97316 0%, #fbbf24 100%);">
-                <i class="fas fa-calendar-alt"></i>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:2px;">
-                <span style="font-weight:700; font-size:1rem;">Planner</span>
-                <span style="font-size:0.8rem; opacity:0.8;">Agenda & Tarefas</span>
-            </div>
-        `;
-        
-        // Insere como primeiro item da grid
-        grid.insertBefore(btn, grid.firstChild);
-    }
 }
 
 // 4. DASHBOARD (LÓGICA CORRIGIDA COM FILTRO)
@@ -163,26 +135,23 @@ function updateCounters(c) {
 
 // QUEM VÊ O QUE NA BARRA LATERAL
 function isTaskRelevant(task, role) {
-    // Se já foi concluído ou arquivado, ninguém vê na lista lateral
     if (task.status === 'concluido' || task.status === 'arquivado') {
         return false;
     }
 
-    const cleanRole = role ? role.toLowerCase() : 'student';
+    const roles = normalizeRoles(role);
 
-    if (cleanRole === 'admin' || cleanRole === 'professor') return true; 
-    
-    if (cleanRole === 'pós graduando' || cleanRole === 'pos-graduando') return true;
+    if (hasAnyRole(role, ['admin', 'professor'])) return true;
+    if (hasAnyRole(role, ['pós graduando', 'pos-graduando'])) return true;
 
-    if (cleanRole === 'estagiario') {
+    if (roles.includes('estagiario')) {
         return ['clivagem', 'processamento', 'emblocamento', 'corte', 'coloracao'].includes(task.status);
     }
     return false;
 }
 
 function setupQueueFilters() {
-    const cleanRole = (currentUserData?.role || '').toLowerCase();
-    const isPosGrad = cleanRole === 'pós graduando' || cleanRole === 'pos-graduando';
+    const isPosGrad = hasAnyRole(currentUserData?.role, ['pós graduando', 'pos-graduando']);
 
     if (els.queueFilterContainer) {
         els.queueFilterContainer.classList.toggle('hidden', !isPosGrad);
@@ -221,8 +190,7 @@ function updateQueueFilterButtons() {
 }
 
 function applyQueueFilter() {
-    const cleanRole = (currentUserData?.role || '').toLowerCase();
-    const isPosGrad = cleanRole === 'pós graduando' || cleanRole === 'pos-graduando';
+    const isPosGrad = hasAnyRole(currentUserData?.role, ['pós graduando', 'pos-graduando']);
 
     let tasksToRender = queueSourceTasks;
     if (isPosGrad && queueFilterMode === 'mine') {
@@ -427,4 +395,359 @@ function normalizeText(value) {
         .replace(/[\u0300-\u036f]/g, '')
         .trim()
         .toLowerCase();
+}
+
+// =====================================================================
+//  PLANNER SEMANAL (puxa dados do Planner mensal — coleção "tasks")
+// =====================================================================
+
+let weekOffset = 0;          // 0 = semana atual
+let weeklyTasksCache = [];
+let unsubscribeWeekly = null;
+
+function getWeekDates(offset = 0) {
+    const now = new Date();
+    const day = now.getDay(); // 0=Dom
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+    monday.setHours(0, 0, 0, 0);
+
+    const days = [];
+    for (let i = 0; i < 5; i++) { // Seg-Sex only
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        days.push(d);
+    }
+    return days;
+}
+
+function dateToStr(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function initWeeklyPlanner() {
+    renderWeeklyGrid();
+    subscribeWeeklyTasks();
+
+    document.getElementById('week-prev')?.addEventListener('click', () => { weekOffset--; renderWeeklyGrid(); subscribeWeeklyTasks(); });
+    document.getElementById('week-next')?.addEventListener('click', () => { weekOffset++; renderWeeklyGrid(); subscribeWeeklyTasks(); });
+    document.getElementById('week-today')?.addEventListener('click', () => { weekOffset = 0; renderWeeklyGrid(); subscribeWeeklyTasks(); });
+}
+
+function subscribeWeeklyTasks() {
+    if (unsubscribeWeekly) unsubscribeWeekly();
+
+    const days = getWeekDates(weekOffset);
+    const startStr = dateToStr(days[0]);
+    const endStr = dateToStr(days[4]);
+
+    const q = query(
+        collection(db, "tasks"),
+        where("scheduledDate", ">=", startStr),
+        where("scheduledDate", "<=", endStr)
+    );
+
+    unsubscribeWeekly = onSnapshot(q, (snap) => {
+        weeklyTasksCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        populateWeeklyGrid();
+    });
+}
+
+function renderWeeklyGrid() {
+    const grid = document.getElementById('weekly-grid');
+    const label = document.getElementById('week-range-label');
+    if (!grid) return;
+
+    const days = getWeekDates(weekOffset);
+    const todayStr = dateToStr(new Date());
+
+    const dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+    if (label) {
+        const s = days[0], e = days[4];
+        label.textContent = `${s.getDate()} ${monthNames[s.getMonth()]} — ${e.getDate()} ${monthNames[e.getMonth()]}`;
+    }
+
+    grid.innerHTML = '';
+    days.forEach((d, i) => {
+        const dStr = dateToStr(d);
+        const isToday = dStr === todayStr;
+        const col = document.createElement('div');
+        col.className = `week-day-col${isToday ? ' today' : ''}`;
+        col.dataset.date = dStr;
+        col.innerHTML = `
+            <div class="week-day-header">
+                <span class="week-day-name">${dayNames[i]}</span>
+                <span class="week-day-num">${d.getDate()}</span>
+            </div>
+            <div class="week-day-body" data-date="${dStr}"></div>`;
+        grid.appendChild(col);
+    });
+
+    populateWeeklyGrid();
+}
+
+function populateWeeklyGrid() {
+    const grid = document.getElementById('weekly-grid');
+    if (!grid) return;
+
+    grid.querySelectorAll('.week-day-body').forEach(body => {
+        const dStr = body.dataset.date;
+        const tasks = weeklyTasksCache
+            .filter(t => t.scheduledDate === dStr)
+            .sort((a, b) => (a.scheduledTime || '').localeCompare(b.scheduledTime || ''));
+
+        body.innerHTML = '';
+        if (tasks.length === 0) {
+            body.innerHTML = '<div class="week-empty">—</div>';
+            return;
+        }
+
+        tasks.forEach(t => {
+            const chip = document.createElement('div');
+            let colorClass = 'wp-other';
+            if (t.type === 'necropsia' || (!t.type && t.k7Color === 'azul')) colorClass = 'wp-necro';
+            else if (t.type === 'biopsia' || (!t.type && t.k7Color === 'rosa')) colorClass = 'wp-bio';
+
+            chip.className = `wp-chip ${colorClass}`;
+            chip.innerHTML = `
+                <span class="wp-time">${t.scheduledTime || '--:--'}</span>
+                <span class="wp-label">${t.protocolo || t.animalNome || 'Sem título'}</span>`;
+            chip.title = `${t.protocolo || ''} — ${t.animalNome || ''} (${t.scheduledTime || ''})`;
+
+            chip.addEventListener('click', () => {
+                // Abre direto no planner mensal
+                window.location.href = `planner.html`;
+            });
+
+            body.appendChild(chip);
+        });
+    });
+}
+
+// =====================================================================
+//  ESCALA DE ESTAGIÁRIOS (Tabela fixa Seg-Sex, por turno)
+// =====================================================================
+
+const SCHEDULE_DAYS = ['segunda', 'terca', 'quarta', 'quinta', 'sexta'];
+const SCHEDULE_DAY_LABELS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
+const SCHEDULE_SHIFTS = ['manha', 'tarde'];
+const SCHEDULE_SHIFT_LABELS = { manha: 'Manhã', tarde: 'Tarde' };
+
+let internUsers = [];
+let internScheduleCache = [];
+let unsubscribeSchedule = null;
+let unsubscribeInterns = null;
+let canEditSchedule = false;
+let scheduleScrolledToToday = false;
+
+function initInternSchedule() {
+    canEditSchedule = hasAnyRole(currentUserData?.role, ['admin', 'professor', 'pós graduando', 'pos-graduando']);
+
+    const addBtn = document.getElementById('btn-add-schedule');
+    if (addBtn && canEditSchedule) addBtn.classList.remove('hidden');
+
+    subscribeInterns();
+    subscribeScheduleData();
+    setupScheduleModal();
+}
+
+function subscribeInterns() {
+    if (unsubscribeInterns) unsubscribeInterns();
+
+    const q = query(collection(db, "users"));
+    unsubscribeInterns = onSnapshot(q, (snap) => {
+        internUsers = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(u => {
+                const status = (u.status || '').toLowerCase();
+                return status === 'active' || status === 'aprovado' || status === '';
+            });
+
+        populateInternSelect();
+        renderInternWeekGrid();
+    });
+}
+
+function subscribeScheduleData() {
+    if (unsubscribeSchedule) unsubscribeSchedule();
+
+    const q = query(collection(db, "intern_schedule"));
+    unsubscribeSchedule = onSnapshot(q, (snap) => {
+        internScheduleCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderInternWeekGrid();
+    }, (error) => {
+        console.warn("Escala: sem permissão ou coleção inexistente.", error.message);
+        internScheduleCache = [];
+        renderInternWeekGrid();
+    });
+}
+
+function getTodayDayKey() {
+    const jsDay = new Date().getDay(); // 0=Dom
+    const map = { 1: 'segunda', 2: 'terca', 3: 'quarta', 4: 'quinta', 5: 'sexta' };
+    return map[jsDay] || null;
+}
+
+function renderInternWeekGrid() {
+    const container = document.getElementById('intern-week-grid');
+    if (!container) return;
+
+    const todayKey = getTodayDayKey();
+    container.innerHTML = '';
+
+    // Header row
+    const headerRow = document.createElement('div');
+    headerRow.className = 'intern-row intern-header-row';
+    headerRow.innerHTML = `<div class="intern-name-cell">Turno</div>`;
+    SCHEDULE_DAYS.forEach((dayKey, i) => {
+        const isToday = dayKey === todayKey;
+        headerRow.innerHTML += `<div class="intern-day-cell${isToday ? ' today' : ''}">${SCHEDULE_DAY_LABELS[i]}</div>`;
+    });
+    container.appendChild(headerRow);
+
+    // One row per shift
+    SCHEDULE_SHIFTS.forEach(shift => {
+        const row = document.createElement('div');
+        row.className = 'intern-row';
+
+        const nameCell = document.createElement('div');
+        nameCell.className = 'intern-name-cell';
+        nameCell.innerHTML = `<i class="fas ${shift === 'manha' ? 'fa-sun' : 'fa-moon'}" style="margin-right:6px; opacity:0.6;"></i>${SCHEDULE_SHIFT_LABELS[shift]}`;
+        row.appendChild(nameCell);
+
+        SCHEDULE_DAYS.forEach(dayKey => {
+            const isToday = dayKey === todayKey;
+            const cell = document.createElement('div');
+            cell.className = `intern-day-cell${isToday ? ' today' : ''}`;
+
+            const entries = internScheduleCache.filter(s => s.day === dayKey && s.shift === shift);
+
+            if (entries.length > 0) {
+                entries.forEach(entry => {
+                    const tag = document.createElement('div');
+                    tag.className = `intern-task-tag shift-${shift}`;
+                    const internName = getShortName(entry.internName || internUsers.find(u => u.id === entry.internId)?.name || '?');
+                    tag.innerHTML = `<span class="sched-intern-name">${internName}</span><span class="sched-task-text">${entry.task || '—'}</span>`;
+                    tag.title = `${entry.internName || '?'} — ${entry.task}`;
+                    if (canEditSchedule) {
+                        tag.style.cursor = 'pointer';
+                        tag.addEventListener('click', () => openScheduleModal(entry));
+                    }
+                    cell.appendChild(tag);
+                });
+            }
+
+            if (canEditSchedule) {
+                const addHint = document.createElement('button');
+                addHint.className = 'intern-add-hint';
+                addHint.innerHTML = '<i class="fas fa-plus"></i>';
+                addHint.title = 'Adicionar';
+                addHint.addEventListener('click', () => openScheduleModal(null, null, null, dayKey, shift));
+                cell.appendChild(addHint);
+            }
+
+            row.appendChild(cell);
+        });
+
+        container.appendChild(row);
+    });
+
+    // Scroll para o dia atual apenas na primeira renderização
+    if (!scheduleScrolledToToday && todayKey) {
+        scheduleScrolledToToday = true;
+        requestAnimationFrame(() => {
+            const todayCell = container.querySelector('.intern-day-cell.today');
+            if (todayCell) {
+                todayCell.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        });
+    }
+}
+
+// --- MODAL DE ESCALA ---
+function populateInternSelect() {
+    const select = document.getElementById('sched-intern');
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = '<option value="">Selecione...</option>';
+    internUsers.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id;
+        opt.textContent = u.name || u.email || u.id;
+        select.appendChild(opt);
+    });
+    if (current) select.value = current;
+}
+
+function setupScheduleModal() {
+    const modal = document.getElementById('schedule-modal');
+    const form = document.getElementById('schedule-form');
+    const closeBtn = document.getElementById('close-schedule-modal');
+    const deleteBtn = document.getElementById('sched-delete-btn');
+    const addBtn = document.getElementById('btn-add-schedule');
+
+    if (addBtn) addBtn.addEventListener('click', () => openScheduleModal(null));
+    if (closeBtn) closeBtn.addEventListener('click', () => modal?.classList.add('hidden'));
+    if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
+
+    if (form) {
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const internId = document.getElementById('sched-intern').value;
+            const task = document.getElementById('sched-task').value.trim();
+            const day = document.getElementById('sched-day').value;
+            const shift = document.getElementById('sched-shift').value;
+            const editId = document.getElementById('sched-id').value;
+
+            if (!internId || !task) return alert('Preencha todos os campos.');
+
+            const internName = internUsers.find(u => u.id === internId)?.name || '';
+            const payload = { internId, internName, day, task, shift, updatedAt: new Date().toISOString() };
+
+            modal.classList.add('hidden');
+
+            if (editId) {
+                updateDoc(doc(db, "intern_schedule", editId), payload).catch(err => { console.error(err); alert('Erro ao salvar escala.'); });
+            } else {
+                payload.createdAt = new Date().toISOString();
+                addDoc(collection(db, "intern_schedule"), payload).catch(err => { console.error(err); alert('Erro ao salvar escala.'); });
+            }
+        });
+    }
+
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => {
+            const editId = document.getElementById('sched-id').value;
+            if (!editId) return;
+            if (!confirm('Remover esta escala?')) return;
+            modal.classList.add('hidden');
+            deleteDoc(doc(db, "intern_schedule", editId)).catch(err => { console.error(err); alert('Erro ao remover.'); });
+        });
+    }
+}
+
+function openScheduleModal(entry, _unused, _unused2, preDay, preShift) {
+    const modal = document.getElementById('schedule-modal');
+    if (!modal) return;
+
+    const titleEl = document.getElementById('sched-modal-title');
+    const shiftKey = entry?.shift || preShift || 'manha';
+    const dayKey = entry?.day || preDay || 'segunda';
+    const dayLabel = SCHEDULE_DAY_LABELS[SCHEDULE_DAYS.indexOf(dayKey)] || dayKey;
+    const shiftLabel = SCHEDULE_SHIFT_LABELS[shiftKey] || shiftKey;
+
+    if (titleEl) titleEl.textContent = `${dayLabel} — ${shiftLabel}`;
+
+    document.getElementById('sched-intern').value = entry?.internId || '';
+    document.getElementById('sched-task').value = entry?.task || '';
+    document.getElementById('sched-day').value = dayKey;
+    document.getElementById('sched-shift').value = shiftKey;
+    document.getElementById('sched-id').value = entry?.id || '';
+
+    const deleteBtn = document.getElementById('sched-delete-btn');
+    if (deleteBtn) deleteBtn.classList.toggle('hidden', !entry?.id);
+
+    modal.classList.remove('hidden');
 }

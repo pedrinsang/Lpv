@@ -55,10 +55,11 @@ onAuthStateChanged(auth, async (user) => {
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
             const data = userDoc.data();
-            currentUserRole = (data.role || '').toLowerCase();
+            currentUserRole = (data.role || '').toString().toLowerCase();
             currentUserName = data.name;
 
-            if (currentUserRole.includes('graduando')) {
+            const roles = Array.isArray(data.role) ? data.role.map(r => r.toLowerCase()) : [currentUserRole];
+            if (roles.some(r => r.includes('graduando'))) {
                 filterContainer.style.display = 'flex';
             } else {
                 filterContainer.style.display = 'none';

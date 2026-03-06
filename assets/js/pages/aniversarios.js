@@ -22,9 +22,13 @@ onAuthStateChanged(auth, async (user) => {
     // Verifica se é admin para mostrar controles
     try {
         const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists() && userDoc.data().role === 'admin') {
-            isAdmin = true;
-            if (btnAdd) btnAdd.classList.remove('hidden'); // Mostra botão +
+        if (userDoc.exists()) {
+            const roleData = userDoc.data().role;
+            const roles = Array.isArray(roleData) ? roleData.map(r => r.toLowerCase()) : [(roleData || '').toLowerCase()];
+            if (roles.includes('admin')) {
+                isAdmin = true;
+                if (btnAdd) btnAdd.classList.remove('hidden');
+            }
         }
     } catch (e) { console.error(e); }
 

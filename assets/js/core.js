@@ -23,6 +23,38 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 window.currentUserRole = null;
+window.currentUserRoles = [];
+
+/**
+ * Normaliza o campo role (string ou array) para um array lowercase.
+ * Compatível com formato antigo (string) e novo (array).
+ */
+function normalizeRoles(role) {
+    if (!role) return [];
+    const arr = Array.isArray(role) ? role : [role];
+    return arr.map(r => r.toString().toLowerCase().trim()).filter(Boolean);
+}
+
+/** Verifica se o usuário possui uma role específica */
+function hasRole(role, target) {
+    return normalizeRoles(role).includes(target);
+}
+
+/** Verifica se o usuário possui qualquer uma das roles listadas */
+function hasAnyRole(role, targets) {
+    const roles = normalizeRoles(role);
+    return targets.some(t => roles.includes(t));
+}
+
+/** Retorna a role "principal" para exibição */
+function primaryRole(role) {
+    const roles = normalizeRoles(role);
+    const priority = ['admin', 'professor', 'pós graduando', 'pos-graduando', 'estagiario'];
+    for (const p of priority) {
+        if (roles.includes(p)) return p;
+    }
+    return roles[0] || 'visitante';
+}
 
 // --- TEMA (Sempre Dark) ---
 function initThemeSystem() {
@@ -86,11 +118,13 @@ onAuthStateChanged(auth, async (user) => {
 function loadUserInterface(data, uid) {
     try {
         const fullName = data.name || "Usuário";
-        const role = (data.role || "visitante").toLowerCase();
+        const roles = normalizeRoles(data.role);
+        const role = primaryRole(data.role);
         const firstName = fullName.split(' ')[0];
-        const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
+        const displayRole = roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(' / ');
 
-        window.currentUserRole = role; 
+        window.currentUserRole = role;
+        window.currentUserRoles = roles; 
 
         const sidebarName = document.getElementById('sidebar-user-name');
         const sidebarRole = document.getElementById('sidebar-user-role');
@@ -120,9 +154,11 @@ function loadUserInterface(data, uid) {
 function applyRolePermissions(role) {
     const newBtnSidebar = document.querySelector('.btn-sidebar-new');
     const newFabMobile = document.querySelector('.nav-fab');
-    const isSuperUser = (role === 'professor' || role === 'admin' || role === 'pós graduando' || role === 'pos-graduando');
+    const roles = normalizeRoles(role);
+    const isSuperUser = hasAnyRole(role, ['professor', 'admin', 'pós graduando', 'pos-graduando']);
 
-    if (role === 'estagiario') {
+    // Estagiário SEM role de super-user não pode criar entradas
+    if (roles.includes('estagiario') && !isSuperUser) {
         if (newBtnSidebar) newBtnSidebar.style.display = 'none';
         if (newFabMobile) newFabMobile.style.display = 'none';
     }
@@ -130,6 +166,8 @@ function applyRolePermissions(role) {
     if (isSuperUser) {
         const adminCards = document.querySelectorAll('#admin-card');
         adminCards.forEach(card => card.classList.remove('hidden'));
+        const adminSidebarLink = document.getElementById('sidebar-admin-link');
+        if (adminSidebarLink) adminSidebarLink.classList.remove('hidden');
     }
 
     const observer = new MutationObserver(() => {
@@ -190,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // EXPORTS
-export { app, auth, db, initThemeSystem, signOut, logout };
+export { app, auth, db, initThemeSystem, signOut, logout, normalizeRoles, hasRole, hasAnyRole, primaryRole };
 
 // Função global para copiar texto e dar feedback visual
 window.copyToClipboard = async function(text, btnElement) {
