@@ -6,20 +6,17 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/fi
 const columns = {
     clivagem: document.getElementById('col-clivagem'),
     processamento: document.getElementById('col-processamento'),
-    emblocamento: document.getElementById('col-emblocamento'),
-    corte: document.getElementById('col-corte'),
-    coloracao: document.getElementById('col-coloracao'),
+    laminas_prontas: document.getElementById('col-laminas'),
     analise: document.getElementById('col-analise'),
     liberar: document.getElementById('col-liberar')
 };
+ 
 
 // Wrappers (para aplicar estilo active-col no mobile)
 const columnWrappers = [
     document.getElementById('col-wrap-clivagem'),
     document.getElementById('col-wrap-processamento'),
-    document.getElementById('col-wrap-emblocamento'),
-    document.getElementById('col-wrap-corte'),
-    document.getElementById('col-wrap-coloracao'),
+    document.getElementById('col-wrap-laminas'),
     document.getElementById('col-wrap-analise'),
     document.getElementById('col-wrap-liberar')
 ];
@@ -27,9 +24,7 @@ const columnWrappers = [
 const counters = {
     clivagem: document.getElementById('count-clivagem'),
     processamento: document.getElementById('count-processamento'),
-    emblocamento: document.getElementById('count-emblocamento'),
-    corte: document.getElementById('count-corte'),
-    coloracao: document.getElementById('count-coloracao'),
+    laminas_prontas: document.getElementById('count-laminas'),
     analise: document.getElementById('count-analise'),
     liberar: document.getElementById('count-liberar')
 };
@@ -96,7 +91,7 @@ function renderBoard() {
     
     let countNecro = 0;
     let countBio = 0;
-    const counts = { clivagem: 0, processamento: 0, emblocamento: 0, corte: 0, coloracao: 0, analise: 0, liberar: 0 };
+    const counts = { clivagem: 0, processamento: 0, laminas_prontas: 0, analise: 0, liberar: 0 };
 
     allTasks.forEach(task => {
         if (task.status === 'concluido' || task.status === 'arquivado') return;
@@ -234,22 +229,14 @@ function initDesktopScroll() {
     
     kanbanBoard.addEventListener("wheel", (evt) => {
         if (window.innerWidth >= 1024 && evt.deltaY !== 0) {
-            // Verifica se o scroll está acontecendo dentro de uma coluna
             const scrollableBody = evt.target.closest('.kanban-body');
-            
-            if (scrollableBody) {
-                const isScrollingDown = evt.deltaY > 0;
-                const canScrollMore = isScrollingDown 
-                    ? scrollableBody.scrollHeight > scrollableBody.scrollTop + scrollableBody.clientHeight
-                    : scrollableBody.scrollTop > 0;
 
-                // Se a coluna ainda pode scrollar verticalmente, não faz o scroll horizontal
-                if (canScrollMore) {
-                    return; 
-                }
+            // Dentro de coluna: mantém scroll vertical nativo (não converte para horizontal).
+            if (scrollableBody) {
+                return;
             }
 
-            // Se não for uma coluna ou se a coluna chegou ao fim/topo, scroll horizontal
+            // Fora da coluna (ex: headers/gap do board): usa wheel vertical para navegar horizontalmente.
             evt.preventDefault();
             kanbanBoard.scrollLeft += evt.deltaY;
         }

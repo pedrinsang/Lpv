@@ -1,3 +1,8 @@
+/* ================================================================
+   LPV — MURAL CSS
+   Atualizado: colunas centralizadas no desktop, 4 colunas (fluxo simplificado)
+   ================================================================ */
+
 /* --- ESTILO GERAL DO MURAL --- */
 
 .kanban-board {
@@ -12,13 +17,15 @@
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x;
-    scrollbar-width: none; /* Firefox Mobile */
+    scrollbar-width: none;
 }
-.kanban-board::-webkit-scrollbar { display: none; /* Chrome Mobile */ }
+.kanban-board::-webkit-scrollbar { display: none; }
+
 /* Hack de espaçamento mobile */
 .kanban-board::after { content: ''; min-width: 1px; flex-shrink: 0; }
+
 .kanban-column {
-    min-width: 85vw; width: 85vw; /* Mobile width */
+    min-width: 85vw; width: 85vw;
     scroll-snap-align: center;
     scroll-snap-stop: always;
     height: 100%;
@@ -31,15 +38,16 @@
     flex-shrink: 0;
     
     transition: all 0.3s ease;
-    opacity: 0.5; transform: scale(0.95); /* Mobile inactive state */
+    opacity: 0.5; transform: scale(0.95);
 }
-/* Estado Ativo (Focado) */
+
 .kanban-column.active-col { 
     opacity: 1; transform: scale(1); 
     border-color: var(--color-primary); 
     background: var(--bg-card);
     box-shadow: 0 10px 30px rgba(0,0,0,0.1);
 }
+
 .kanban-header {
     padding: 15px;
     font-weight: 800; color: var(--text-secondary); text-transform: uppercase; font-size: 0.9rem;
@@ -47,84 +55,103 @@
     display: flex; justify-content: space-between; align-items: center;
     background: rgba(0,0,0,0.05);
     border-radius: 16px 16px 0 0;
-    user-select: none; /* Evita seleção de texto ao arrastar */
+    user-select: none;
 }
+
 .kanban-body {
     padding: 10px;
-    overflow-y: auto; /* Garante scroll vertical */
+    overflow-y: auto;
     flex: 1;
     display: flex; 
     flex-direction: column; 
     gap: 10px;
-    
-    /* MELHORIA: Impede que o scroll do card arraste o carrossel junto */
     overscroll-behavior-y: contain; 
+    overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-x; /* Scroll suave no iOS */
+    touch-action: pan-y;
 }
-/* Garante que a coluna tenha altura total disponível para o corpo scrollar */
 
-/* Customização da scrollbar interna das colunas (Desktop) */
-.kanban-body::-webkit-scrollbar {
-    width: 4px;
-    display: block;
-}
+/* Scrollbar interna das colunas (Desktop) */
+.kanban-body::-webkit-scrollbar { width: 4px; display: block; }
 .kanban-body::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 10px;
 }
+
 /* Dots Mobile */
 .carousel-indicators { display: flex; justify-content: center; gap: 8px; margin-top: 5px; margin-bottom: 10px; min-height: 10px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); opacity: 0.3; transition: 0.3s; border: 0; padding: 0; }
 .dot.active { background: var(--color-primary); opacity: 1; width: 24px; border-radius: 4px; }
-/* --- DESKTOP PRO (Ajustes para PC) --- */
+
+/* ================================================================
+   DESKTOP — Colunas centralizadas (4 colunas no fluxo novo)
+   ================================================================ */
 @media (min-width: 1024px) {
-    .header-brand::after {
-        content: "Mural";
-    }
+    .header-brand::after { content: "Mural"; }
+
     .kanban-board { 
-        height: calc(100vh - 160px); 
-        scroll-snap-type: none; /* Remove trava */
-        padding: 0 5px 15px 15px; /* Padding normal */
-        gap: 15px;
-        
-        /* MOSTRAR SCROLLBAR */
-        scrollbar-width: thin; /* Firefox Desktop */
+        height: calc(100vh - 160px);
+        scroll-snap-type: none;
+        gap: 20px;
+
+        /* Evita corte da 1a coluna quando o total de colunas ultrapassa a largura */
+        justify-content: flex-start;
+        align-items: flex-start;
+        overflow-x: auto;
+        padding: 0 24px 20px 24px;
+        scroll-padding-left: 24px;
+
+        /* Scrollbar visível mas discreta */
+        scrollbar-width: thin;
         scrollbar-color: var(--text-tertiary) transparent;
     }
-    
-    /* Scrollbar Customizada (Chrome/Edge/Safari) */
-    .kanban-board::-webkit-scrollbar {
-        display: block; 
-        height: 8px;
-    }
-    .kanban-board::-webkit-scrollbar-track {
-        background: transparent;
-    }
+
+    .kanban-board::-webkit-scrollbar { display: block; height: 8px; }
+    .kanban-board::-webkit-scrollbar-track { background: transparent; }
     .kanban-board::-webkit-scrollbar-thumb {
         background: rgba(0,0,0,0.2); 
         border-radius: 10px;
     }
-    .kanban-board::-webkit-scrollbar-thumb:hover {
-        background: var(--color-primary); 
-    }
+    .kanban-board::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
+
     .kanban-column { 
-        min-width: 280px; width: 280px; /* Largura fixa menor para caber mais */
+        /* Largura proporcional: 4 colunas cabem bem em 1200px+ */
+        min-width: 240px;
+        width: clamp(220px, 22vw, 320px);
         scroll-snap-align: none;
-        opacity: 1 !important; transform: none !important; /* Sempre visível */
+        opacity: 1 !important;
+        transform: none !important;
         background: var(--bg-card);
         border-color: var(--border-glass);
+
+        /* Animação de entrada escalonada */
+        animation: columnSlideUp 0.5s var(--ease-spring) both;
     }
-    
-    /* Remove sombra de foco no desktop (visual clean) */
+
+    .kanban-column:nth-child(1) { animation-delay: 0ms; }
+    .kanban-column:nth-child(2) { animation-delay: 80ms; }
+    .kanban-column:nth-child(3) { animation-delay: 160ms; }
+    .kanban-column:nth-child(4) { animation-delay: 240ms; }
+    .kanban-column:nth-child(5) { animation-delay: 320ms; }
+
     .kanban-column.active-col {
         box-shadow: none;
         border-color: var(--border-glass);
     }
+
+    /* Hover na coluna inteira no desktop */
+    .kanban-column:hover {
+        border-color: rgba(2, 132, 199, 0.3);
+        transition: border-color 0.3s ease;
+    }
+
     .carousel-indicators { display: none; }
     .mural-stats-row { margin-bottom: 15px; }
 }
-/* --- CARDS E DETALHES --- */
+
+/* ================================================================
+   CARDS E DETALHES
+   ================================================================ */
 .mural-card {
     touch-action: manipulation;
     background: var(--bg-glass); padding: 14px; border-radius: 12px;
@@ -134,66 +161,67 @@
                 box-shadow 0.35s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
                 border-color 0.3s ease;
     position: relative;
-    opacity: 0;
-    animation: cardSlideIn 0.45s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)) both;
-    animation-delay: calc(var(--card-index, 0) * 0.05s);
 }
 .mural-card:hover {
     transform: translateY(-4px) scale(1.01);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
     border-color: var(--color-primary);
 }
 .mural-card:active {
     transform: translateY(-1px) scale(0.98);
     transition-duration: 0.1s;
 }
+
 .mural-tag { font-size: 0.7rem; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,0.05); font-weight: 600; }
 .k7-azul { border-left: 4px solid #3b82f6; }
 .k7-rosa { border-left: 4px solid #ec4899; }
 .k7-branco { border-left: 4px solid #cbd5e1; }
 
-.mural-stats-row { display: flex; gap: 10px; margin-bottom: 10px; overflow-x: auto; padding: 5px; scrollbar-width: none; justify-content: center; }
-.mini-stat-card { background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: 12px; padding: 10px 15px; min-width: 140px; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+/* Stats row */
+.mural-stats-row { 
+    display: flex; gap: 10px; margin-bottom: 10px; 
+    overflow-x: auto; padding: 5px; 
+    scrollbar-width: none; justify-content: center; 
+    animation: fadeInDown 0.4s var(--ease-spring) both;
+}
+.mini-stat-card { 
+    background: var(--bg-glass); border: 1px solid var(--border-glass); 
+    border-radius: 12px; padding: 10px 15px; min-width: 140px; 
+    display: flex; flex-direction: column; position: relative; overflow: hidden;
+    transition: transform 0.3s var(--ease-spring), border-color 0.3s ease;
+}
+.mini-stat-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(2,132,199,0.4);
+}
 .mini-stat-val { font-size: 1.4rem; font-weight: 800; color: var(--text-primary); line-height: 1; }
 .mini-stat-label { font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; }
 .mini-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; }
 
-/* Modal do task manager no mural (mobile first) */
-.mural-task-modal {
-    align-items: flex-end;
-}
+/* ================================================================
+   MODAL DO TASK MANAGER NO MURAL
+   ================================================================ */
+.mural-task-modal { align-items: flex-end; }
 
 @media (max-width: 900px) {
-    .mural-task-modal {
-        padding: 0;
-    }
-
+    .mural-task-modal { padding: 0; }
     .mural-task-modal .mural-modal-glass {
-        width: 100% !important;
-        max-width: 100% !important;
-        height: 100dvh !important;
-        max-height: 100dvh !important;
+        width: 100% !important; max-width: 100% !important;
+        height: 100dvh !important; max-height: 100dvh !important;
         border-radius: 16px 16px 0 0 !important;
-        margin: 0;
-        border-bottom: 0;
+        margin: 0; border-bottom: 0;
     }
-
-    .mural-task-modal .mural-modal-topbar {
-        padding: 8px 10px;
-    }
-
-    .mural-task-modal .mural-modal-footer {
-        padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
-    }
-
-    .mural-task-modal .mural-modal-actions {
-        width: 100%;
-        display: grid !important;
-        grid-template-columns: 1fr;
-    }
-
+    .mural-task-modal .mural-modal-topbar { padding: 8px 10px; }
+    .mural-task-modal .mural-modal-footer { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
+    .mural-task-modal .mural-modal-actions { width: 100%; display: grid !important; grid-template-columns: 1fr; }
     .mural-task-modal #btn-delete-task,
-    .mural-task-modal .mural-modal-actions button {
-        width: 100%;
-    }
+    .mural-task-modal .mural-modal-actions button { width: 100%; }
+}
+
+/* ================================================================
+   KEYFRAME EXCLUSIVO DO MURAL
+   ================================================================ */
+@keyframes columnSlideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
 }

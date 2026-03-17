@@ -4,6 +4,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import '../js/animations.js';
 
 console.log(">>> CORE.JS V8.1 CARREGADO <<<");
 
@@ -59,6 +60,7 @@ function primaryRole(role) {
 // --- TEMA (Sempre Dark) ---
 function initThemeSystem() {
     document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.setAttribute('data-force-motion', 'true');
     localStorage.setItem('theme', 'dark');
 }
 

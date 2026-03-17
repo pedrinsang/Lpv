@@ -25,6 +25,7 @@ let timerInterval = null;
 let isPaused = true;
 let isAlarmRinging = false; // NOVO: Estado do alarme
 let wakeLock = null;
+let ringCircumference = 0;
 
 // Configuração de Áudio
 const audioAlert = new Audio('../assets/audio/alarm.mp3'); 
@@ -36,12 +37,31 @@ const execView = document.getElementById('execution-view');
 const progressCircle = document.querySelector('.progress-ring__circle');
 const listContainer = document.getElementById('protocol-list');
 
+function getFallbackCircumference() {
+    if (!progressCircle) return 0;
+    const radiusAttr = parseFloat(progressCircle.getAttribute('r') || '0');
+    return radiusAttr > 0 ? radiusAttr * 2 * Math.PI : 0;
+}
+
+function getRingCircumference() {
+    if (!progressCircle) return 0;
+    // Em alguns browsers mobile, getTotalLength pode retornar 0 quando há troca de display.
+    const renderedLength = progressCircle.getTotalLength();
+    return renderedLength > 0 ? renderedLength : getFallbackCircumference();
+}
+
+function initProgressRing() {
+    if (!progressCircle) return;
+    const circumference = getRingCircumference();
+    if (!circumference) return;
+    ringCircumference = circumference;
+    progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+    progressCircle.style.strokeDashoffset = '0';
+}
+
 // Configuração SVG
 if (progressCircle) {
-    const radius = progressCircle.r.baseVal.value;
-    const circumference = radius * 2 * Math.PI;
-    progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
-    progressCircle.style.strokeDashoffset = 0;
+    initProgressRing();
 }
 
 // =========================================
@@ -97,6 +117,13 @@ window.startProtocol = (key) => {
     
     menuView.classList.add('hidden');
     execView.classList.remove('hidden');
+
+    // Recalcula métricas do anel após exibir o modo execução (corrige mobile).
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            initProgressRing();
+        });
+    });
     
     requestWakeLock();
     currentStepIndex = 0;
@@ -223,8 +250,9 @@ function tick() {
     if (remainingTime > 0) {
         updateTimerDisplay();
         if (progressCircle) {
-            const radius = progressCircle.r.baseVal.value;
-            const circumference = radius * 2 * Math.PI;
+            if (!ringCircumference) initProgressRing();
+            const circumference = ringCircumference || getFallbackCircumference();
+            if (!circumference) return;
             const totalTime = currentSteps[currentStepIndex].tempo;
             const displayTime = Math.max(0, remainingTime);
             const offset = circumference - (displayTime / totalTime) * circumference;

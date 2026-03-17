@@ -73,7 +73,7 @@ function updateStepper(task) {
 
     let currentStep = 1;
     const processingSteps = ['clivagem', 'processamento', 'emblocamento', 'corte', 'coloracao'];
-    const analysisSteps = ['analise', 'liberar'];
+    const analysisSteps = ['laminas_prontas', 'analise', 'liberar'];
 
     if (processingSteps.includes(status)) currentStep = 2;
     else if (analysisSteps.includes(status)) currentStep = 3;
@@ -102,7 +102,11 @@ function updateStepper(task) {
     else if (currentStep === 3) {
         setStepStatus(1, 'completed'); setStepStatus(2, 'completed'); setStepStatus(3, 'active');
         progressLine.style.width = '65%';
-        msgBox.innerHTML = "Em análise pelo patologista.";
+        if (status === 'laminas_prontas') {
+            msgBox.innerHTML = "Lâminas prontas. Aguardando análise do patologista.";
+        } else {
+            msgBox.innerHTML = "Em análise pelo patologista.";
+        }
         btnDownload.classList.add('hidden');
         step4Label.innerText = "Laudo";
     }

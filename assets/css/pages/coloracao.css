@@ -311,7 +311,14 @@
     animation: timerPulseRing 2s ease-in-out infinite;
 }
 
-.progress-ring__circle-bg {
+.progress-ring {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.progress-ring__circle-bg,
+.progress-ring__bg {
     stroke: var(--border-color);
     stroke-width: 12;
 }
@@ -488,12 +495,6 @@
     .progress-ring {
         width: 220px;
         height: 220px;
-    }
-    
-    .progress-ring__circle-bg, .progress-ring__circle {
-        r: 90;
-        cx: 110;
-        cy: 110;
     }
     
     .timer-digital {

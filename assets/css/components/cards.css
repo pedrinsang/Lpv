@@ -1,6 +1,6 @@
 /* ================================================================
    LPV DESIGN SYSTEM — CARDS
-   Cards, tickets e elementos visuais container
+   Animações de entrada controladas por assets/js/animations.js
    ================================================================ */
 
 /* Card Base */
@@ -31,9 +31,6 @@
               box-shadow var(--duration-normal) var(--ease-spring),
               border-color var(--duration-normal) ease;
   cursor: pointer;
-  opacity: 0;
-  animation: cardSlideIn 0.5s var(--ease-spring) both;
-  animation-delay: calc(var(--card-index, 0) * 60ms);
 }
 
 .tool-card:hover {
@@ -87,9 +84,6 @@
               box-shadow var(--duration-normal) var(--ease-spring),
               border-color var(--duration-normal) ease,
               background var(--duration-normal) ease;
-  opacity: 0;
-  animation: fadeInUp 0.5s var(--ease-spring) both;
-  animation-delay: calc(var(--card-index, 0) * 70ms);
 }
 
 .status-card:hover {
@@ -163,9 +157,6 @@
   transition: transform var(--duration-normal) var(--ease-spring),
               box-shadow var(--duration-normal) var(--ease-spring),
               border-color var(--duration-fast) ease;
-  opacity: 0;
-  animation: fadeInUp 0.4s var(--ease-spring) both;
-  animation-delay: calc(var(--card-index, 0) * 40ms);
 }
 
 .sample-ticket:hover {
@@ -230,7 +221,7 @@
 
 
 /* ================================================================
-   K7 COLORS (Identificação Visual de Amostras)
+   K7 COLORS
    ================================================================ */
 
 .k7-rosa {
@@ -248,21 +239,13 @@
   border-left: 4px solid #ffffff !important;
 }
 
-[data-theme="dark"] .k7-rosa {
-  background: rgba(236, 72, 153, 0.2) !important;
-}
-
-[data-theme="dark"] .k7-azul {
-  background: rgba(59, 130, 246, 0.2) !important;
-}
-
-[data-theme="dark"] .k7-branco {
-  background: rgba(255, 255, 255, 0.2) !important;
-}
+[data-theme="dark"] .k7-rosa { background: rgba(236, 72, 153, 0.2) !important; }
+[data-theme="dark"] .k7-azul { background: rgba(59, 130, 246, 0.2) !important; }
+[data-theme="dark"] .k7-branco { background: rgba(255, 255, 255, 0.2) !important; }
 
 
 /* ================================================================
-   PRODUCTION LINE (Workflow)
+   PRODUCTION LINE
    ================================================================ */
 
 .production-wrapper {
@@ -277,7 +260,8 @@
 .status-production-line {
   display: flex;
   gap: 15px;
-  min-width: max-content;
+  width: max-content;
+  margin: 0 auto;
   align-items: center;
   padding: 15px 15px;
 }

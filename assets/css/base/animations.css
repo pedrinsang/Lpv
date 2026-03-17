@@ -1,5 +1,5 @@
 /* ================================================================
-   LPV DESIGN SYSTEM — ANIMAÇÕES
+   LPV DESIGN SYSTEM — ANIMAÇÕES v2.0
    Keyframes e classes utilitárias de animação para todo o app
    ================================================================ */
 
@@ -209,6 +209,87 @@
   to   { opacity: 1; transform: translateX(0); }
 }
 
+/* ==========================================================
+   KEYFRAMES — NOVOS (v2.0)
+   ========================================================== */
+
+/* Entrada suave com overshoot leve — ideal para cards e painéis */
+@keyframes springUp {
+  0%   { opacity: 0; transform: translateY(28px) scale(0.97); }
+  55%  { opacity: 1; transform: translateY(-4px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Entrada lateral com overshoot — sidebar links, itens de lista */
+@keyframes springRight {
+  0%   { opacity: 0; transform: translateX(-24px); }
+  60%  { opacity: 1; transform: translateX(4px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* Contadores numéricos — status cards do hub */
+@keyframes numberPop {
+  0%   { opacity: 0; transform: translateY(12px) scale(0.7); }
+  65%  { opacity: 1; transform: translateY(-3px) scale(1.1); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Barra de status deslizando da esquerda */
+@keyframes barReveal {
+  from { transform: scaleX(0); transform-origin: left; }
+  to   { transform: scaleX(1); transform-origin: left; }
+}
+
+/* Glow pulsante no hover de cards importantes */
+@keyframes cardGlow {
+  0%, 100% { box-shadow: 0 4px 15px rgba(2,132,199,0.15); }
+  50%       { box-shadow: 0 8px 30px rgba(2,132,199,0.35); }
+}
+
+/* Ticket/sample card chegando na fila */
+@keyframes ticketDrop {
+  0%   { opacity: 0; transform: translateY(-16px) scale(0.96); }
+  55%  { opacity: 1; transform: translateY(3px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Header deslizando para baixo ao carregar página */
+@keyframes headerReveal {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Sidebar links entrando escalonados */
+@keyframes sidebarLinkIn {
+  from { opacity: 0; transform: translateX(-16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Badge/pill aparecendo */
+@keyframes badgePop {
+  0%   { opacity: 0; transform: scale(0.6); }
+  70%  { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Linha separadora crescendo */
+@keyframes lineGrow {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+
+/* Flutuação suave — ícones decorativos */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-6px); }
+}
+
+/* Respiração — elementos de destaque */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.03); opacity: 0.85; }
+}
+
 
 /* ==========================================================
    CLASSES UTILITÁRIAS DE ANIMAÇÃO
@@ -221,6 +302,13 @@
 .anim-fade-in-left  { animation: fadeInLeft var(--duration-normal) var(--ease-spring) both; }
 .anim-fade-in-right { animation: fadeInRight var(--duration-normal) var(--ease-spring) both; }
 
+/* Spring (v2.0) */
+.anim-spring-up     { animation: springUp 0.5s var(--ease-spring) both; }
+.anim-spring-right  { animation: springRight 0.45s var(--ease-spring) both; }
+.anim-ticket-drop   { animation: ticketDrop 0.4s var(--ease-spring) both; }
+.anim-badge-pop     { animation: badgePop 0.35s var(--ease-bounce) both; }
+.anim-number-pop    { animation: numberPop 0.45s var(--ease-spring) both; }
+
 /* Escalas */
 .anim-scale-in  { animation: scaleIn var(--duration-normal) var(--ease-spring) both; }
 .anim-pop-in    { animation: popIn 0.4s var(--ease-spring) both; }
@@ -231,14 +319,16 @@
 .anim-shake     { animation: shake 0.5s ease; }
 .anim-success   { animation: successPop 0.4s var(--ease-bounce) both; }
 .anim-spin      { animation: spin 1s linear infinite; }
+.anim-float     { animation: float 3s ease-in-out infinite; }
+.anim-breathe   { animation: breathe 3s ease-in-out infinite; }
 .anim-shimmer   { 
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 
-/* Stagger delays — aplique --stagger-index via JS ou nth-child */
-.anim-stagger { animation-delay: calc(var(--stagger-index, 0) * 50ms); }
+/* Stagger delays */
+.anim-stagger      { animation-delay: calc(var(--stagger-index, 0) * 50ms); }
 .anim-stagger-fast { animation-delay: calc(var(--stagger-index, 0) * 30ms); }
 .anim-stagger-slow { animation-delay: calc(var(--stagger-index, 0) * 80ms); }
 
@@ -267,20 +357,60 @@
 .hover-scale:hover  { transform: scale(1.03); }
 .hover-scale:active { transform: scale(0.97); transition-duration: var(--duration-fast); }
 
-/* Classe .fade-in legada (mantida para compatibilidade) */
+/* Classe .fade-in legada */
 .fade-in {
   animation: fadeInUp var(--duration-slow) ease-out forwards;
 }
 
-/* Mural card animation (legada) */
-.mural-card {
-  animation: cardSlideIn 0.45s var(--ease-spring) both;
-  animation-delay: calc(var(--card-index, 0) * 0.05s);
+/* Status count */
+.count-animate {
+  animation: numberPop 0.45s var(--ease-spring) both;
 }
 
-/* Status count animation */
-.count-animate {
-  animation: countUp 0.4s var(--ease-spring) both;
+
+/* ==========================================================
+   ANIMAÇÕES AUTOMÁTICAS — ELEMENTOS ESTRUTURAIS
+   Aplicadas diretamente nas classes do layout
+   ========================================================== */
+
+/* Header aparece deslizando de cima */
+.app-header {
+  animation: headerReveal 0.4s var(--ease-spring) both;
+}
+
+/* Sidebar links entram escalonados */
+.sidebar-link {
+  animation: sidebarLinkIn 0.4s var(--ease-spring) both;
+  animation-delay: calc(var(--link-index, 0) * 60ms);
+  opacity: 0;
+  animation-fill-mode: both;
+}
+
+/* Número dentro do status card */
+.status-count {
+  animation: numberPop 0.5s var(--ease-spring) 0.2s both;
+}
+
+/* Barra colorida na base do status card */
+.status-bar {
+  animation: barReveal 0.6s var(--ease-spring) 0.3s both;
+}
+
+/* Badges de role */
+.user-badge,
+.card-role {
+  animation: badgePop 0.4s var(--ease-bounce) 0.3s both;
+}
+
+/* Painel da fila e planner */
+.queue-panel,
+.weekly-planner-panel {
+  animation: springUp 0.5s var(--ease-spring) 0.15s both;
+}
+
+/* Colunas do kanban no mural (desktop) */
+.kanban-column {
+  animation: springUp 0.5s var(--ease-spring) both;
 }
 
 
@@ -316,4 +446,40 @@
 
 .alert-message.alert-exit {
   animation: fadeOut 0.2s ease forwards;
+}
+
+
+/* ==========================================================
+   OTIMIZAÇÃO DE PERFORMANCE
+   ========================================================== */
+
+/* Força aceleração GPU nas classes animadas */
+.anim-fade-in, .anim-fade-in-up, .anim-fade-in-down,
+.anim-fade-in-left, .anim-fade-in-right,
+.anim-spring-up, .anim-spring-right,
+.anim-scale-in, .anim-card-in, .anim-pop-in,
+.anim-ticket-drop, .anim-badge-pop, .anim-number-pop,
+.fade-in, .mural-card, .status-card, .sample-ticket,
+.kanban-column, .sidebar-link {
+  will-change: transform, opacity;
+}
+
+/* Respeita preferência do sistema por menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-force-motion="true"]) * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Desativa backdrop-filter em hardware com GPU integrada fraca */
+@media (max-resolution: 1.5dppx) {
+  .auth-card-desktop,
+  .modal-glass,
+  .sidebar,
+  [style*="backdrop-filter"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--bg-card) !important;
+  }
 }

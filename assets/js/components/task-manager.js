@@ -151,7 +151,11 @@ function renderDetails(task) {
         btnPrev.onclick = handlePrevStage; 
     }
 
-    if (task.status === 'analise') {
+    if (task.status === 'laminas_prontas') {
+        btnNext.innerHTML = 'Enviar para Análise <i class="fas fa-microscope"></i>';
+        btnNext.onclick = () => updateStatus('analise');
+    }
+    else if (task.status === 'analise') {
         if (isStaff) {
             btnNext.innerHTML = 'Enviar para Liberação <i class="fas fa-paper-plane"></i>';
             btnNext.onclick = () => updateStatus('liberar');
@@ -171,10 +175,14 @@ function renderDetails(task) {
     const typeIcon = task.type === 'necropsia' ? 'fa-skull' : 'fa-microscope';
     const typeLabel = task.type === 'necropsia' ? 'Necropsia' : 'Biópsia';
     
-    const statusMap = { 
-        'clivagem':'Clivagem', 'processamento':'Processamento', 'emblocamento':'Emblocamento', 
-        'corte':'Corte', 'coloracao':'Coloração', 'analise':'Análise', 
-        'liberar':'Aguardando Liberação', 'concluido':'Concluído' 
+    const statusMap = {
+        clivagem: 'Clivagem',
+        processamento: 'Processamento',
+        laminas_prontas: 'Lâminas Prontas',
+        analise: 'Análise',
+        liberar: 'Liberar Laudo',
+        concluido: 'Concluído',
+        arquivado: 'Arquivado'
     };
 
     // --- SEÇÃO FINANCEIRA ---
@@ -492,14 +500,14 @@ function openReportEditor(task) {
 function handleNextStage() {
     if (!currentTask) return;
     if (currentTask.status === 'clivagem') { openK7FormSmart(currentTask); return; }
-    const flow = ['clivagem', 'processamento', 'emblocamento', 'corte', 'coloracao', 'analise', 'liberar', 'concluido'];
+    const flow = ['clivagem', 'processamento', 'laminas_prontas', 'analise', 'liberar', 'concluido'];
     const currIdx = flow.indexOf(currentTask.status);
     if (currIdx >= 0 && currIdx < flow.length - 1) updateStatus(flow[currIdx + 1]);
 }
 
 function handlePrevStage() {
     if (!currentTask) return;
-    const flow = ['clivagem', 'processamento', 'emblocamento', 'corte', 'coloracao', 'analise', 'liberar', 'concluido'];
+    const flow = ['clivagem', 'processamento', 'laminas_prontas', 'analise', 'liberar', 'concluido'];
     const currIdx = flow.indexOf(currentTask.status);
     if (currIdx > 0) updateStatus(flow[currIdx - 1]);
 }

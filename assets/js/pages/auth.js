@@ -10,8 +10,6 @@ import {
     getDoc 
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-console.log(">>> Auth.js carregado!");
-
 const loginForm = document.getElementById('login-form');
 const registerForm = document.getElementById('register-form');
 const loginContainer = document.getElementById('login-container');
@@ -19,7 +17,54 @@ const registerContainer = document.getElementById('register-container');
 const showRegisterBtn = document.getElementById('show-register');
 const showLoginBtn = document.getElementById('show-login');
 
-// Alternância de Telas
+// =========================================================
+// RATE LIMITING — Bloqueio após 5 tentativas de login falhas
+// Sem custo, funciona 100% no navegador (localStorage)
+// =========================================================
+const MAX_ATTEMPTS = 5;
+const BLOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutos
+
+function getLoginAttempts() {
+    const raw = localStorage.getItem('login_attempts');
+    if (!raw) return { count: 0, blockedUntil: null };
+    try { return JSON.parse(raw); } catch { return { count: 0, blockedUntil: null }; }
+}
+
+function saveLoginAttempts(data) {
+    localStorage.setItem('login_attempts', JSON.stringify(data));
+}
+
+function registerFailedAttempt() {
+    const data = getLoginAttempts();
+    data.count += 1;
+    if (data.count >= MAX_ATTEMPTS) {
+        data.blockedUntil = Date.now() + BLOCK_DURATION_MS;
+        data.count = 0; // reseta contador para próximo ciclo
+    }
+    saveLoginAttempts(data);
+}
+
+function resetLoginAttempts() {
+    localStorage.removeItem('login_attempts');
+}
+
+function isLoginBlocked() {
+    const data = getLoginAttempts();
+    if (!data.blockedUntil) return false;
+    if (Date.now() < data.blockedUntil) return true;
+    resetLoginAttempts(); // desbloqueio automático após o tempo
+    return false;
+}
+
+function getRemainingBlockTime() {
+    const data = getLoginAttempts();
+    if (!data.blockedUntil) return 0;
+    return Math.ceil((data.blockedUntil - Date.now()) / 1000 / 60); // em minutos
+}
+
+// =========================================================
+// ALTERNÂNCIA DE TELAS
+// =========================================================
 if (showRegisterBtn) {
     showRegisterBtn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -35,16 +80,23 @@ if (showLoginBtn) {
     });
 }
 
-// --- LOGIN ---
+// =========================================================
+// LOGIN
+// =========================================================
 if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        console.log(">>> Iniciando Login...");
         
         const email = document.getElementById('login-email').value;
         const pass = document.getElementById('login-password').value;
         const alertBox = document.getElementById('login-alert');
         const btn = loginForm.querySelector('button');
+
+        // Verifica bloqueio por tentativas excessivas
+        if (isLoginBlocked()) {
+            showAlert(alertBox, `Muitas tentativas incorretas. Aguarde ${getRemainingBlockTime()} minuto(s) para tentar novamente.`, 'error');
+            return;
+        }
 
         const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
@@ -52,50 +104,57 @@ if (loginForm) {
         alertBox.classList.add('hidden');
 
         try {
-            console.log("1. Autenticando...");
             const userCredential = await signInWithEmailAndPassword(auth, email, pass);
             const user = userCredential.user;
-            console.log("2. Logado no Auth:", user.uid);
 
-            console.log("3. Verificando Status no Firestore...");
             const userDoc = await getDoc(doc(db, "users", user.uid));
             
             if (userDoc.exists()) {
                 const userData = userDoc.data();
-                console.log("4. Dados do usuário:", userData);
                 
                 if (userData.status === 'pending') {
-                    console.warn("BLOQUEIO: Usuário pendente.");
                     await signOut(auth);
                     btn.innerHTML = originalText;
                     btn.disabled = false;
                     showAlert(alertBox, "Cadastro aguardando aprovação do Professor.", "warning");
                     return;
                 }
-            } else {
-                console.log("4. Usuário sem documento no banco (pode ser admin manual).");
             }
 
-            console.log("5. Redirecionando...");
+            // Login bem-sucedido — limpa tentativas
+            resetLoginAttempts();
             window.location.href = '../pages/hub.html';
 
         } catch (error) {
-            console.error("!!! ERRO NO LOGIN:", error);
             btn.innerHTML = originalText;
             btn.disabled = false;
-            showAlert(alertBox, "Erro: " + error.message, 'error');
+
+            // Registra tentativa falha apenas para erros de credencial
+            const credentialErrors = [
+                'auth/wrong-password',
+                'auth/user-not-found',
+                'auth/invalid-credential',
+                'auth/invalid-email'
+            ];
+            if (credentialErrors.includes(error.code)) {
+                registerFailedAttempt();
+            }
+
+            // Mensagem GENÉRICA — não revela se o email existe ou não
+            showAlert(alertBox, "Email ou senha inválidos. Verifique seus dados e tente novamente.", 'error');
         }
     });
 }
 
-// --- CADASTRO ---
+// =========================================================
+// CADASTRO
+// =========================================================
 if (registerForm) {
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        console.log(">>> Iniciando Cadastro...");
         
-        const name = document.getElementById('reg-name').value;
-        const email = document.getElementById('reg-email').value;
+        const name = document.getElementById('reg-name').value.trim();
+        const email = document.getElementById('reg-email').value.trim();
         const inputCode = document.getElementById('reg-access-code').value.trim();
         const pass = document.getElementById('reg-pass').value;
         const confirm = document.getElementById('reg-confirm').value;
@@ -104,8 +163,14 @@ if (registerForm) {
 
         alertBox.classList.add('hidden');
 
+        // Validações no frontend
         if (pass !== confirm) {
             showAlert(alertBox, "As senhas não coincidem.", 'error');
+            return;
+        }
+
+        if (pass.length < 8) {
+            showAlert(alertBox, "A senha deve ter pelo menos 8 caracteres.", 'error');
             return;
         }
 
@@ -114,38 +179,32 @@ if (registerForm) {
         btn.disabled = true;
 
         try {
-            // 1. Valida Código
-            console.log("1. Buscando config/registration...");
+            // 1. Valida Código de Acesso
             const codeRef = doc(db, "config", "registration");
             const codeSnap = await getDoc(codeRef);
 
             if (!codeSnap.exists()) {
-                throw new Error("Documento de configuração não encontrado no banco! Verifique se criou a coleção 'config' e o documento 'registration'.");
+                showAlert(alertBox, "Erro de configuração. Contate o administrador.", 'error');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                return;
             }
 
             const serverCode = codeSnap.data().access_code;
-            console.log("2. Código do servidor:", serverCode);
-            console.log("3. Código digitado:", inputCode);
 
             if (serverCode !== inputCode) {
-                console.warn("Código inválido.");
                 showAlert(alertBox, "Código de acesso inválido.", 'error');
                 btn.innerHTML = originalText;
                 btn.disabled = false;
                 return;
             }
 
-            // 2. Cria Usuário
-            console.log("4. Código aceito. Criando usuário no Auth...");
+            // 2. Cria Usuário no Firebase Auth
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando conta...';
-            
-            // AQUI É ONDE GERALMENTE TRAVA SE TIVER PROBLEMA DE KEY
             const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
             const user = userCredential.user;
-            console.log("5. Usuário Auth criado! UID:", user.uid);
 
-            // 3. Salva no Firestore
-            console.log("6. Salvando dados no Firestore...");
+            // 3. Salva perfil no Firestore com status pendente
             await setDoc(doc(db, "users", user.uid), {
                 name: name,
                 email: email,
@@ -153,82 +212,66 @@ if (registerForm) {
                 status: 'pending',
                 createdAt: new Date()
             });
-            console.log("7. Dados salvos com sucesso!");
 
-            // 4. Desloga
-            console.log("8. Deslogando para exigir aprovação...");
+            // 4. Desloga imediatamente — exige aprovação do professor
             await signOut(auth);
 
             btn.innerHTML = originalText;
             btn.disabled = false;
-            
-            console.log("9. Finalizado. Voltando ao login.");
+
             registerContainer.classList.add('hidden');
             loginContainer.classList.remove('hidden');
             const loginAlert = document.getElementById('login-alert');
             showAlert(loginAlert, "Conta criada! Aguarde aprovação do Professor.", "warning");
 
         } catch (error) {
-            console.error("!!! ERRO NO CADASTRO:", error);
             btn.innerHTML = originalText;
             btn.disabled = false;
             
-            let msg = error.message;
-            if (error.code === 'auth/email-already-in-use') msg = "Email já cadastrado.";
-            if (error.code === 'permission-denied') msg = "Erro de permissão no banco de dados.";
+            // Mensagens amigáveis sem expor detalhes técnicos
+            let msg = "Ocorreu um erro. Tente novamente.";
+            if (error.code === 'auth/email-already-in-use') msg = "Este email já possui cadastro.";
+            if (error.code === 'auth/invalid-email') msg = "Formato de email inválido.";
+            if (error.code === 'auth/weak-password') msg = "Senha muito fraca. Use pelo menos 8 caracteres.";
             
-            showAlert(alertBox, "Erro: " + msg, 'error');
+            showAlert(alertBox, msg, 'error');
         }
     });
 }
 
+// =========================================================
+// HELPER — Exibe alertas com segurança (sem XSS)
+// Usa textContent em vez de innerHTML
+// =========================================================
 function showAlert(element, message, type) {
     if (!element) return;
-    element.innerHTML = message;
+    element.textContent = message; // ✅ seguro contra XSS
     element.className = `alert-message ${type}`; 
     element.classList.remove('hidden');
 }
 
-/* --- LOGICA DE INSTALAÇÃO PWA (COLE NO FINAL DO ARQUIVO) --- */
-
+// =========================================================
+// LÓGICA DE INSTALAÇÃO PWA
+// =========================================================
 let deferredPrompt; 
 const installBtn = document.getElementById('btn-install-pwa');
 
-// 1. Escuta se o navegador aceita instalação
 window.addEventListener('beforeinstallprompt', (e) => {
-    // Previne a barrinha automática do Chrome (para usarmos nosso botão)
     e.preventDefault();
     deferredPrompt = e;
-    
-    // Mostra o nosso botão (tira a classe hidden)
-    if (installBtn) {
-        installBtn.classList.remove('hidden');
-        console.log("PWA: Botão de instalação ativado.");
-    }
+    if (installBtn) installBtn.classList.remove('hidden');
 });
 
-// 2. Clique no botão
 if (installBtn) {
     installBtn.addEventListener('click', async () => {
         if (!deferredPrompt) return;
-
-        // Mostra o prompt oficial do navegador
         deferredPrompt.prompt();
-
-        // Espera a resposta do usuário
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log(`PWA: Usuário escolheu: ${outcome}`);
-
+        await deferredPrompt.userChoice;
         deferredPrompt = null;
-        
-        // Esconde o botão se o usuário aceitou ou cancelou
-        // (Opcional: se quiser que suma apenas se aceitar, coloque dentro de um if)
         installBtn.classList.add('hidden');
     });
 }
 
-// 3. Se já instalou, esconde o botão
 window.addEventListener('appinstalled', () => {
-    console.log('PWA: Instalado com sucesso!');
     if (installBtn) installBtn.classList.add('hidden');
 });

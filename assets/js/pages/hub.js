@@ -14,16 +14,14 @@ const els = {
     cNecropsias: document.getElementById('count-necropsias'),
     cBiopsias: document.getElementById('count-biopsias'),
     
-    // Etapas da Esteira
+    // Etapas da Esteira (SIMPLIFICADAS)
     cClivagem: document.getElementById('count-clivagem'),
     cProcessamento: document.getElementById('count-processamento'),
-    cEmblocamento: document.getElementById('count-emblocamento'),
-    cCorte: document.getElementById('count-corte'),
-    cColoracao: document.getElementById('count-coloracao'),
+    cLaminas: document.getElementById('count-laminas'),
     cAnalise: document.getElementById('count-analise'),
     cLiberar: document.getElementById('count-liberar')
 };
-
+ 
 let currentUserData = null;
 let unsubscribeTasks = null;
 let queueSourceTasks = [];
@@ -72,13 +70,11 @@ function initRealTimeDashboard() {
     unsubscribeTasks = onSnapshot(q, (snapshot) => {
         // Zera contadores
         const counts = {
-            necropsias: 0, 
-            biopsias: 0,   
+            necropsias: 0,
+            biopsias: 0,
             clivagem: 0,
             processamento: 0,
-            emblocamento: 0,
-            corte: 0,
-            coloracao: 0,
+            laminas_prontas: 0,
             analise: 0,
             liberar: 0
         };
@@ -123,12 +119,9 @@ function initRealTimeDashboard() {
 function updateCounters(c) {
     if(els.cNecropsias) els.cNecropsias.textContent = c.necropsias;
     if(els.cBiopsias) els.cBiopsias.textContent = c.biopsias;
-    
     if(els.cClivagem) els.cClivagem.textContent = c.clivagem;
     if(els.cProcessamento) els.cProcessamento.textContent = c.processamento;
-    if(els.cEmblocamento) els.cEmblocamento.textContent = c.emblocamento;
-    if(els.cCorte) els.cCorte.textContent = c.corte;
-    if(els.cColoracao) els.cColoracao.textContent = c.coloracao;
+    if(els.cLaminas) els.cLaminas.textContent = c.laminas_prontas;
     if(els.cAnalise) els.cAnalise.textContent = c.analise;
     if(els.cLiberar) els.cLiberar.textContent = c.liberar;
 }
@@ -138,14 +131,14 @@ function isTaskRelevant(task, role) {
     if (task.status === 'concluido' || task.status === 'arquivado') {
         return false;
     }
-
+ 
     const roles = normalizeRoles(role);
-
+ 
     if (hasAnyRole(role, ['admin', 'professor'])) return true;
     if (hasAnyRole(role, ['pós graduando', 'pos-graduando'])) return true;
-
+ 
     if (roles.includes('estagiario')) {
-        return ['clivagem', 'processamento', 'emblocamento', 'corte', 'coloracao'].includes(task.status);
+        return ['clivagem', 'processamento'].includes(task.status);
     }
     return false;
 }
@@ -273,8 +266,12 @@ function renderQueueColumn(container, tasks, type) {
         const shortPos = getShortName(task.posGraduando || 'Sem Pós');
 
         const statusMap = {
-            clivagem: 'Clivagem', processamento: 'Processamento', emblocamento: 'Emblocamento',
-            corte: 'Corte', coloracao: 'Coloração', analise: 'Análise', liberar: 'Liberar'
+            clivagem: 'Clivagem',
+            processamento: 'Processamento',
+            laminas_prontas: 'Lâminas Prontas',
+            analise: 'Análise',
+            liberar: 'Liberar Laudo',
+            concluido: 'Concluído'
         };
         const statusName = statusMap[task.status] || task.status;
 
