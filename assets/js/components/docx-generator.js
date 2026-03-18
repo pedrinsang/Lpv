@@ -199,8 +199,8 @@ export async function generateLaudoPDF(task, reportData) {
                 stack: [
                     { text: [ { text: 'Material Remetido: ', bold: true }, `Biópsia ${chk(isBio)}    Necropsia ${chk(isNecro)}` ] },
                     { text: [ { text: 'Tipo de Material: ', bold: true }, reportData.tipo_material_desc || "-" ] },
-                    { text: [ { text: 'Tempo Morte/Colheita: ', bold: true }, (reportData.tempo_morte || '-') + ' horas' ] },
-                    { text: [ { text: 'Circunstância: ', bold: true }, `Morte Espontânea ${chk(reportData.morte_tipo === 'espontanea')}    Eutanásia ${chk(reportData.morte_tipo === 'eutanasia')}` ] },
+                    { text: [ { text: 'Data e hora da morte: ', bold: true }, (reportData.tempo_morte || '-') + ' horas' ] },
+                    { text: [ { text: 'Morte: ', bold: true }, `Morte Espontânea ${chk(reportData.morte_tipo === 'espontanea')}    Eutanásia ${chk(reportData.morte_tipo === 'eutanasia')}` ] },
                     { text: [ { text: 'Conservação: ', bold: true }, `Formol ${chk(!reportData.conservacao || reportData.conservacao==='formol')}   Refrig. ${chk(reportData.conservacao==='refrigerado')}   Cong. ${chk(reportData.conservacao==='congelado')}` ] },
                 ],
                 fontSize: 11

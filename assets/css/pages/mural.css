@@ -92,6 +92,7 @@
     .kanban-board { 
         height: calc(100vh - 160px);
         scroll-snap-type: none;
+        scroll-behavior: auto;
         gap: 20px;
 
         /* Evita corte da 1a coluna quando o total de colunas ultrapassa a largura */

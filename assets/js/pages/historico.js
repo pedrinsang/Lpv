@@ -13,6 +13,72 @@ const btnClear = document.getElementById('btn-clear-history');
 
 let allReports = [];
 
+function normalizeSearchText(value) {
+    return (value ?? '')
+        .toString()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
+function buildSearchBlob(task) {
+    const report = task.report || {};
+    const dateCandidate = task.releaseDateObj instanceof Date
+        ? task.releaseDateObj
+        : (task.releasedAt ? new Date(task.releasedAt) : (task.updatedAt ? new Date(task.updatedAt) : null));
+
+    const dateTokens = [];
+    if (dateCandidate && !Number.isNaN(dateCandidate.getTime())) {
+        const day = dateCandidate.getDate();
+        const month = dateCandidate.getMonth() + 1;
+        const yearFull = dateCandidate.getFullYear();
+        const yearShort = String(yearFull).slice(-2);
+        const dayPadded = String(day).padStart(2, '0');
+        const monthPadded = String(month).padStart(2, '0');
+
+        // Permite busca por dia (ex: 18), ano completo (2026) ou final do ano (26).
+        dateTokens.push(
+            String(day),
+            dayPadded,
+            String(month),
+            monthPadded,
+            String(yearFull),
+            yearShort,
+            `${dayPadded}/${monthPadded}/${yearFull}`,
+            `${dayPadded}/${monthPadded}/${yearShort}`,
+            `${dayPadded}-${monthPadded}-${yearFull}`,
+            `${dayPadded}-${monthPadded}-${yearShort}`,
+            `${dayPadded}${monthPadded}${yearFull}`
+        );
+    }
+
+    const searchFields = [
+        task.protocolo,
+        task.protocoloInterno,
+        task.protocoloExterno,
+        task.accessCode,
+        task.codigoExterno,
+        report.protocoloInterno,
+        report.protocoloExterno,
+        report.diagnostico,
+        task.diagnostico,
+        task.docente,
+        task.professor,
+        task.posGraduando,
+        task.posgraduando,
+        task.animalNome,
+        task.proprietario,
+        task.especie,
+        task.raca,
+        task.origem,
+        task.type,
+        ...dateTokens
+    ];
+
+    return normalizeSearchText(searchFields.filter(Boolean).join(' '));
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
     auth.onAuthStateChanged(async (user) => {
         if (user) {
@@ -216,12 +282,14 @@ if (btnClear) {
 // Busca
 if (searchInput) {
     searchInput.addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
-        const filtered = allReports.filter(task => 
-            (task.animalNome && task.animalNome.toLowerCase().includes(term)) ||
-            (task.proprietario && task.proprietario.toLowerCase().includes(term)) ||
-            (task.protocolo && task.protocolo.toLowerCase().includes(term))
-        );
+        const term = normalizeSearchText(e.target.value);
+
+        if (!term) {
+            renderList(allReports);
+            return;
+        }
+
+        const filtered = allReports.filter((task) => buildSearchBlob(task).includes(term));
         renderList(filtered);
     });
 }

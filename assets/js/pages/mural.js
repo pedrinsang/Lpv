@@ -226,19 +226,41 @@ async function openTaskManagerWithRetry(taskId) {
 
 function initDesktopScroll() {
     if(!kanbanBoard) return;
+
+    const normalizeWheelDelta = (evt, rawDelta) => {
+        // Converte delta para pixels quando o dispositivo reporta por linha/página.
+        if (evt.deltaMode === 1) return rawDelta * 16;
+        if (evt.deltaMode === 2) return rawDelta * window.innerHeight;
+        return rawDelta;
+    };
+
+    const applyHorizontalScroll = (evt, rawDelta) => {
+        const deltaPx = normalizeWheelDelta(evt, rawDelta);
+        const speedMultiplier = 1.8;
+        kanbanBoard.scrollLeft += deltaPx * speedMultiplier;
+    };
     
     kanbanBoard.addEventListener("wheel", (evt) => {
-        if (window.innerWidth >= 1024 && evt.deltaY !== 0) {
-            const scrollableBody = evt.target.closest('.kanban-body');
+        if (window.innerWidth < 1024) return;
 
-            // Dentro de coluna: mantém scroll vertical nativo (não converte para horizontal).
-            if (scrollableBody) {
-                return;
-            }
+        const scrollableBody = evt.target.closest('.kanban-body');
+        const absX = Math.abs(evt.deltaX);
+        const absY = Math.abs(evt.deltaY);
 
-            // Fora da coluna (ex: headers/gap do board): usa wheel vertical para navegar horizontalmente.
+        // Prioriza gesto horizontal real do trackpad (2 dedos esquerda/direita).
+        if (absX > 0 && absX >= absY) {
             evt.preventDefault();
-            kanbanBoard.scrollLeft += evt.deltaY;
+            applyHorizontalScroll(evt, evt.deltaX);
+            return;
+        }
+
+        // Dentro da coluna, preserva o scroll vertical nativo quando o gesto é vertical.
+        if (scrollableBody) return;
+
+        // Fora da coluna, converte wheel vertical em navegação horizontal do mural.
+        if (absY > 0) {
+            evt.preventDefault();
+            applyHorizontalScroll(evt, evt.deltaY);
         }
     }, { passive: false });
 }
