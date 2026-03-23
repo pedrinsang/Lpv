@@ -122,6 +122,10 @@ function renderActive(users) {
         const initials = getInitials(u.name);
         const roles = normalizeRoles(u.role);
         const displayRole = roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(' / ');
+        const isPosGrad = roles.some(r => r.includes('graduando'));
+        const isAdmin = roles.includes('admin');
+        const canHaveSelfSignPermission = isPosGrad || isAdmin;
+        const canSelfSignReports = !!u.canSelfSignReports;
         
         return `
         <div class="admin-card fade-in">
@@ -157,6 +161,16 @@ function renderActive(users) {
                             onchange="window.toggleRole('${u.id}', this)" ${isMe ? 'disabled' : ''}> Admin
                     </label>
                 </div>
+
+                ${canHaveSelfSignPermission ? `
+                <div style="width:100%;margin-top:10px;padding:8px;border:1px dashed var(--color-primary);border-radius:8px;background:rgba(var(--color-primary-rgb),0.08);">
+                    <label class="role-check-label" style="display:flex;align-items:center;gap:6px;font-size:.84rem;cursor:pointer;color:var(--text-primary);font-weight:700;">
+                        <input type="checkbox" ${canSelfSignReports ? 'checked' : ''}
+                            onchange="window.toggleSelfSignPermission('${u.id}', this)" ${isMe ? 'disabled' : ''}>
+                        Autorizar assinatura propria no laudo
+                    </label>
+                </div>
+                ` : ''}
 
                 ${!isMe ? `
                 <button class="btn-icon-action btn-delete" onclick="window.deleteUser('${u.id}', '${u.name}')" title="Remover Acesso">
@@ -207,9 +221,23 @@ window.toggleRole = async (uid, checkbox) => {
             checkbox.checked = true;
             return;
         }
-        await updateDoc(doc(db, "users", uid), { role: checked });
+        const hasPosGrad = checked.some(r => r.includes('graduando'));
+        const hasAdmin = checked.includes('admin');
+        const payload = { role: checked };
+        if (!hasPosGrad && !hasAdmin) payload.canSelfSignReports = false;
+        await updateDoc(doc(db, "users", uid), payload);
     } catch (e) {
         alert("Erro ao mudar cargo.");
+        console.error(e);
+    }
+};
+
+window.toggleSelfSignPermission = async (uid, checkbox) => {
+    try {
+        await updateDoc(doc(db, "users", uid), { canSelfSignReports: !!checkbox.checked });
+    } catch (e) {
+        checkbox.checked = !checkbox.checked;
+        alert("Erro ao atualizar autorizacao de assinatura.");
         console.error(e);
     }
 };

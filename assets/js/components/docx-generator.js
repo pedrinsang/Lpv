@@ -3,6 +3,20 @@
 import { db, auth } from '../core.js';
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
+function normalizeRoles(role) {
+    if (!role) return [];
+    const arr = Array.isArray(role) ? role : [role];
+    return arr.map(r => (r || '').toString().toLowerCase().trim()).filter(Boolean);
+}
+
+function hasPostGradRole(role) {
+    return normalizeRoles(role).some(r => r.includes('graduando'));
+}
+
+function hasTeacherRole(role) {
+    return normalizeRoles(role).some(r => r === 'professor' || r === 'admin');
+}
+
 // ─── 1. CARREGA PDFMAKE ──────────────────────────────────────────────────────
 async function loadPdfMake() {
     if (window.pdfMake) return window.pdfMake;
@@ -61,6 +75,44 @@ async function fetchSignature(releasedByUid) {
         }
     } catch (err) {
         console.warn('Não foi possível buscar assinatura:', err);
+    }
+
+    return null;
+}
+
+async function fetchUserProfile(uid) {
+    if (!uid) return null;
+    try {
+        const userSnap = await getDoc(doc(db, 'users', uid));
+        if (userSnap.exists()) {
+            return { uid, ...userSnap.data() };
+        }
+    } catch (err) {
+        console.warn('Nao foi possivel buscar perfil do usuario:', err);
+    }
+    return null;
+}
+
+async function resolveSignatureForPdf(task) {
+    const currentUid = auth.currentUser?.uid || null;
+    const currentProfile = await fetchUserProfile(currentUid);
+
+    if (currentProfile?.signatureBase64) {
+        const canSelfSignAsPostGrad = hasPostGradRole(currentProfile.role) && !!currentProfile.canSelfSignReports;
+        const canSignAsTeacher = hasTeacherRole(currentProfile.role);
+
+        if (canSelfSignAsPostGrad || canSignAsTeacher) {
+            return {
+                base64: currentProfile.signatureBase64,
+                name: currentProfile.name || null,
+                role: currentProfile.role || null
+            };
+        }
+    }
+
+    const releasedSig = await fetchSignature(task.releasedBy || null);
+    if (releasedSig?.base64) {
+        return releasedSig;
     }
 
     return null;
@@ -141,11 +193,12 @@ function buildSignatureBlock(sigData, nomeDocente, isPos) {
 export async function generateLaudoPDF(task, reportData) {
     await loadPdfMake();
 
+    const sigData = await resolveSignatureForPdf(task);
+
     // Carrega imagens e assinatura em paralelo
-    const [base64UFSM, base64LPV, sigData] = await Promise.all([
+    const [base64UFSM, base64LPV] = await Promise.all([
         getImageAsBase64('../assets/images/Logo-UFSM.png'),
-        getImageAsBase64('../assets/images/LPV.png'),
-        fetchSignature(task.releasedBy || null)
+        getImageAsBase64('../assets/images/LPV.png')
     ]);
 
     // ── PREPARAÇÃO DOS DADOS ──────────────────────────────────────
