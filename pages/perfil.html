@@ -34,6 +34,400 @@
         }
         .profile-label { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px; }
         .profile-value { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); }
+
+        /* =============================================
+           BLOCO DE ASSINATURA
+           ============================================= */
+        .signature-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .signature-section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem;
+        }
+
+        .signature-section-title i {
+            color: var(--color-primary);
+        }
+
+        /* Preview da assinatura salva */
+        .signature-preview-box {
+            width: 100%;
+            min-height: 80px;
+            background: rgba(255,255,255,0.03);
+            border: 1px dashed var(--border-glass);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .signature-preview-box img {
+            max-height: 80px;
+            max-width: 100%;
+            object-fit: contain;
+            /* Inverte para ficar visível no dark mode (assinatura preta em fundo escuro) */
+            filter: invert(1) brightness(2);
+        }
+
+        .signature-preview-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-tertiary);
+            font-size: 0.85rem;
+        }
+
+        .signature-preview-empty i {
+            font-size: 1.8rem;
+            opacity: 0.4;
+        }
+
+        .signature-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* =============================================
+           MODAL DE ASSINATURA
+           ============================================= */
+        #signature-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 3000;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: overlayIn 0.3s ease forwards;
+        }
+
+        #signature-modal.hidden {
+            display: none;
+        }
+
+        .sig-modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            animation: modalIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        .sig-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .sig-modal-header h3 {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sig-modal-header h3 i {
+            color: var(--color-primary);
+        }
+
+        /* Canvas de desenho */
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid var(--border-glass);
+            background: #ffffff; /* Canvas sempre branco para a assinatura */
+            cursor: crosshair;
+            touch-action: none;
+            transition: border-color 0.2s ease;
+            margin-bottom: 1rem;
+        }
+
+        .canvas-wrapper:hover,
+        .canvas-wrapper.drawing {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+        }
+
+        #signature-canvas {
+            display: block;
+            width: 100%;
+            height: 200px;
+            touch-action: none;
+        }
+
+        .canvas-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #94a3b8;
+            font-size: 0.9rem;
+            font-weight: 500;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            transition: opacity 0.3s ease;
+        }
+
+        .canvas-hint i {
+            font-size: 1.5rem;
+            opacity: 0.5;
+        }
+
+        .canvas-hint.hidden {
+            opacity: 0;
+        }
+
+        /* Controles do canvas */
+        .canvas-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .stroke-size-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .stroke-slider {
+            flex: 1;
+            min-width: 100px;
+            accent-color: var(--color-primary);
+            cursor: pointer;
+        }
+
+        .stroke-preview {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #1e293b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border: 1px solid var(--border-glass);
+        }
+
+        .stroke-dot {
+            background: #0f172a;
+            border-radius: 50%;
+            transition: width 0.1s, height 0.1s;
+        }
+
+        .btn-clear-canvas {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-glass);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .btn-clear-canvas:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: var(--color-error);
+            color: var(--color-error);
+        }
+
+        .sig-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        /* Status de salvamento */
+        .save-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 8px 14px;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        .save-status.success {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .save-status.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--color-error);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .save-status.hidden {
+            display: none;
+        }
+
+        /* Badge de assinatura cadastrada */
+        .sig-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .sig-badge.absent {
+            background: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+            border-color: rgba(245, 158, 11, 0.2);
+        }
+
+        /* =============================================
+           MODO PAISAGEM FORÇADO (MOBILE)
+           ============================================= */
+
+        /* Overlay que cobre tudo e exibe aviso de rotação */
+        #rotate-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: #0f172a;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            color: white;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        #rotate-overlay .rotate-icon {
+            font-size: 3.5rem;
+            animation: rotateHint 1.8s ease-in-out infinite;
+        }
+
+        #rotate-overlay p {
+            font-size: 1rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.8);
+            max-width: 260px;
+            line-height: 1.5;
+        }
+
+        @keyframes rotateHint {
+            0%   { transform: rotate(0deg);   }
+            30%  { transform: rotate(-90deg); }
+            60%  { transform: rotate(-90deg); }
+            90%  { transform: rotate(0deg);   }
+            100% { transform: rotate(0deg);   }
+        }
+
+        /* No mobile em portrait, quando o modal de assinatura está aberto,
+           mostra o aviso de rotação em vez do modal */
+        @media (max-width: 900px) and (orientation: portrait) {
+            body.sig-modal-open #signature-modal {
+                display: none !important;
+            }
+            body.sig-modal-open #rotate-overlay {
+                display: flex !important;
+            }
+        }
+
+        /* Em landscape no mobile: modal ocupa tela inteira e canvas fica maior */
+        @media (max-width: 900px) and (orientation: landscape) {
+            body.sig-modal-open #rotate-overlay {
+                display: none !important;
+            }
+
+            #signature-modal {
+                padding: 8px;
+                align-items: flex-start;
+                overflow-y: auto;
+            }
+
+            .sig-modal-content {
+                padding: 12px 16px;
+                max-width: 100%;
+                border-radius: 14px;
+            }
+
+            .sig-modal-header {
+                margin-bottom: 8px;
+            }
+
+            .sig-modal-header h3 {
+                font-size: 1rem;
+            }
+
+            .sig-modal-header > p {
+                display: none; /* esconde o texto instrucional para ganhar espaço */
+            }
+
+            #signature-canvas {
+                height: 140px;
+            }
+
+            .canvas-controls {
+                margin-bottom: 8px;
+            }
+
+            .sig-modal-footer {
+                margin-top: 4px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .sig-modal-content {
+                padding: 1.25rem;
+            }
+            #signature-canvas {
+                height: 160px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -53,7 +447,7 @@
             <a href="coloracao.html" class="sidebar-link"><i class="fas fa-stopwatch"></i> <span>Timers & Bancada</span></a>
             <a href="protocolos.html" class="sidebar-link"><i class="fas fa-book-medical"></i> <span>Protocolos</span></a>
             <a href="planner.html" class="sidebar-link"><i class="fas fa-calendar-alt"></i> <span>Planner</span></a>
-            <button class="sidebar-link btn-sidebar-new" ><i class="fas fa-plus"></i> <span>Nova Entrada</span></button>
+            <button class="sidebar-link btn-sidebar-new"><i class="fas fa-plus"></i> <span>Nova Entrada</span></button>
         </nav>
         <div class="sidebar-footer">
             <div class="sidebar-user-avatar"><i class="fas fa-user"></i></div>
@@ -81,20 +475,58 @@
 
         <main class="main-container">
             
+            <!-- CARD DE PERFIL -->
             <div class="card profile-header-card fade-in">
                 <div class="profile-avatar-large"><i class="fas fa-user"></i></div>
                 <h2 id="profile-display-name" style="font-size: 1.5rem; font-weight: 800; margin-bottom: 5px;">Carregando...</h2>
                 <span id="profile-display-role" class="user-badge" style="font-size: 0.9rem; padding: 4px 12px;">...</span>
             </div>
 
+            <!-- DADOS DO PERFIL -->
             <div class="card fade-in" style="padding: 0;">
                 <div class="profile-data-group">
                     <div class="profile-label">Email Cadastrado</div>
                     <div id="profile-display-email" class="profile-value">...</div>
                 </div>
-
             </div>
 
+            <!-- SEÇÃO DE ASSINATURA (só aparece para professor/pós-graduando) -->
+            <div id="signature-section" class="signature-section fade-in hidden">
+                <div class="signature-section-title">
+                    <i class="fas fa-signature"></i>
+                    Assinatura Digital de Laudos
+                    <span id="sig-status-badge" class="sig-badge absent" style="margin-left: auto;">
+                        <i class="fas fa-exclamation-circle"></i> Não cadastrada
+                    </span>
+                </div>
+
+                <!-- Preview da assinatura atual -->
+                <div class="signature-preview-box" id="sig-preview-box">
+                    <div class="signature-preview-empty" id="sig-preview-empty">
+                        <i class="fas fa-pen-nib"></i>
+                        <span>Nenhuma assinatura cadastrada</span>
+                    </div>
+                    <img id="sig-preview-img" src="" alt="Sua assinatura" style="display:none;">
+                </div>
+
+                <p style="font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: 1rem; line-height: 1.5;">
+                    <i class="fas fa-info-circle" style="color: var(--color-primary);"></i>
+                    Sua assinatura será incluída automaticamente nos PDFs de laudos que você liberar.
+                    Use uma mesa digitalizadora ou desenhe com o mouse para melhor resultado.
+                </p>
+
+                <div class="signature-actions">
+                    <button id="btn-open-sig-modal" class="btn btn-primary" style="flex: 1;">
+                        <i class="fas fa-pen-nib"></i>
+                        <span id="btn-sig-label">Cadastrar Assinatura</span>
+                    </button>
+                    <button id="btn-delete-sig" class="btn btn-secondary hidden" style="color: var(--color-error); border-color: var(--color-error);">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- LOGOUT -->
             <div style="margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem;">
                 <button id="logout-btn-profile" class="btn" style="background: rgba(239, 68, 68, 0.1); color: var(--color-error); width: 100%;">
                     <i class="fas fa-sign-out-alt"></i> Sair da Conta
@@ -104,17 +536,398 @@
         </main>
     </div>
 
+    <!-- AVISO DE ROTAÇÃO (mobile portrait) -->
+    <div id="rotate-overlay">
+        <div class="rotate-icon"><i class="fas fa-mobile-alt"></i></div>
+        <p>Gire o celular para o modo <strong>paisagem</strong> para desenhar sua assinatura</p>
+    </div>
 
+    <!-- MODAL DE ASSINATURA -->
+    <div id="signature-modal" class="hidden">
+        <div class="sig-modal-content">
+            
+            <div class="sig-modal-header">
+                <h3><i class="fas fa-pen-nib"></i> Desenhar Assinatura</h3>
+                <button id="btn-close-sig-modal" class="btn-close-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Dica de uso -->
+            <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.5;">
+                Desenhe sua assinatura abaixo. Use uma mesa digitalizadora para melhor precisão.
+                O canvas é branco — sua assinatura aparecerá em preto.
+            </p>
+
+            <!-- Canvas -->
+            <div class="canvas-wrapper" id="canvas-wrapper">
+                <canvas id="signature-canvas"></canvas>
+                <div class="canvas-hint" id="canvas-hint">
+                    <i class="fas fa-pen-alt"></i>
+                    <span>Clique e arraste para assinar</span>
+                </div>
+            </div>
+
+            <!-- Controles -->
+            <div class="canvas-controls">
+                <span class="stroke-size-label">Espessura:</span>
+                <input type="range" id="stroke-slider" class="stroke-slider" min="1" max="8" value="2" step="0.5">
+                <div class="stroke-preview">
+                    <div class="stroke-dot" id="stroke-dot" style="width: 4px; height: 4px;"></div>
+                </div>
+                <button class="btn-clear-canvas" id="btn-clear-canvas">
+                    <i class="fas fa-eraser"></i> Limpar
+                </button>
+            </div>
+
+            <!-- Status -->
+            <div id="sig-save-status" class="save-status hidden"></div>
+
+            <!-- Footer -->
+            <div class="sig-modal-footer">
+                <button id="btn-cancel-sig" class="btn btn-secondary">Cancelar</button>
+                <button id="btn-save-sig" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Salvar Assinatura
+                </button>
+            </div>
+
+        </div>
+    </div>
 
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
     <script type="module" src="../assets/js/core.js"></script>
     <script type="module">
-        import { auth, signOut } from '../assets/js/core.js';
-        
-        // Botão de Logout específico desta página
+        import { auth, db, signOut } from '../assets/js/core.js';
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+        import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        // ─── ELEMENTOS ───────────────────────────────────────────
+        const sigSection      = document.getElementById('signature-section');
+        const sigModal        = document.getElementById('signature-modal');
+        const sigPreviewImg   = document.getElementById('sig-preview-img');
+        const sigPreviewEmpty = document.getElementById('sig-preview-empty');
+        const sigBadge        = document.getElementById('sig-status-badge');
+        const btnOpenModal    = document.getElementById('btn-open-sig-modal');
+        const btnCloseModal   = document.getElementById('btn-close-sig-modal');
+        const btnCancelSig    = document.getElementById('btn-cancel-sig');
+        const btnSaveSig      = document.getElementById('btn-save-sig');
+        const btnDeleteSig    = document.getElementById('btn-delete-sig');
+        const btnClearCanvas  = document.getElementById('btn-clear-canvas');
+        const canvasHint      = document.getElementById('canvas-hint');
+        const saveStatus      = document.getElementById('sig-save-status');
+        const strokeSlider    = document.getElementById('stroke-slider');
+        const strokeDot       = document.getElementById('stroke-dot');
+        const btnSigLabel     = document.getElementById('btn-sig-label');
+
+        // ─── CANVAS SETUP ────────────────────────────────────────
+        const canvas  = document.getElementById('signature-canvas');
+        const ctx     = canvas.getContext('2d');
+        let isDrawing = false;
+        let hasDrawn  = false;
+        let lastX = 0, lastY = 0;
+        let strokeWidth = 2;
+
+        function resizeCanvas() {
+            const wrapper = document.getElementById('canvas-wrapper');
+            const rect = wrapper.getBoundingClientRect();
+            // Salva o conteúdo atual antes de redimensionar
+            const imgData = canvas.width > 0 ? ctx.getImageData(0, 0, canvas.width, canvas.height) : null;
+            canvas.width  = rect.width;
+            canvas.height = 200;
+            // Restaura
+            setupCtx();
+            if (imgData && imgData.width > 0) {
+                ctx.putImageData(imgData, 0, 0);
+            }
+        }
+
+        function setupCtx() {
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth   = strokeWidth;
+            ctx.lineCap     = 'round';
+            ctx.lineJoin    = 'round';
+            ctx.imageSmoothingEnabled = true;
+        }
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width  / rect.width;
+            const scaleY = canvas.height / rect.height;
+            if (e.touches) {
+                return {
+                    x: (e.touches[0].clientX - rect.left) * scaleX,
+                    y: (e.touches[0].clientY - rect.top)  * scaleY
+                };
+            }
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top)  * scaleY
+            };
+        }
+
+        function startDraw(e) {
+            e.preventDefault();
+            isDrawing = true;
+            const pos = getPos(e);
+            lastX = pos.x; lastY = pos.y;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, strokeWidth / 2, 0, Math.PI * 2);
+            ctx.fillStyle = '#0f172a';
+            ctx.fill();
+            document.getElementById('canvas-wrapper').classList.add('drawing');
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            lastX = pos.x; lastY = pos.y;
+
+            if (!hasDrawn) {
+                hasDrawn = true;
+                canvasHint.classList.add('hidden');
+            }
+        }
+
+        function stopDraw(e) {
+            if (!isDrawing) return;
+            isDrawing = false;
+            document.getElementById('canvas-wrapper').classList.remove('drawing');
+        }
+
+        // Eventos mouse
+        canvas.addEventListener('mousedown',  startDraw);
+        canvas.addEventListener('mousemove',  draw);
+        canvas.addEventListener('mouseup',    stopDraw);
+        canvas.addEventListener('mouseleave', stopDraw);
+
+        // Eventos touch (mesa digitalizadora / celular)
+        canvas.addEventListener('touchstart', startDraw, { passive: false });
+        canvas.addEventListener('touchmove',  draw,      { passive: false });
+        canvas.addEventListener('touchend',   stopDraw);
+
+        // Slider de espessura
+        strokeSlider.addEventListener('input', () => {
+            strokeWidth = parseFloat(strokeSlider.value);
+            const dotSize = Math.max(2, strokeWidth * 2);
+            strokeDot.style.width  = dotSize + 'px';
+            strokeDot.style.height = dotSize + 'px';
+            setupCtx();
+        });
+
+        // Limpar canvas
+        btnClearCanvas.addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            hasDrawn = false;
+            canvasHint.classList.remove('hidden');
+        });
+
+        // ─── ORIENTAÇÃO (MOBILE) ─────────────────────────────────
+        const isMobile = () => window.innerWidth <= 900 || 'ontouchstart' in window;
+
+        /**
+         * Tenta travar a orientação em landscape via Screen Orientation API.
+         * Silencia o erro caso o browser não suporte (desktop, alguns iOS).
+         */
+        async function lockLandscape() {
+            try {
+                if (screen.orientation && screen.orientation.lock) {
+                    await screen.orientation.lock('landscape');
+                }
+            } catch (_) {
+                // API não suportada ou usuário em desktop — sem problema,
+                // o CSS já mostra o aviso de rotação se ainda estiver em portrait.
+            }
+        }
+
+        async function unlockOrientation() {
+            try {
+                if (screen.orientation && screen.orientation.unlock) {
+                    screen.orientation.unlock();
+                }
+            } catch (_) {}
+        }
+
+        // Quando a orientação muda enquanto o modal está aberto, redimensiona o canvas
+        window.addEventListener('orientationchange', () => {
+            if (!sigModal.classList.contains('hidden')) {
+                // Aguarda a transição física do dispositivo completar
+                setTimeout(() => {
+                    resizeCanvas();
+                    // Limpa apenas se o canvas estava vazio (não apaga assinatura em progresso)
+                    if (!hasDrawn) canvasHint.classList.remove('hidden');
+                }, 350);
+            }
+        });
+
+        // ─── MODAL ───────────────────────────────────────────────
+        async function openSignatureModal() {
+            sigModal.classList.remove('hidden');
+            document.body.classList.add('sig-modal-open');
+
+            // No mobile, solicita modo paisagem
+            if (isMobile()) {
+                await lockLandscape();
+            }
+
+            // Delay para garantir layout após possível rotação
+            setTimeout(() => {
+                resizeCanvas();
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                hasDrawn = false;
+                canvasHint.classList.remove('hidden');
+                saveStatus.classList.add('hidden');
+            }, 300);
+        }
+
+        function closeSignatureModal() {
+            sigModal.classList.add('hidden');
+            document.body.classList.remove('sig-modal-open');
+
+            // Libera a trava de orientação ao fechar
+            if (isMobile()) unlockOrientation();
+        }
+
+        btnOpenModal.addEventListener('click',   openSignatureModal);
+        btnCloseModal.addEventListener('click',  closeSignatureModal);
+        btnCancelSig.addEventListener('click',   closeSignatureModal);
+
+        // Fechar clicando fora
+        sigModal.addEventListener('click', (e) => {
+            if (e.target === sigModal) closeSignatureModal();
+        });
+
+        // ─── SALVAR ASSINATURA ────────────────────────────────────
+        btnSaveSig.addEventListener('click', async () => {
+            if (!hasDrawn) {
+                showStatus('Por favor, desenhe sua assinatura antes de salvar.', 'error');
+                return;
+            }
+
+            btnSaveSig.disabled = true;
+            btnSaveSig.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+
+            try {
+                // Exporta como PNG com fundo transparente
+                const dataURL = canvas.toDataURL('image/png');
+
+                const user = auth.currentUser;
+                if (!user) throw new Error('Usuário não autenticado');
+
+                await updateDoc(doc(db, 'users', user.uid), {
+                    signatureBase64: dataURL,
+                    signatureUpdatedAt: new Date().toISOString()
+                });
+
+                // Atualiza preview
+                updateSignaturePreview(dataURL);
+                showStatus('Assinatura salva com sucesso!', 'success');
+
+                setTimeout(() => closeSignatureModal(), 1200);
+
+            } catch (err) {
+                console.error(err);
+                showStatus('Erro ao salvar: ' + err.message, 'error');
+            } finally {
+                btnSaveSig.disabled = false;
+                btnSaveSig.innerHTML = '<i class="fas fa-save"></i> Salvar Assinatura';
+            }
+        });
+
+        // ─── DELETAR ASSINATURA ───────────────────────────────────
+        btnDeleteSig.addEventListener('click', async () => {
+            if (!confirm('Remover sua assinatura cadastrada?')) return;
+            try {
+                const user = auth.currentUser;
+                await updateDoc(doc(db, 'users', user.uid), {
+                    signatureBase64: null,
+                    signatureUpdatedAt: new Date().toISOString()
+                });
+                updateSignaturePreview(null);
+            } catch (err) {
+                alert('Erro ao remover assinatura: ' + err.message);
+            }
+        });
+
+        // ─── HELPERS DE UI ────────────────────────────────────────
+        function updateSignaturePreview(base64) {
+            if (base64) {
+                sigPreviewImg.src   = base64;
+                sigPreviewImg.style.display = 'block';
+                sigPreviewEmpty.style.display = 'none';
+                sigBadge.innerHTML  = '<i class="fas fa-check-circle"></i> Cadastrada';
+                sigBadge.className  = 'sig-badge';
+                btnSigLabel.textContent = 'Atualizar Assinatura';
+                btnDeleteSig.classList.remove('hidden');
+            } else {
+                sigPreviewImg.src   = '';
+                sigPreviewImg.style.display = 'none';
+                sigPreviewEmpty.style.display = 'flex';
+                sigBadge.innerHTML  = '<i class="fas fa-exclamation-circle"></i> Não cadastrada';
+                sigBadge.className  = 'sig-badge absent';
+                btnSigLabel.textContent = 'Cadastrar Assinatura';
+                btnDeleteSig.classList.add('hidden');
+            }
+        }
+
+        function showStatus(msg, type) {
+            saveStatus.textContent = '';
+            const icon = document.createElement('i');
+            icon.className = type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+            const text = document.createTextNode(' ' + msg);
+            saveStatus.appendChild(icon);
+            saveStatus.appendChild(text);
+            saveStatus.className = `save-status ${type}`;
+        }
+
+        // ─── AUTH & DADOS ─────────────────────────────────────────
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) return;
+
+            try {
+                const userSnap = await getDoc(doc(db, 'users', user.uid));
+                if (!userSnap.exists()) return;
+
+                const data = userSnap.data();
+                const roles = Array.isArray(data.role)
+                    ? data.role.map(r => r.toLowerCase())
+                    : [(data.role || '').toLowerCase()];
+
+                // Exibe seção de assinatura apenas para quem pode assinar laudos
+                const canSign = roles.some(r =>
+                    r.includes('professor') ||
+                    r.includes('graduando') ||
+                    r === 'admin'
+                );
+
+                if (canSign) {
+                    sigSection.classList.remove('hidden');
+                    // Carrega assinatura existente
+                    if (data.signatureBase64) {
+                        updateSignaturePreview(data.signatureBase64);
+                    }
+                }
+
+            } catch (err) {
+                console.error('Erro ao carregar perfil:', err);
+            }
+        });
+
+        // Logout
         document.getElementById('logout-btn-profile').addEventListener('click', async () => {
             await signOut(auth);
+        });
+
+        // Redimensiona canvas se a janela mudar (desktop resize)
+        window.addEventListener('resize', () => {
+            if (!sigModal.classList.contains('hidden')) {
+                setTimeout(() => resizeCanvas(), 100);
+            }
         });
     </script>
 </body>

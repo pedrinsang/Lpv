@@ -32,6 +32,10 @@ class LpvEntryForm extends HTMLElement {
                                 <input type="text" name="remetente" class="input-field" required>
                             </div>
                             <div class="form-group">
+                                <label>CRMV do Remetente</label>
+                                <input type="text" name="remetenteCrmv" class="input-field" placeholder="Ex: CRMV-RS 12345">
+                            </div>
+                            <div class="form-group">
                                 <label>Contato do Remetente</label>
                                 <input type="text" name="remetenteContato" class="input-field" placeholder="Telefone ou WhatsApp">
                             </div>
@@ -154,6 +158,10 @@ class LpvEntryForm extends HTMLElement {
                             <div class="form-group span-2">
                                 <label>Remetente</label>
                                 <input type="text" name="remetente" class="input-field" required>
+                            </div>
+                            <div class="form-group">
+                                <label>CRMV do Remetente</label>
+                                <input type="text" name="remetenteCrmv" class="input-field" placeholder="Ex: CRMV-RS 12345">
                             </div>
                             <div class="form-group">
                                 <label>Contato do Remetente</label>
