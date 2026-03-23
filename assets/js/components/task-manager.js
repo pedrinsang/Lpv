@@ -452,20 +452,20 @@ function openReportEditor(task) {
                 
                 <h5 style="color:var(--text-secondary); margin-bottom:10px; border-bottom:1px solid #eee;">Requisitante (Veterinário/Clínica)</h5>
                 <div class="form-row">
-                    <div class="form-col"><label>Clínica / Empresa</label><input type="text" name="clinica_requisitante" class="input-field-sm" value="${rep.clinica_requisitante || ''}" ${disabledAttr}></div>
-                    <div class="form-col"><label>Endereço Completo</label><input type="text" name="endereco_requisitante" class="input-field-sm" value="${rep.endereco_requisitante || ''}" ${disabledAttr}></div>
+                    <div class="form-col"><label>Clínica / Empresa</label><input type="text" name="clinica_requisitante" class="input-field-sm" value="${rep.clinica_requisitante || task.remetenteClinicaEmpresa || ''}" ${disabledAttr}></div>
+                    <div class="form-col"><label>Endereço Completo</label><input type="text" name="endereco_requisitante" class="input-field-sm" value="${rep.endereco_requisitante || task.remetenteEndereco || ''}" ${disabledAttr}></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-col"><label>Telefone / WhatsApp</label><input type="text" name="telefone_requisitante" class="input-field-sm" value="${rep.telefone_requisitante || ''}" ${disabledAttr}></div>
+                    <div class="form-col"><label>Telefone / WhatsApp</label><input type="text" name="telefone_requisitante" class="input-field-sm" value="${rep.telefone_requisitante || task.remetenteContato || ''}" ${disabledAttr}></div>
                     <div class="form-col"><label>Email</label><input type="email" name="email_requisitante" class="input-field-sm" value="${rep.email_requisitante || ''}" ${disabledAttr}></div>
                 </div>
 
                 <h5 style="color:var(--text-secondary); margin-bottom:10px; margin-top:15px; border-bottom:1px solid #eee;">Proprietário</h5>
                 <div class="form-row">
-                    <div class="form-col"><label>Endereço Completo</label><input type="text" name="endereco_proprietario" class="input-field-sm" value="${rep.endereco_proprietario || ''}" ${disabledAttr}></div>
+                    <div class="form-col"><label>Endereço Completo</label><input type="text" name="endereco_proprietario" class="input-field-sm" value="${rep.endereco_proprietario || task.proprietarioEndereco || ''}" ${disabledAttr}></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-col"><label>Telefone / WhatsApp</label><input type="text" name="telefone_proprietario" class="input-field-sm" value="${rep.telefone_proprietario || ''}" ${disabledAttr}></div>
+                    <div class="form-col"><label>Telefone / WhatsApp</label><input type="text" name="telefone_proprietario" class="input-field-sm" value="${rep.telefone_proprietario || task.proprietarioContato || ''}" ${disabledAttr}></div>
                     <div class="form-col"><label>Email</label><input type="email" name="email_proprietario" class="input-field-sm" value="${rep.email_proprietario || ''}" ${disabledAttr}></div>
                 </div>
 

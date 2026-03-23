@@ -60,6 +60,12 @@ export async function generateLaudoPDF(task, reportData) {
         ? new Date(task.releasedAt).toLocaleDateString('pt-BR') 
         : new Date().toLocaleDateString('pt-BR');
 
+    const contatoRequisitante = task.remetenteContato || reportData.telefone_requisitante || "-";
+    const clinicaRequisitante = task.remetenteClinicaEmpresa || reportData.clinica_requisitante || "-";
+    const enderecoRequisitante = task.remetenteEndereco || reportData.endereco_requisitante || "-";
+    const contatoProprietario = task.proprietarioContato || reportData.telefone_proprietario || "-";
+    const enderecoProprietario = task.proprietarioEndereco || reportData.endereco_proprietario || "-";
+
     const chk = (val) => val ? "[ X ]" : "[   ]";
     const isBio = reportData.tipo_material_radio ? reportData.tipo_material_radio === 'biopsia' : task.type === 'biopsia';
     const isNecro = reportData.tipo_material_radio ? reportData.tipo_material_radio === 'necropsia' : task.type === 'necropsia';
@@ -163,23 +169,23 @@ export async function generateLaudoPDF(task, reportData) {
                         [{ text: 'REQUISITANTE', style: 'tableHeaderGray', colSpan: 4, border: [false, false, false, false] }, {}, {}, {}],
                         [
                             { text: 'Requisitante:', style: 'label' }, { text: task.remetente || "-", style: 'value' },
-                            { text: 'Telefone:', style: 'label' }, { text: reportData.telefone_requisitante || "-", style: 'value' }
+                            { text: 'Contato:', style: 'label' }, { text: contatoRequisitante, style: 'value' }
                         ],
                         [
                             { text: 'Email:', style: 'label' }, { text: reportData.email_requisitante || "-", style: 'value' },
-                            { text: 'Clínica:', style: 'label' }, { text: reportData.clinica_requisitante || "-", style: 'value' }
+                            { text: 'Clínica/Empresa:', style: 'label' }, { text: clinicaRequisitante, style: 'value' }
                         ],
                         [
-                            { text: 'Endereço:', style: 'label' }, { text: reportData.endereco_requisitante || "-", style: 'value', colSpan: 3 }, {}, {}
+                            { text: 'Endereço:', style: 'label' }, { text: enderecoRequisitante, style: 'value', colSpan: 3 }, {}, {}
                         ],
 
                         [{ text: 'PROPRIETÁRIO', style: 'tableHeaderGray', colSpan: 4, border: [false, false, false, false] }, {}, {}, {}],
                         [
                             { text: 'Proprietário:', style: 'label' }, { text: task.proprietario || "-", style: 'value' },
-                            { text: 'Telefone:', style: 'label' }, { text: reportData.telefone_proprietario || "-", style: 'value' }
+                            { text: 'Contato:', style: 'label' }, { text: contatoProprietario, style: 'value' }
                         ],
                         [
-                            { text: 'Endereço:', style: 'label' }, { text: reportData.endereco_proprietario || "-", style: 'value', colSpan: 3 }, {}, {}
+                            { text: 'Endereço:', style: 'label' }, { text: enderecoProprietario, style: 'value', colSpan: 3 }, {}, {}
                         ]
                     ]
                 },

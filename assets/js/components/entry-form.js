@@ -28,8 +28,20 @@ class LpvEntryForm extends HTMLElement {
                             </div>
 
                             <div class="form-group span-2">
-                                <label>Remetente (Clínica/Vet)</label>
+                                <label>Remetente</label>
                                 <input type="text" name="remetente" class="input-field" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Contato do Remetente</label>
+                                <input type="text" name="remetenteContato" class="input-field" placeholder="Telefone ou WhatsApp">
+                            </div>
+                            <div class="form-group">
+                                <label>Clínica / Empresa</label>
+                                <input type="text" name="remetenteClinicaEmpresa" class="input-field" placeholder="Nome da clínica ou empresa">
+                            </div>
+                            <div class="form-group span-2">
+                                <label>Endereço do Remetente</label>
+                                <input type="text" name="remetenteEndereco" class="input-field" placeholder="Rua, número, bairro, cidade">
                             </div>
                             <div class="form-group">
                                 <label>Situação Financeira</label>
@@ -70,6 +82,14 @@ class LpvEntryForm extends HTMLElement {
                             <div class="form-group">
                                 <label>Proprietário</label>
                                 <input type="text" name="proprietario" class="input-field" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Contato do Proprietário</label>
+                                <input type="text" name="proprietarioContato" class="input-field" placeholder="Telefone ou WhatsApp">
+                            </div>
+                            <div class="form-group span-2">
+                                <label>Endereço do Proprietário</label>
+                                <input type="text" name="proprietarioEndereco" class="input-field" placeholder="Rua, número, bairro, cidade">
                             </div>
 
                             <div class="form-group">
@@ -132,8 +152,20 @@ class LpvEntryForm extends HTMLElement {
                             </div>
 
                             <div class="form-group span-2">
-                                <label>Remetente (Clínica/Vet)</label>
+                                <label>Remetente</label>
                                 <input type="text" name="remetente" class="input-field" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Contato do Remetente</label>
+                                <input type="text" name="remetenteContato" class="input-field" placeholder="Telefone ou WhatsApp">
+                            </div>
+                            <div class="form-group">
+                                <label>Clínica / Empresa</label>
+                                <input type="text" name="remetenteClinicaEmpresa" class="input-field" placeholder="Nome da clínica ou empresa">
+                            </div>
+                            <div class="form-group span-2">
+                                <label>Endereço do Remetente</label>
+                                <input type="text" name="remetenteEndereco" class="input-field" placeholder="Rua, número, bairro, cidade">
                             </div>
                             <div class="form-group">
                                 <label>Situação Financeira</label>
@@ -174,6 +206,14 @@ class LpvEntryForm extends HTMLElement {
                             <div class="form-group">
                                 <label>Proprietário</label>
                                 <input type="text" name="proprietario" class="input-field" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Contato do Proprietário</label>
+                                <input type="text" name="proprietarioContato" class="input-field" placeholder="Telefone ou WhatsApp">
+                            </div>
+                            <div class="form-group span-2">
+                                <label>Endereço do Proprietário</label>
+                                <input type="text" name="proprietarioEndereco" class="input-field" placeholder="Rua, número, bairro, cidade">
                             </div>
 
                             <div class="form-group">
