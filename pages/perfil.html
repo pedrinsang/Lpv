@@ -326,107 +326,74 @@
         }
 
         /* =============================================
-           MODO PAISAGEM FORÇADO (MOBILE)
+           MODAL DE ASSINATURA — MODO PAISAGEM FORÇADO
+           Controlado por JS, não por media query
            ============================================= */
 
-        /* Overlay que cobre tudo e exibe aviso de rotação */
-        #rotate-overlay {
-            display: none;
+        /* Estado padrão: modal centralizado (desktop / landscape real) */
+        #signature-modal {
             position: fixed;
             inset: 0;
-            z-index: 9999;
-            background: #0f172a;
-            flex-direction: column;
+            z-index: 3000;
+            background: rgba(0,0,0,0.85);
+            display: flex;
             align-items: center;
             justify-content: center;
-            gap: 20px;
-            color: white;
-            text-align: center;
+            padding: 20px;
+        }
+
+        #signature-modal.hidden { display: none; }
+
+        .sig-modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: 20px;
             padding: 2rem;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            /* transform e dimensões controlados por JS no mobile */
         }
 
-        #rotate-overlay .rotate-icon {
-            font-size: 3.5rem;
-            animation: rotateHint 1.8s ease-in-out infinite;
+        /* Quando JS aplica o modo girado */
+        .sig-modal-content.rotated {
+            position: fixed;
+            /* left/top/width/height definidos por JS */
+            border-radius: 16px;
+            padding: 14px 18px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            /* transform-origin no centro do elemento — JS define o translate correto */
+            transform-origin: top left;
         }
 
-        #rotate-overlay p {
+        .sig-modal-content.rotated #signature-canvas {
+            height: 150px;
+        }
+
+        .sig-modal-content.rotated .sig-modal-header {
+            margin-bottom: 8px;
+        }
+
+        .sig-modal-content.rotated .sig-modal-header h3 {
             font-size: 1rem;
-            font-weight: 600;
-            color: rgba(255,255,255,0.8);
-            max-width: 260px;
-            line-height: 1.5;
         }
 
-        @keyframes rotateHint {
-            0%   { transform: rotate(0deg);   }
-            30%  { transform: rotate(-90deg); }
-            60%  { transform: rotate(-90deg); }
-            90%  { transform: rotate(0deg);   }
-            100% { transform: rotate(0deg);   }
+        .sig-modal-content.rotated .canvas-controls {
+            margin-bottom: 8px;
         }
 
-        /* No mobile em portrait, quando o modal de assinatura está aberto,
-           mostra o aviso de rotação em vez do modal */
-        @media (max-width: 900px) and (orientation: portrait) {
-            body.sig-modal-open #signature-modal {
-                display: none !important;
-            }
-            body.sig-modal-open #rotate-overlay {
-                display: flex !important;
-            }
+        .sig-modal-content.rotated .sig-modal-footer {
+            margin-top: 6px;
         }
 
-        /* Em landscape no mobile: modal ocupa tela inteira e canvas fica maior */
-        @media (max-width: 900px) and (orientation: landscape) {
-            body.sig-modal-open #rotate-overlay {
-                display: none !important;
-            }
-
-            #signature-modal {
-                padding: 8px;
-                align-items: flex-start;
-                overflow-y: auto;
-            }
-
-            .sig-modal-content {
-                padding: 12px 16px;
-                max-width: 100%;
-                border-radius: 14px;
-            }
-
-            .sig-modal-header {
-                margin-bottom: 8px;
-            }
-
-            .sig-modal-header h3 {
-                font-size: 1rem;
-            }
-
-            .sig-modal-header > p {
-                display: none; /* esconde o texto instrucional para ganhar espaço */
-            }
-
-            #signature-canvas {
-                height: 140px;
-            }
-
-            .canvas-controls {
-                margin-bottom: 8px;
-            }
-
-            .sig-modal-footer {
-                margin-top: 4px;
-            }
+        /* Esconde parágrafo de instrução no modo compacto */
+        .sig-modal-content.rotated > p {
+            display: none;
         }
 
         @media (max-width: 600px) {
-            .sig-modal-content {
-                padding: 1.25rem;
-            }
-            #signature-canvas {
-                height: 160px;
-            }
+            #signature-canvas { height: 160px; }
         }
     </style>
 </head>
@@ -534,12 +501,6 @@
             </div>
 
         </main>
-    </div>
-
-    <!-- AVISO DE ROTAÇÃO (mobile portrait) -->
-    <div id="rotate-overlay">
-        <div class="rotate-icon"><i class="fas fa-mobile-alt"></i></div>
-        <p>Gire o celular para o modo <strong>paisagem</strong> para desenhar sua assinatura</p>
     </div>
 
     <!-- MODAL DE ASSINATURA -->
@@ -727,70 +688,127 @@
             canvasHint.classList.remove('hidden');
         });
 
-        // ─── ORIENTAÇÃO (MOBILE) ─────────────────────────────────
-        const isMobile = () => window.innerWidth <= 900 || 'ontouchstart' in window;
+        // ─── ROTAÇÃO FORÇADA (MOBILE PORTRAIT) ───────────────────
+        const sigContent = document.querySelector('.sig-modal-content');
+        let orientationLockActive = false;
 
-        /**
-         * Tenta travar a orientação em landscape via Screen Orientation API.
-         * Silencia o erro caso o browser não suporte (desktop, alguns iOS).
-         */
-        async function lockLandscape() {
+        function isMobilePortrait() {
+            return window.innerWidth < 900 && window.innerWidth < window.innerHeight;
+        }
+
+        function isMobileScreen() {
+            return window.innerWidth < 900;
+        }
+
+        async function tryLockLandscape() {
+            if (!isMobileScreen()) return false;
+            if (!screen.orientation || typeof screen.orientation.lock !== 'function') return false;
+
             try {
-                if (screen.orientation && screen.orientation.lock) {
-                    await screen.orientation.lock('landscape');
+                // Alguns navegadores exigem fullscreen para permitir orientation.lock().
+                if (!document.fullscreenElement && sigModal.requestFullscreen) {
+                    await sigModal.requestFullscreen();
                 }
-            } catch (_) {
-                // API não suportada ou usuário em desktop — sem problema,
-                // o CSS já mostra o aviso de rotação se ainda estiver em portrait.
+
+                await screen.orientation.lock('landscape');
+                orientationLockActive = true;
+                return true;
+            } catch (err) {
+                orientationLockActive = false;
+                return false;
             }
         }
 
-        async function unlockOrientation() {
+        async function releaseLandscapeLock() {
             try {
-                if (screen.orientation && screen.orientation.unlock) {
+                if (screen.orientation && typeof screen.orientation.unlock === 'function') {
                     screen.orientation.unlock();
                 }
-            } catch (_) {}
+            } catch (err) {
+                console.debug('Nao foi possivel liberar lock de orientacao:', err);
+            }
+
+            if (document.fullscreenElement && document.exitFullscreen) {
+                try {
+                    await document.exitFullscreen();
+                } catch (err) {
+                    console.debug('Nao foi possivel sair do fullscreen:', err);
+                }
+            }
+
+            orientationLockActive = false;
         }
 
-        // Quando a orientação muda enquanto o modal está aberto, redimensiona o canvas
-        window.addEventListener('orientationchange', () => {
-            if (!sigModal.classList.contains('hidden')) {
-                // Aguarda a transição física do dispositivo completar
-                setTimeout(() => {
-                    resizeCanvas();
-                    // Limpa apenas se o canvas estava vazio (não apaga assinatura em progresso)
-                    if (!hasDrawn) canvasHint.classList.remove('hidden');
-                }, 350);
-            }
-        });
+        /**
+         * Aplica transform: rotate(90deg) com translate calculado precisamente
+         * para que o elemento rotacionado ocupe toda a tela como se fosse landscape.
+         *
+         * Lógica:
+         *  - O conteúdo girado 90° terá width = altura da tela, height = largura da tela
+         *  - Ancoramos em top:0, left:0 e usamos translateX/Y para centralizar
+         */
+        function applyLandscapeRotation() {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const margin = 10;
+
+            // O modal rotacionado tem:
+            // largura visual = vh (ocupa toda a altura da tela)
+            // altura visual  = vw (ocupa toda a largura da tela)
+            const modalW = vh - margin * 2;
+            const modalH = vw - margin * 2;
+
+            sigContent.classList.add('rotated');
+            sigContent.style.width          = modalW + 'px';
+            sigContent.style.height         = modalH + 'px';
+            sigContent.style.maxWidth       = 'none';
+            sigContent.style.maxHeight      = 'none';
+            sigContent.style.position       = 'fixed';
+            sigContent.style.transformOrigin = 'top left';
+
+            // rotate(90deg) em torno de top-left move o elemento para fora da tela.
+            // Para centralizar: translateX(0) translateY(-vw) após o rotate
+            // faz o canto superior-esquerdo do elemento rotacionado ir para
+            // (0, 0) da tela, e o margin desloca levemente do canto.
+            sigContent.style.top       = '0';
+            sigContent.style.left      = '0';
+            sigContent.style.transform = `rotate(90deg) translateY(-${vw}px) translateX(${margin}px)`;
+        }
+
+        function removeRotation() {
+            sigContent.classList.remove('rotated');
+            sigContent.style.cssText = ''; // limpa todos os estilos inline
+        }
 
         // ─── MODAL ───────────────────────────────────────────────
         async function openSignatureModal() {
             sigModal.classList.remove('hidden');
             document.body.classList.add('sig-modal-open');
 
-            // No mobile, solicita modo paisagem
-            if (isMobile()) {
-                await lockLandscape();
+            await tryLockLandscape();
+
+            if (isMobilePortrait()) {
+                applyLandscapeRotation();
+            } else {
+                removeRotation();
             }
 
-            // Delay para garantir layout após possível rotação
             setTimeout(() => {
                 resizeCanvas();
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 hasDrawn = false;
                 canvasHint.classList.remove('hidden');
                 saveStatus.classList.add('hidden');
-            }, 300);
+            }, 80);
         }
 
-        function closeSignatureModal() {
+        async function closeSignatureModal() {
             sigModal.classList.add('hidden');
             document.body.classList.remove('sig-modal-open');
-
-            // Libera a trava de orientação ao fechar
-            if (isMobile()) unlockOrientation();
+            removeRotation();
+            if (orientationLockActive) {
+                await releaseLandscapeLock();
+            }
         }
 
         btnOpenModal.addEventListener('click',   openSignatureModal);
@@ -923,11 +941,15 @@
             await signOut(auth);
         });
 
-        // Redimensiona canvas se a janela mudar (desktop resize)
+        // Redimensiona canvas se a janela mudar (ex: desktop resize)
         window.addEventListener('resize', () => {
-            if (!sigModal.classList.contains('hidden')) {
-                setTimeout(() => resizeCanvas(), 100);
+            if (sigModal.classList.contains('hidden')) return;
+            if (isMobilePortrait()) {
+                applyLandscapeRotation();
+            } else {
+                removeRotation();
             }
+            resizeCanvas();
         });
     </script>
 </body>
