@@ -26,6 +26,37 @@ const db = getFirestore(app);
 window.currentUserRole = null;
 window.currentUserRoles = [];
 
+const FULL_CONTROL_ROLES = ['admin', 'professor', 'pós graduando'];
+
+function canonicalizeRole(rawRole) {
+    if (!rawRole) return '';
+
+    const normalized = rawRole
+        .toString()
+        .toLowerCase()
+        .trim()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\-_]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    if (['admin', 'administrador', 'administradores'].includes(normalized)) {
+        return 'admin';
+    }
+    if (['professor', 'professores'].includes(normalized)) {
+        return 'professor';
+    }
+    if (['pos graduando', 'pos graduandos', 'posgraduando', 'posgraduandos'].includes(normalized)) {
+        return 'pós graduando';
+    }
+    if (['estagiario', 'estagiarios'].includes(normalized)) {
+        return 'estagiario';
+    }
+
+    return normalized;
+}
+
 /**
  * Normaliza o campo role (string ou array) para um array lowercase.
  * Compatível com formato antigo (string) e novo (array).
@@ -33,18 +64,26 @@ window.currentUserRoles = [];
 function normalizeRoles(role) {
     if (!role) return [];
     const arr = Array.isArray(role) ? role : [role];
-    return arr.map(r => r.toString().toLowerCase().trim()).filter(Boolean);
+    return arr.map(canonicalizeRole).filter(Boolean);
 }
 
 /** Verifica se o usuário possui uma role específica */
 function hasRole(role, target) {
-    return normalizeRoles(role).includes(target);
+    const [targetRole] = normalizeRoles(target);
+    if (!targetRole) return false;
+    return normalizeRoles(role).includes(targetRole);
 }
 
 /** Verifica se o usuário possui qualquer uma das roles listadas */
 function hasAnyRole(role, targets) {
     const roles = normalizeRoles(role);
-    return targets.some(t => roles.includes(t));
+    const targetRoles = normalizeRoles(targets || []);
+    return targetRoles.some(t => roles.includes(t));
+}
+
+/** Verifica se o usuário possui controle total no app */
+function hasFullControl(role) {
+    return hasAnyRole(role, FULL_CONTROL_ROLES);
 }
 
 /** Retorna a role "principal" para exibição */
@@ -157,7 +196,7 @@ function applyRolePermissions(role) {
     const newBtnSidebar = document.querySelector('.btn-sidebar-new');
     const newFabMobile = document.querySelector('.nav-fab');
     const roles = normalizeRoles(role);
-    const isSuperUser = hasAnyRole(role, ['professor', 'admin', 'pós graduando', 'pos-graduando']);
+    const isSuperUser = hasFullControl(role);
 
     // Estagiário SEM role de super-user não pode criar entradas
     if (roles.includes('estagiario') && !isSuperUser) {
@@ -230,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // EXPORTS
-export { app, auth, db, initThemeSystem, signOut, logout, normalizeRoles, hasRole, hasAnyRole, primaryRole };
+export { app, auth, db, initThemeSystem, onAuthStateChanged, signOut, logout, normalizeRoles, hasRole, hasAnyRole, hasFullControl, primaryRole, FULL_CONTROL_ROLES };
 
 // Função global para copiar texto e dar feedback visual
 window.copyToClipboard = async function(text, btnElement) {

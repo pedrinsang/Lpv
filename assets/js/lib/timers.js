@@ -27,6 +27,21 @@ const HE_STEPS = [
     { nome: 'Finalização', tipo: 'manual', instrucao: 'Aplicar Xilol de Montagem e cobrir com lamínula.' }
 ];
 
+// 2. AZUL DE TOLUIDINA - Início igual ao HE (até água corrente)
+const TOLUIDINA_STEPS = [
+    { nome: 'Desparafinização', tipo: 'timer', tempo: 2400 }, // 40 min
+    { nome: 'Xilol Frio 1', tipo: 'timer', tempo: 1200 }, // 20 min
+    { nome: 'Xilol Frio 2', tipo: 'timer', tempo: 300 }, // 5 min
+    { nome: 'Álcool Absoluto 1', tipo: 'timer', tempo: 60 }, // 1 min
+    { nome: 'Álcool Absoluto 2', tipo: 'timer', tempo: 30 }, // 30 seg
+    { nome: 'Álcool 96º', tipo: 'timer', tempo: 30 }, // 30 seg
+    { nome: 'Álcool 70º', tipo: 'timer', tempo: 60 }, // 1 min
+    { nome: 'Água Corrente', tipo: 'timer', tempo: 60 }, // 1 min
+    { nome: 'Azul de Toluidina', tipo: 'timer', tempo: 180 }, // 3 min
+    { nome: 'Xilol de Clarificação', tipo: 'timer', tempo: 120 }, // 2 min
+    { nome: 'Finalização', tipo: 'manual', instrucao: 'Finalização no Xilol de Montagem.' }
+];
+
 // Objeto Principal exportado
 export const PROTOCOLS_DATA = {
     'he': { 
@@ -37,7 +52,7 @@ export const PROTOCOLS_DATA = {
     'toluidina': { 
         name: 'Azul de Toluidina', 
         color: 'linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)', 
-        steps: EM_BREVE 
+        steps: TOLUIDINA_STEPS 
     },
     'grocott': { 
         name: 'Grocott', 

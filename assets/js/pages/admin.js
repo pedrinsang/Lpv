@@ -1,4 +1,4 @@
-import { db, auth, logout, normalizeRoles, hasAnyRole } from '../core.js';
+import { db, auth, logout, normalizeRoles, hasFullControl } from '../core.js';
 import { 
     collection, 
     query, 
@@ -38,7 +38,7 @@ setTimeout(() => {
 
 function checkPermission(role) {
     const roles = window.currentUserRoles || normalizeRoles(role);
-    if (!roles.some(r => ['professor','admin','pós graduando','pos-graduando'].includes(r))) {
+    if (!hasFullControl(roles)) {
         alert("Acesso Negado: Área restrita.");
         window.location.href = 'hub.html';
     }
