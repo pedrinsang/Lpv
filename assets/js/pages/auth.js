@@ -2,7 +2,8 @@ import { auth, db } from '../core.js';
 import { 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword,
-    signOut 
+    signOut,
+    deleteUser
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import { 
     doc, 
@@ -177,6 +178,7 @@ if (registerForm) {
         const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando código...';
         btn.disabled = true;
+        let createdAuthUser = null;
 
         try {
             // 1. Valida Código de Acesso
@@ -203,6 +205,7 @@ if (registerForm) {
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando conta...';
             const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
             const user = userCredential.user;
+            createdAuthUser = user;
 
             // 3. Salva perfil no Firestore com status pendente
             await setDoc(doc(db, "users", user.uid), {
@@ -227,16 +230,55 @@ if (registerForm) {
         } catch (error) {
             btn.innerHTML = originalText;
             btn.disabled = false;
-            
-            // Mensagens amigáveis sem expor detalhes técnicos
-            let msg = "Ocorreu um erro. Tente novamente.";
-            if (error.code === 'auth/email-already-in-use') msg = "Este email já possui cadastro.";
-            if (error.code === 'auth/invalid-email') msg = "Formato de email inválido.";
-            if (error.code === 'auth/weak-password') msg = "Senha muito fraca. Use pelo menos 8 caracteres.";
-            
+
+            // Se o perfil falhar por permissão após criar Auth, remove conta órfã.
+            if (error?.code === 'permission-denied' && createdAuthUser) {
+                try {
+                    await deleteUser(createdAuthUser);
+                } catch (cleanupError) {
+                    console.error('Falha ao limpar usuario criado sem perfil:', cleanupError);
+                }
+            }
+
+            // Log técnico para facilitar depuração no navegador.
+            console.error('Erro no cadastro:', {
+                code: error?.code,
+                message: error?.message,
+                name: error?.name
+            });
+
+            let msg = getRegisterErrorMessage(error);
             showAlert(alertBox, msg, 'error');
         }
     });
+}
+
+function getRegisterErrorMessage(error) {
+    const code = error?.code;
+
+    const knownErrors = {
+        'auth/email-already-in-use': 'Este email ja possui cadastro.',
+        'auth/invalid-email': 'Formato de email invalido.',
+        'auth/weak-password': 'Senha muito fraca. Use pelo menos 8 caracteres.',
+        'auth/network-request-failed': 'Falha de conexao. Verifique sua internet e tente novamente.',
+        'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
+        'permission-denied': 'Sem permissao para concluir o cadastro. Contate o administrador.',
+        'unavailable': 'Servico temporariamente indisponivel. Tente novamente em instantes.'
+    };
+
+    if (code && knownErrors[code]) {
+        return knownErrors[code];
+    }
+
+    if (code) {
+        return `Erro no cadastro (${code}). Tente novamente.`;
+    }
+
+    if (error?.message) {
+        return `Erro no cadastro: ${error.message}`;
+    }
+
+    return 'Ocorreu um erro no cadastro. Tente novamente.';
 }
 
 // =========================================================
