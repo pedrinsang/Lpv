@@ -387,7 +387,7 @@
         }
 
         .sig-modal-content.rotated #signature-canvas {
-            height: min(55vh, 320px);
+            height: clamp(120px, 30vh, 200px);
         }
 
         .sig-modal-content.rotated .sig-modal-header {
@@ -635,10 +635,18 @@
         let currentDpr = 1;
 
         function getCanvasTargetHeight() {
+            const vw = window.innerWidth;
             const vh = window.innerHeight;
-            const isTablet = window.innerWidth >= 700 && window.innerWidth <= 1400;
-            if (isTablet) return Math.max(320, Math.round(vh * 0.78));
-            if (window.innerWidth <= 600) return 160;
+            const shortestSide = Math.min(vw, vh);
+            const longestSide = Math.max(vw, vh);
+            const isRotatedModal = document.querySelector('.sig-modal-content')?.classList.contains('rotated');
+            const isTablet = shortestSide >= 700 && longestSide >= 900;
+
+            // Em celular (principalmente com modal girado), mantém o canvas compacto
+            // para preservar o rodapé com botões sempre visível.
+            if (isRotatedModal) return Math.min(190, Math.round(vh * 0.30));
+            if (shortestSide <= 600) return 160;
+            if (isTablet) return Math.max(280, Math.round(vh * 0.62));
             return 220;
         }
 
