@@ -8,7 +8,9 @@ const columns = {
     processamento: document.getElementById('col-processamento'),
     laminas_prontas: document.getElementById('col-laminas'),
     analise: document.getElementById('col-analise'),
-    liberar: document.getElementById('col-liberar')
+    liberar: document.getElementById('col-liberar'),
+    em_correcao: document.getElementById('col-liberar'),
+    revisar_correcoes: document.getElementById('col-liberar')
 };
  
 
@@ -26,7 +28,9 @@ const counters = {
     processamento: document.getElementById('count-processamento'),
     laminas_prontas: document.getElementById('count-laminas'),
     analise: document.getElementById('count-analise'),
-    liberar: document.getElementById('count-liberar')
+    liberar: document.getElementById('count-liberar'),
+    em_correcao: document.getElementById('count-liberar'),
+    revisar_correcoes: document.getElementById('count-liberar')
 };
 
 const totalNecro = document.getElementById('total-necropsias');
@@ -91,7 +95,7 @@ function renderBoard() {
     
     let countNecro = 0;
     let countBio = 0;
-    const counts = { clivagem: 0, processamento: 0, laminas_prontas: 0, analise: 0, liberar: 0 };
+    const counts = { clivagem: 0, processamento: 0, laminas_prontas: 0, analise: 0, liberar: 0, em_correcao: 0, revisar_correcoes: 0 };
 
     allTasks.forEach(task => {
         if (task.status === 'concluido' || task.status === 'arquivado') return;
@@ -131,21 +135,32 @@ function renderBoard() {
             const shortPos = getShortName(task.posGraduando || "Sem Pós");
             const typeLabel = isNecropsia ? 'NECROPSIA' : 'BIÓPSIA';
             const typeColor = isNecropsia ? '#3b82f6' : '#ec4899';
+            const inCorrectionBadge = task.status === 'em_correcao'
+                ? `<span class="mural-tag" style="font-size:0.62rem; font-weight:800; color:#92400e; border:1px solid #f59e0b55; background:#fef3c7;"><i class="fas fa-tools"></i> EM CORREÇÃO</span>`
+                : '';
+            const correctedBadge = task.status === 'revisar_correcoes'
+                ? `<span class="mural-tag" style="font-size:0.62rem; font-weight:800; color:#92400e; border:1px solid #f59e0b55; background:#fef3c7;"><i class="fas fa-wrench"></i> CORRIGIDO</span>`
+                : '';
 
             card.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:start;">
                     <span style="font-weight:800; font-size:0.95rem; color:var(--color-primary);">
                         ${displayProtocol}
                     </span>
-                    <div style="display:flex; gap:5px; align-items:center;">
-                        <span class="mural-tag" style="color: ${typeColor}; border: 1px solid ${typeColor}40; font-weight:800; font-size:0.65rem;">
-                            ${typeLabel}
-                        </span>
-                        ${task.k7Quantity ? `<span class="mural-tag" style="font-weight:600;">${task.k7Quantity} K7</span>` : ''}
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                        <div style="display:flex; gap:5px; align-items:center;">
+                            <span class="mural-tag" style="color: ${typeColor}; border: 1px solid ${typeColor}40; font-weight:800; font-size:0.65rem;">
+                                ${typeLabel}
+                            </span>
+                            ${task.k7Quantity ? `<span class="mural-tag" style="font-weight:600;">${task.k7Quantity} K7</span>` : ''}
+                        </div>
                     </div>
                 </div>
                 <div style="font-size:0.9rem; margin-top:8px; font-weight:700; color:var(--text-primary); line-height:1.2;">
-                    ${task.animalNome || 'Sem Nome'}
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                        <span>${task.animalNome || 'Sem Nome'}</span>
+                        ${inCorrectionBadge || correctedBadge}
+                    </div>
                 </div>
                 <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px; text-transform:uppercase; font-weight:600;">
                     ${task.especie || ''}
@@ -162,7 +177,15 @@ function renderBoard() {
                 </div>
             `;
             col.appendChild(card);
-            if (counts[status] !== undefined) counts[status]++;
+            if (status === 'em_correcao') {
+                counts.em_correcao++;
+                counts.liberar++;
+            } else if (status === 'revisar_correcoes') {
+                counts.revisar_correcoes++;
+                counts.liberar++;
+            } else if (counts[status] !== undefined) {
+                counts[status]++;
+            }
         }
     });
 

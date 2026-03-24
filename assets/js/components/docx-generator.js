@@ -1,7 +1,7 @@
 /* --- assets/js/components/docx-generator.js --- */
 
 import { db, auth } from '../core.js';
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { collection, doc, getDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 function normalizeRoles(role) {
     if (!role) return [];
@@ -70,7 +70,8 @@ async function fetchSignature(releasedByUid) {
             if (data.signatureBase64) return { 
                 base64: data.signatureBase64, 
                 name: data.name || null,
-                role: data.role || null
+                role: data.role || null,
+                crmv: data.crmv || null
             };
         }
     } catch (err) {
@@ -80,12 +81,31 @@ async function fetchSignature(releasedByUid) {
     return null;
 }
 
-async function fetchUserProfile(uid) {
-    if (!uid) return null;
+async function fetchUserProfile(uidOrName, options = {}) {
+    if (!uidOrName) return null;
+    const { byName = false, roleFilter = null } = options;
+
     try {
-        const userSnap = await getDoc(doc(db, 'users', uid));
+        if (byName) {
+            const usersQuery = query(collection(db, 'users'), where('name', '==', uidOrName));
+            const usersSnap = await getDocs(usersQuery);
+            const candidates = [];
+
+            usersSnap.forEach((userDoc) => {
+                candidates.push({ uid: userDoc.id, ...userDoc.data() });
+            });
+
+            if (typeof roleFilter === 'function') {
+                const match = candidates.find(profile => roleFilter(profile.role));
+                if (match) return match;
+            }
+
+            return candidates[0] || null;
+        }
+
+        const userSnap = await getDoc(doc(db, 'users', uidOrName));
         if (userSnap.exists()) {
-            return { uid, ...userSnap.data() };
+            return { uid: uidOrName, ...userSnap.data() };
         }
     } catch (err) {
         console.warn('Nao foi possivel buscar perfil do usuario:', err);
@@ -93,29 +113,93 @@ async function fetchUserProfile(uid) {
     return null;
 }
 
+function formatCrmv(crmv, fallback = '') {
+    const value = (crmv || fallback || '').toString().trim();
+    if (!value) return '';
+    return /^crmv/i.test(value) ? value.toUpperCase() : `CRMV ${value}`;
+}
+
+function normalizeSignerData(profile, fallbackName, fallbackCrmv = '') {
+    return {
+        uid: profile?.uid || null,
+        name: profile?.name || fallbackName || 'Responsável',
+        role: profile?.role || null,
+        base64: profile?.signatureBase64 || null,
+        crmv: formatCrmv(profile?.crmv, fallbackCrmv),
+        signatureRatio: null
+    };
+}
+
+async function getBase64ImageRatio(base64) {
+    if (!base64) return null;
+
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            if (!img.width) return resolve(null);
+            resolve(img.height / img.width);
+        };
+        img.onerror = () => resolve(null);
+        img.src = base64;
+    });
+}
+
+async function enrichSignerWithMetrics(signer) {
+    if (!signer?.base64) return signer;
+    const ratio = await getBase64ImageRatio(signer.base64);
+    return { ...signer, signatureRatio: ratio };
+}
+
 async function resolveSignatureForPdf(task) {
-    const currentUid = auth.currentUser?.uid || null;
-    const currentProfile = await fetchUserProfile(currentUid);
+    const nomeDocente = task.docente || 'Dra. Mariana Martins Flores';
+    const nomePosGrad = task.posGraduando || null;
+    const posResponsavelUid = (task.posResponsavelUid || '').toString().trim();
 
-    if (currentProfile?.signatureBase64) {
-        const canSelfSignAsPostGrad = hasPostGradRole(currentProfile.role) && !!currentProfile.canSelfSignReports;
-        const canSignAsTeacher = hasTeacherRole(currentProfile.role);
+    const docentePromise = fetchUserProfile(nomeDocente, { byName: true, roleFilter: hasTeacherRole });
+    const posPromise = posResponsavelUid
+        ? fetchUserProfile(posResponsavelUid)
+        : fetchUserProfile(nomePosGrad, { byName: true, roleFilter: hasPostGradRole });
 
-        if (canSelfSignAsPostGrad || canSignAsTeacher) {
-            return {
-                base64: currentProfile.signatureBase64,
-                name: currentProfile.name || null,
-                role: currentProfile.role || null
+    const [docenteProfile, posProfileRaw] = await Promise.all([docentePromise, posPromise]);
+    const posProfile = posProfileRaw && hasPostGradRole(posProfileRaw.role) ? posProfileRaw : null;
+
+    const docenteData = normalizeSignerData(docenteProfile, nomeDocente, '14.636');
+    const posData = normalizeSignerData(posProfile, nomePosGrad);
+
+    const canSelfSign = hasPostGradRole(posData.role) && !!posProfile?.canSelfSignReports;
+    const hasPostGradSignature = !!posData.base64;
+
+    if (canSelfSign && hasPostGradSignature) {
+        const enrichedPost = await enrichSignerWithMetrics(posData);
+        return {
+            mode: 'postgrad-self-sign',
+            primary: enrichedPost,
+            teacher: docenteData
+        };
+    }
+
+    // Fallback de assinatura da docente responsável:
+    // tenta perfil da docente e, se não houver imagem, tenta quem liberou.
+    let signatureData = docenteData;
+    if (!signatureData.base64) {
+        const releasedSig = await fetchSignature(task.releasedBy || null);
+        if (releasedSig?.base64 && hasTeacherRole(releasedSig.role)) {
+            signatureData = {
+                ...signatureData,
+                base64: releasedSig.base64,
+                name: releasedSig.name || signatureData.name,
+                crmv: formatCrmv(releasedSig.crmv, signatureData.crmv)
             };
         }
     }
 
-    const releasedSig = await fetchSignature(task.releasedBy || null);
-    if (releasedSig?.base64) {
-        return releasedSig;
-    }
+    const enrichedTeacherSignature = await enrichSignerWithMetrics(signatureData);
 
-    return null;
+    return {
+        mode: 'teacher-default-sign',
+        primary: enrichedTeacherSignature,
+        teacher: docenteData
+    };
 }
 
 // ─── 4. MONTA BLOCO DE ASSINATURA ────────────────────────────────────────────
@@ -124,45 +208,45 @@ async function resolveSignatureForPdf(task) {
  * Se houver imagem, exibe a imagem + linha + nome.
  * Se não houver, exibe apenas linha + nome em texto (fallback).
  */
-function buildSignatureBlock(sigData, nomeDocente, isPos) {
-    const nomeExibir  = sigData?.name  || nomeDocente || 'Responsável';
-    const roleData    = sigData?.role;
-    const roles       = Array.isArray(roleData)
-        ? roleData.map(r => r.toLowerCase())
-        : [(roleData || '').toLowerCase()];
-
-    const isPosGrad   = roles.some(r => r.includes('graduando'));
-    const isProfessor = roles.some(r => r === 'professor');
-
-    // Linha que aparece abaixo da assinatura
-    const cargoTexto  = isProfessor
-        ? `${nomeExibir}\nPatologista / CRMV 14.636`
-        : isPosGrad
-            ? `${nomeExibir}\nPós-Graduando(a) / LPV`
-            : `${nomeExibir}`;
-
-    const separatorLine = {
-        canvas: [{ type: 'line', x1: 100, y1: 0, x2: 300, y2: 0, lineWidth: 0.5, lineColor: '#334155' }],
-        margin: [0, 0, 0, 4]
+function buildSeparatorLine(marginTop = 0) {
+    const lineWidth = 220;
+    return {
+        canvas: [{ type: 'line', x1: 0, y1: 0, x2: lineWidth, y2: 0, lineWidth: 0.5, lineColor: '#334155' }],
+        alignment: 'center',
+        margin: [0, marginTop, 0, 4]
     };
+}
 
-    if (sigData?.base64) {
-        // ── COM IMAGEM ──────────────────────────────────────────
+function buildSignatureCard(signer, subtitle) {
+    const signatureWidth = 220;
+    const baselineRatio = 0.72; // Mesmo ratio da linha guia no canvas de assinatura.
+
+    const derivedRatio = signer?.signatureRatio || (200 / 600);
+    const renderedHeight = Math.max(55, Math.min(130, Math.round(signatureWidth * derivedRatio)));
+    const lineOverlayOffset = -Math.round(renderedHeight * (1 - baselineRatio));
+
+    const separatorLine = buildSeparatorLine(signer?.base64 ? lineOverlayOffset : 0);
+    const signerName = signer?.name || 'Responsável';
+    const signerCrmv = signer?.crmv ? ` / ${signer.crmv}` : '';
+    const caption = `${signerName}\n${subtitle}${signerCrmv}`;
+
+    if (signer?.base64) {
         return {
             stack: [
                 {
-                    image: sigData.base64,
-                    width: 160,
+                    image: signer.base64,
+                    width: signatureWidth,
                     alignment: 'center',
-                    margin: [0, 0, 0, 4]
+                    margin: [0, 0, 0, 2]
                 },
                 separatorLine,
                 {
-                    text: cargoTexto,
+                    text: caption,
                     alignment: 'center',
                     fontSize: 11,
                     bold: false,
-                    lineHeight: 1.4
+                    lineHeight: 1.4,
+                    margin: [0, 2, 0, 0]
                 }
             ],
             alignment: 'center',
@@ -171,13 +255,12 @@ function buildSignatureBlock(sigData, nomeDocente, isPos) {
         };
     }
 
-    // ── SEM IMAGEM (fallback) ────────────────────────────────────
     return {
         stack: [
-            { text: '\n\n' }, // espaço para assinar à mão
+            { text: '\n\n' },
             separatorLine,
             {
-                text: cargoTexto,
+                text: caption,
                 alignment: 'center',
                 fontSize: 11,
                 lineHeight: 1.4
@@ -189,11 +272,47 @@ function buildSignatureBlock(sigData, nomeDocente, isPos) {
     };
 }
 
+function buildTeacherTextOnlyCard(teacher) {
+    const teacherName = teacher?.name || 'Docente responsável';
+    const teacherCrmv = teacher?.crmv || '';
+    const text = teacherCrmv ? `${teacherName}\n${teacherCrmv}` : teacherName;
+
+    return {
+        text,
+        alignment: 'center',
+        fontSize: 11,
+        lineHeight: 1.4,
+        margin: [0, 12, 0, 0],
+        unbreakable: true
+    };
+}
+
+function buildSignatureBlock(signatureContext) {
+    if (!signatureContext) {
+        return buildSignatureCard({ name: 'Responsável', crmv: '' }, 'Patologista');
+    }
+
+    const { mode, primary, teacher } = signatureContext;
+
+    if (mode === 'postgrad-self-sign') {
+        return {
+            stack: [
+                buildSignatureCard(primary, 'Pós-Graduando(a)'),
+                buildTeacherTextOnlyCard(teacher)
+            ],
+            alignment: 'center',
+            unbreakable: true
+        };
+    }
+
+    return buildSignatureCard(primary, 'Patologista');
+}
+
 // ─── 5. FUNÇÃO PRINCIPAL ─────────────────────────────────────────────────────
 export async function generateLaudoPDF(task, reportData) {
     await loadPdfMake();
 
-    const sigData = await resolveSignatureForPdf(task);
+    const signatureContext = await resolveSignatureForPdf(task);
 
     // Carrega imagens e assinatura em paralelo
     const [base64UFSM, base64LPV] = await Promise.all([
@@ -225,10 +344,8 @@ export async function generateLaudoPDF(task, reportData) {
         ? reportData.tipo_material_radio === 'necropsia'
         : task.type === 'necropsia';
 
-    const nomeDocente = task.docente || 'Dra. Mariana Martins Flores';
-
-    // Bloco de assinatura (usa imagem se disponível)
-    const assinaturaBlock = buildSignatureBlock(sigData, nomeDocente, false);
+    // Bloco de assinatura condicional (docente default ou autoassinatura do pós)
+    const assinaturaBlock = buildSignatureBlock(signatureContext);
 
     // Seções de texto do laudo
     const createSection = (title, content, boldBody = false) => [

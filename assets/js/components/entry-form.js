@@ -72,6 +72,7 @@ class LpvEntryForm extends HTMLElement {
                                     <option value="" disabled selected>Carregando...</option>
                                 </select>
                             </div>
+                            <input type="hidden" name="posResponsavelUid" id="select-pos-uid">
 
                             <div class="span-3 divider-text">Dados do Animal</div>
 
@@ -200,6 +201,7 @@ class LpvEntryForm extends HTMLElement {
                                     <option value="" disabled selected>Carregando...</option>
                                 </select>
                             </div>
+                            <input type="hidden" name="posResponsavelUid" id="select-pos-uid-vn">
 
                             <div class="span-3 divider-text" style="color: #3b82f6; border-bottom-color: #3b82f6;">Dados do Animal</div>
 

@@ -117,8 +117,13 @@ function renderActive(users) {
         return;
     }
 
+    const currentUserRecord = users.find(u => u.id === auth.currentUser?.uid);
+    const currentUserRoles = currentUserRecord ? normalizeRoles(currentUserRecord.role) : (window.currentUserRoles || normalizeRoles(window.currentUserRole || []));
+    const currentUserIsAdmin = currentUserRoles.includes('admin');
+
     activeGrid.innerHTML = users.map(u => {
         const isMe = u.id === auth.currentUser?.uid;
+        const disableOwnRoleEdit = isMe && !currentUserIsAdmin;
         const initials = getInitials(u.name);
         const roles = normalizeRoles(u.role);
         const displayRole = roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(' / ');
@@ -143,22 +148,22 @@ function renderActive(users) {
             </div>
 
             <div class="card-actions">
-                <div class="role-checkboxes" style="display:flex;gap:8px;flex-wrap:wrap;flex:1;" ${isMe ? 'data-disabled="true"' : ''}>
+                <div class="role-checkboxes" style="display:flex;gap:8px;flex-wrap:wrap;flex:1;" ${disableOwnRoleEdit ? 'data-disabled="true"' : ''}>
                     <label class="role-check-label" style="display:flex;align-items:center;gap:4px;font-size:.85rem;cursor:pointer;color:var(--text-secondary);">
                         <input type="checkbox" value="estagiario" ${roles.includes('estagiario') ? 'checked' : ''}
-                            onchange="window.toggleRole('${u.id}', this)" ${isMe ? 'disabled' : ''}> Estagiário
+                            onchange="window.toggleRole('${u.id}', this)" ${disableOwnRoleEdit ? 'disabled' : ''}> Estagiário
                     </label>
                     <label class="role-check-label" style="display:flex;align-items:center;gap:4px;font-size:.85rem;cursor:pointer;color:var(--text-secondary);">
                         <input type="checkbox" value="pós graduando" ${roles.includes('pós graduando') || roles.includes('pos-graduando') ? 'checked' : ''}
-                            onchange="window.toggleRole('${u.id}', this)" ${isMe ? 'disabled' : ''}> Pós-Grad
+                            onchange="window.toggleRole('${u.id}', this)" ${disableOwnRoleEdit ? 'disabled' : ''}> Pós-Grad
                     </label>
                     <label class="role-check-label" style="display:flex;align-items:center;gap:4px;font-size:.85rem;cursor:pointer;color:var(--text-secondary);">
                         <input type="checkbox" value="professor" ${roles.includes('professor') ? 'checked' : ''}
-                            onchange="window.toggleRole('${u.id}', this)" ${isMe ? 'disabled' : ''}> Professor
+                            onchange="window.toggleRole('${u.id}', this)" ${disableOwnRoleEdit ? 'disabled' : ''}> Professor
                     </label>
                     <label class="role-check-label" style="display:flex;align-items:center;gap:4px;font-size:.85rem;cursor:pointer;color:var(--text-secondary);">
                         <input type="checkbox" value="admin" ${roles.includes('admin') ? 'checked' : ''}
-                            onchange="window.toggleRole('${u.id}', this)" ${isMe ? 'disabled' : ''}> Admin
+                            onchange="window.toggleRole('${u.id}', this)" ${disableOwnRoleEdit ? 'disabled' : ''}> Admin
                     </label>
                 </div>
 
@@ -213,6 +218,17 @@ window.approveUser = async (uid) => {
 
 window.toggleRole = async (uid, checkbox) => {
     try {
+        const currentUserRecord = allUsers.find(u => u.id === auth.currentUser?.uid);
+        const currentUserRoles = currentUserRecord ? normalizeRoles(currentUserRecord.role) : (window.currentUserRoles || normalizeRoles(window.currentUserRole || []));
+        const currentUserIsAdmin = currentUserRoles.includes('admin');
+        const isSelf = uid === auth.currentUser?.uid;
+
+        if (isSelf && !currentUserIsAdmin) {
+            checkbox.checked = !checkbox.checked;
+            alert('Apenas admin pode alterar a própria role.');
+            return;
+        }
+
         // Encontra todos os checkboxes deste card
         const container = checkbox.closest('.role-checkboxes');
         const checked = Array.from(container.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);

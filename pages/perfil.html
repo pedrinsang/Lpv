@@ -178,8 +178,19 @@
         #signature-canvas {
             display: block;
             width: 100%;
-            height: 200px;
+            height: 260px;
             touch-action: none;
+        }
+
+        .canvas-wrapper::after {
+            content: '';
+            position: absolute;
+            left: 16px;
+            right: 16px;
+            top: 72%;
+            border-top: 1px solid #334155;
+            opacity: 0.9;
+            pointer-events: none;
         }
 
         .canvas-hint {
@@ -376,7 +387,7 @@
         }
 
         .sig-modal-content.rotated #signature-canvas {
-            height: 120px;
+            height: min(55vh, 320px);
         }
 
         .sig-modal-content.rotated .sig-modal-header {
@@ -482,6 +493,19 @@
                     <div class="profile-label">Email Cadastrado</div>
                     <div id="profile-display-email" class="profile-value">...</div>
                 </div>
+            </div>
+
+            <div id="crmv-section" class="card fade-in hidden" style="margin-top: 1rem;">
+                <div class="profile-label" style="margin-bottom: 0.5rem;">CRMV Profissional</div>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input id="profile-crmv-input" type="text" class="input-field" placeholder="Ex: CRMV-RS 12345" style="flex: 1; min-width: 220px;">
+                    <button id="btn-save-crmv" class="btn btn-primary" type="button">
+                        <i class="fas fa-save"></i> Salvar CRMV
+                    </button>
+                </div>
+                <p style="font-size: 0.78rem; color: var(--text-tertiary); margin-top: 0.6rem;">
+                    Este CRMV será usado no bloco de assinatura do laudo.
+                </p>
             </div>
 
             <!-- SEÇÃO DE ASSINATURA (só aparece para professor/pós-graduando) -->
@@ -595,6 +619,11 @@
         const canvasHint      = document.getElementById('canvas-hint');
         const saveStatus      = document.getElementById('sig-save-status');
         const btnSigLabel     = document.getElementById('btn-sig-label');
+        const crmvSection     = document.getElementById('crmv-section');
+        const crmvInput       = document.getElementById('profile-crmv-input');
+        const btnSaveCrmv     = document.getElementById('btn-save-crmv');
+
+        let canEditCrmv = false;
 
         // ─── CANVAS SETUP ────────────────────────────────────────
         const canvas  = document.getElementById('signature-canvas');
@@ -603,24 +632,45 @@
         let hasDrawn  = false;
         let lastX = 0, lastY = 0;
         let strokeWidth = 2;
+        let currentDpr = 1;
+
+        function getCanvasTargetHeight() {
+            const vh = window.innerHeight;
+            const isTablet = window.innerWidth >= 700 && window.innerWidth <= 1400;
+            if (isTablet) return Math.max(320, Math.round(vh * 0.78));
+            if (window.innerWidth <= 600) return 160;
+            return 220;
+        }
 
         function resizeCanvas() {
             const wrapper = document.getElementById('canvas-wrapper');
             const rect = wrapper.getBoundingClientRect();
-            // Salva o conteúdo atual antes de redimensionar
-            const imgData = canvas.width > 0 ? ctx.getImageData(0, 0, canvas.width, canvas.height) : null;
-            canvas.width  = rect.width;
-            canvas.height = 200;
-            // Restaura
+            const targetHeight = getCanvasTargetHeight();
+            const prevCanvas = document.createElement('canvas');
+            let hasPreviousDrawing = false;
+
+            if (canvas.width > 0 && canvas.height > 0) {
+                prevCanvas.width = canvas.width;
+                prevCanvas.height = canvas.height;
+                prevCanvas.getContext('2d').drawImage(canvas, 0, 0);
+                hasPreviousDrawing = true;
+            }
+
+            canvas.style.height = `${targetHeight}px`;
+            currentDpr = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = Math.max(1, Math.floor(rect.width * currentDpr));
+            canvas.height = Math.max(1, Math.floor(targetHeight * currentDpr));
+
             setupCtx();
-            if (imgData && imgData.width > 0) {
-                ctx.putImageData(imgData, 0, 0);
+
+            if (hasPreviousDrawing) {
+                ctx.drawImage(prevCanvas, 0, 0, prevCanvas.width, prevCanvas.height, 0, 0, canvas.width, canvas.height);
             }
         }
 
         function setupCtx() {
             ctx.strokeStyle = '#0f172a';
-            ctx.lineWidth   = strokeWidth;
+            ctx.lineWidth   = strokeWidth * currentDpr;
             ctx.lineCap     = 'round';
             ctx.lineJoin    = 'round';
             ctx.imageSmoothingEnabled = true;
@@ -648,7 +698,7 @@
             const pos = getPos(e);
             lastX = pos.x; lastY = pos.y;
             ctx.beginPath();
-            ctx.arc(pos.x, pos.y, strokeWidth / 2, 0, Math.PI * 2);
+            ctx.arc(pos.x, pos.y, (strokeWidth * currentDpr) / 2, 0, Math.PI * 2);
             ctx.fillStyle = '#0f172a';
             ctx.fill();
             document.getElementById('canvas-wrapper').classList.add('drawing');
@@ -878,6 +928,36 @@
             }
         });
 
+        btnSaveCrmv.addEventListener('click', async () => {
+            if (!canEditCrmv) {
+                alert('Somente professor e pós-graduando podem editar CRMV.');
+                return;
+            }
+
+            const user = auth.currentUser;
+            if (!user) return;
+
+            const value = (crmvInput.value || '').trim();
+            btnSaveCrmv.disabled = true;
+            const oldLabel = btnSaveCrmv.innerHTML;
+            btnSaveCrmv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+
+            try {
+                await updateDoc(doc(db, 'users', user.uid), {
+                    crmv: value
+                });
+                btnSaveCrmv.innerHTML = '<i class="fas fa-check"></i> CRMV salvo';
+                setTimeout(() => {
+                    btnSaveCrmv.innerHTML = oldLabel;
+                }, 1200);
+            } catch (err) {
+                alert('Erro ao salvar CRMV: ' + err.message);
+                btnSaveCrmv.innerHTML = oldLabel;
+            } finally {
+                btnSaveCrmv.disabled = false;
+            }
+        });
+
         // ─── HELPERS DE UI ────────────────────────────────────────
         function updateSignaturePreview(base64) {
             if (base64) {
@@ -928,6 +1008,14 @@
                     r.includes('graduando') ||
                     r === 'admin'
                 );
+
+                canEditCrmv = roles.some(r => r.includes('professor') || r.includes('graduando'));
+                if (canEditCrmv) {
+                    crmvSection.classList.remove('hidden');
+                    crmvInput.value = data.crmv || '';
+                } else {
+                    crmvSection.classList.add('hidden');
+                }
 
                 if (canSign) {
                     sigSection.classList.remove('hidden');

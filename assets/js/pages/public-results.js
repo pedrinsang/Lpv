@@ -73,7 +73,7 @@ function updateStepper(task) {
 
     let currentStep = 1;
     const processingSteps = ['clivagem', 'processamento', 'emblocamento', 'corte', 'coloracao'];
-    const analysisSteps = ['laminas_prontas', 'analise', 'liberar'];
+    const analysisSteps = ['laminas_prontas', 'analise', 'liberar', 'em_correcao', 'revisar_correcoes'];
 
     if (processingSteps.includes(status)) currentStep = 2;
     else if (analysisSteps.includes(status)) currentStep = 3;

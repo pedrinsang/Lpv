@@ -76,6 +76,8 @@ function initRealTimeDashboard() {
             processamento: 0,
             laminas_prontas: 0,
             analise: 0,
+            em_correcao: 0,
+            revisar_correcoes: 0,
             liberar: 0
         };
 
@@ -98,7 +100,13 @@ function initRealTimeDashboard() {
                 if (type === 'necropsia') counts.necropsias++;
                 
                 // --- LÓGICA 2: ESTEIRA DE PRODUÇÃO ---
-                if (counts.hasOwnProperty(status)) {
+                if (status === 'em_correcao') {
+                    counts.em_correcao++;
+                    counts.liberar++;
+                } else if (status === 'revisar_correcoes') {
+                    counts.revisar_correcoes++;
+                    counts.liberar++;
+                } else if (counts.hasOwnProperty(status)) {
                     counts[status]++;
                 }
             }
@@ -271,9 +279,17 @@ function renderQueueColumn(container, tasks, type) {
             laminas_prontas: 'Lâminas Prontas',
             analise: 'Análise',
             liberar: 'Liberar Laudo',
+            em_correcao: 'Em Correção',
+            revisar_correcoes: 'Corrigido',
             concluido: 'Concluído'
         };
         const statusName = statusMap[task.status] || task.status;
+        const correctionBadge = task.status === 'em_correcao'
+            ? `<span style="font-size:0.65rem; font-weight:800; color:#92400e; background:#fef3c7; border:1px solid #f59e0b55; border-radius:999px; padding:2px 8px;"><i class="fas fa-tools"></i> Em Correção</span>`
+            : '';
+        const correctedBadge = task.status === 'revisar_correcoes'
+            ? `<span style="font-size:0.65rem; font-weight:800; color:#92400e; background:#fef3c7; border:1px solid #f59e0b55; border-radius:999px; padding:2px 8px;"><i class="fas fa-wrench"></i> Corrigido</span>`
+            : '';
 
         div.innerHTML = `
             <div style="width: 100%;">
@@ -298,6 +314,7 @@ function renderQueueColumn(container, tasks, type) {
                         <i class="fas fa-user-graduate"></i> ${shortPos}
                     </div>
                 </div>
+                ${(correctionBadge || correctedBadge) ? `<div style="margin-top: 6px; display:flex; justify-content:flex-start;">${correctionBadge || correctedBadge}</div>` : ''}
             </div>`;
 
         container.appendChild(div);

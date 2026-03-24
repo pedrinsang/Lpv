@@ -74,9 +74,62 @@ const btnNext = document.getElementById('btn-next-stage');
 const btnPrev = document.getElementById('btn-prev-stage');
 const btnDelete = document.getElementById('btn-delete-task');
 const btnSaveReport = document.getElementById('btn-save-report'); 
+let btnSendBackCorrection = null;
+
+if (btnSaveReport && btnSaveReport.parentElement) {
+    btnSendBackCorrection = document.createElement('button');
+    btnSendBackCorrection.id = 'btn-send-back-correction';
+    btnSendBackCorrection.type = 'button';
+    btnSendBackCorrection.className = 'btn btn-secondary btn-sm hidden';
+    btnSendBackCorrection.innerHTML = '<i class="fas fa-undo"></i> Enviar para Correção';
+    btnSendBackCorrection.style.borderColor = '#f59e0b';
+    btnSendBackCorrection.style.color = '#92400e';
+    btnSendBackCorrection.style.background = '#fffbeb';
+    btnSaveReport.parentElement.insertBefore(btnSendBackCorrection, btnSaveReport);
+}
 
 let currentTask = null; 
 let currentUserData = null; 
+
+function normalizeName(value) {
+    return (value || '')
+        .toString()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+}
+
+function getPermissionContext(task = currentTask) {
+    const user = currentUserData || {};
+    const roles = user._roles || [];
+    const normalizedTaskPos = normalizeName(task?.posGraduando);
+    const taskPosUid = (task?.posResponsavelUid || '').toString().trim();
+    const currentUid = (auth.currentUser?.uid || '').toString().trim();
+    const normalizedUserName = normalizeName(user?.name || auth.currentUser?.displayName || '');
+
+    const isAdmin = roles.includes('admin');
+    const isProfessor = roles.includes('professor');
+    const isPostGrad = roles.some(r => r.includes('graduando'));
+    const isStaff = isAdmin || isProfessor || isPostGrad;
+    const isPosResponsavelByUid = isPostGrad && !!taskPosUid && !!currentUid && taskPosUid === currentUid;
+    const isPosResponsavelByLegacyName = isPostGrad && !taskPosUid && !!normalizedTaskPos && normalizedTaskPos === normalizedUserName;
+    const isPosResponsavel = isPosResponsavelByUid || isPosResponsavelByLegacyName;
+
+    return {
+        isAdmin,
+        isProfessor,
+        isPostGrad,
+        isStaff,
+        isPosResponsavel,
+        usesLegacyPosMatch: !taskPosUid,
+        canFillReport: isAdmin || isProfessor || isPosResponsavel,
+        canDownloadReport: isAdmin || isProfessor || isPosResponsavel,
+        canCorrectReport: isAdmin || isProfessor,
+        canReleaseInitial: isAdmin || isProfessor,
+        canReleaseAfterReview: isAdmin || isProfessor || isPosResponsavel
+    };
+}
 
 async function fetchCurrentUserData() {
     if (currentUserData) return currentUserData;
@@ -135,11 +188,8 @@ document.addEventListener('keydown', (event) => {
 });
 
 function renderDetails(task) {
-    const user = currentUserData || {};
-    const roles = user._roles || [];
-    
-    const isStaff = roles.some(r => ['professor', 'pós graduando', 'pos-graduando', 'admin'].includes(r));
-    const canRelease = roles.some(r => r === 'admin' || r === 'professor' || r.includes('graduando'));
+    const permission = getPermissionContext(task);
+    const { isStaff, canFillReport, canReleaseInitial, canReleaseAfterReview, canDownloadReport, canCorrectReport, isPosResponsavel } = permission;
 
     if(btnNext) { 
         btnNext.classList.remove('hidden'); 
@@ -163,7 +213,7 @@ function renderDetails(task) {
             btnNext.classList.add('hidden');
         }
     } 
-    else if (task.status === 'liberar') {
+    else if (task.status === 'liberar' || task.status === 'em_correcao' || task.status === 'revisar_correcoes') {
         btnNext.classList.add('hidden'); 
         btnPrev.classList.remove('hidden');
     }
@@ -181,9 +231,18 @@ function renderDetails(task) {
         laminas_prontas: 'Lâminas Prontas',
         analise: 'Análise',
         liberar: 'Liberar Laudo',
+        em_correcao: 'Em Correção',
+        revisar_correcoes: 'Corrigido',
         concluido: 'Concluído',
         arquivado: 'Arquivado'
     };
+
+    const correctedBannerBadge = task.status === 'revisar_correcoes'
+        ? `<span style="font-size:0.68rem; font-weight:800; color:#92400e; background:#fef3c7; border:1px solid #f59e0b55; padding:3px 9px; border-radius:999px; margin-left:8px;"><i class="fas fa-wrench"></i> Corrigido</span>`
+        : '';
+    const correctionNeededBadge = task.status === 'em_correcao'
+        ? `<span style="font-size:0.68rem; font-weight:800; color:#92400e; background:#fef3c7; border:1px solid #f59e0b55; padding:3px 9px; border-radius:999px; margin-left:8px;"><i class="fas fa-tools"></i> Em Correção</span>`
+        : '';
 
     // --- SEÇÃO FINANCEIRA ---
     let financialHtml = '';
@@ -234,27 +293,49 @@ function renderDetails(task) {
 
     // --- BOTÕES DE AÇÃO ---
     let actionsHtml = '';
-    if (task.status === 'analise' && isStaff) {
+    if (task.status === 'analise' && canFillReport) {
         actionsHtml = `
             <button onclick="window.openReportEditorWrapper()" class="action-btn btn-main-action"><i class="fas fa-edit"></i> Preencher Laudo</button>
-            ${task.report ? `<button onclick="window.exportToPDF()" class="action-btn btn-word"><i class="fas fa-file-pdf"></i> Ver PDF</button>` : ''}
+            ${task.report && canDownloadReport ? `<button onclick="window.exportToPDF()" class="action-btn btn-word"><i class="fas fa-file-pdf"></i> Ver PDF</button>` : ''}
         `;
     } 
     else if (task.status === 'liberar') {
-        let btnReleaseHtml = canRelease ? 
+        let btnReleaseHtml = canReleaseInitial ? 
             `<button onclick="window.finishReportWrapper()" class="action-btn btn-release"><i class="fas fa-check-double"></i> Liberar Laudo</button>` : 
-            `<span style="font-size:0.8rem; color:#666; align-self:center;">Aguardando responsável</span>`;
+            `<span style="font-size:0.8rem; color:#666; align-self:center;">Aguardando professor</span>`;
 
         actionsHtml = `
-            <button onclick="window.openReportEditorWrapper()" class="action-btn btn-edit"><i class="fas fa-pen"></i> Corrigir</button>
-            <button onclick="window.exportToPDF()" class="action-btn btn-word"><i class="fas fa-file-pdf"></i> Visualizar PDF</button>
+            ${canCorrectReport ? `<button onclick="window.openReportEditorWrapper()" class="action-btn btn-edit"><i class="fas fa-pen"></i> Corrigir</button>` : ''}
+            ${canDownloadReport ? `<button onclick="window.exportToPDF()" class="action-btn btn-word"><i class="fas fa-file-pdf"></i> Visualizar PDF</button>` : ''}
+            ${btnReleaseHtml}
+        `;
+    }
+    else if (task.status === 'em_correcao') {
+        const correctionHint = permission.isProfessor
+            ? `<span style="font-size:0.8rem; color:#991b1b; align-self:center; font-weight:700;">Correção pendente para professor</span>`
+            : `<span style="font-size:0.8rem; color:#666; align-self:center;">Aguardando correção do professor</span>`;
+
+        actionsHtml = `
+            ${canCorrectReport ? `<button onclick="window.openReportEditorWrapper()" class="action-btn btn-edit"><i class="fas fa-pen"></i> Corrigir</button>` : ''}
+            ${canDownloadReport ? `<button onclick="window.exportToPDF()" class="action-btn btn-word"><i class="fas fa-file-pdf"></i> Visualizar PDF</button>` : ''}
+            ${correctionHint}
+        `;
+    }
+    else if (task.status === 'revisar_correcoes') {
+        let btnReleaseHtml = canReleaseAfterReview
+            ? `<button onclick="window.finishReportWrapper()" class="action-btn btn-release"><i class="fas fa-check-double"></i> Liberar Laudo</button>`
+            : `<span style="font-size:0.8rem; color:#666; align-self:center;">Aguardando professor ou pós responsável</span>`;
+
+        actionsHtml = `
+            ${(isPosResponsavel || canCorrectReport) ? `<button onclick="window.openReportEditorWrapper()" class="action-btn btn-edit"><i class="fas fa-pen"></i> Editar Laudo</button>` : ''}
+            ${canDownloadReport ? `<button onclick="window.exportToPDF()" class="action-btn btn-word"><i class="fas fa-file-pdf"></i> Visualizar PDF</button>` : ''}
             ${btnReleaseHtml}
         `;
     }
     else if (task.status === 'concluido') {
          actionsHtml = `
             <button onclick="window.openReportEditorWrapper()" class="action-btn btn-edit"><i class="fas fa-eye"></i> Ver Detalhes</button>
-            <button onclick="window.exportToPDF()" class="action-btn btn-word"><i class="fas fa-file-pdf"></i> Baixar PDF</button>
+            ${canDownloadReport ? `<button onclick="window.exportToPDF()" class="action-btn btn-word"><i class="fas fa-file-pdf"></i> Baixar PDF</button>` : ''}
         `;
     }
 
@@ -262,7 +343,7 @@ function renderDetails(task) {
     const html = `
         <div class="tm-hero-modern ${typeClass}">
             <div class="tm-hero-content">
-                <div class="tm-hero-badge"><i class="fas ${typeIcon}"></i> ${typeLabel}</div>
+                <div class="tm-hero-badge"><i class="fas ${typeIcon}"></i> ${typeLabel}${correctedBannerBadge}${correctionNeededBadge}</div>
                 <h2>${task.animalNome || 'Sem Nome'}</h2>
                 <p><i class="fas fa-paw"></i> ${task.especie || 'Espécie não inf.'} &bull; ${task.sexo || '-'} &bull; ${task.idade || '-'}</p>
             </div>
@@ -365,38 +446,144 @@ async function toggleFinancialStatus() {
 }
 
 if(btnSaveReport) {
-    btnSaveReport.addEventListener('click', async () => {
+    const persistReport = async ({ sendBackToCorrection = false } = {}) => {
+        const permission = getPermissionContext(currentTask);
+        if (currentTask?.status === 'analise' && !permission.canFillReport) {
+            alert('Somente o dono da tarefa (pós responsável), professor ou admin podem preencher o laudo nesta etapa.');
+            return;
+        }
+
+        if (currentTask?.status === 'revisar_correcoes' && !permission.canCorrectReport && !permission.isPosResponsavel) {
+            alert('Somente o pós responsável, professor ou admin podem editar nesta etapa.');
+            return;
+        }
+
+        if (sendBackToCorrection && currentTask?.status !== 'revisar_correcoes') {
+            alert('Esta ação só está disponível na etapa Corrigido.');
+            return;
+        }
+
+        if (sendBackToCorrection && !(permission.isPosResponsavel || permission.canCorrectReport)) {
+            alert('Somente o pós responsável, professor ou admin podem enviar novamente para correção.');
+            return;
+        }
+
         const btn = btnSaveReport;
+        const btnRework = btnSendBackCorrection;
+        const originalPrimary = btn.innerHTML;
+        const originalRework = btnRework ? btnRework.innerHTML : '';
+
         btn.innerHTML = 'Salvando...'; btn.disabled = true;
+        if (btnRework) {
+            btnRework.disabled = true;
+            btnRework.innerHTML = sendBackToCorrection
+                ? '<i class="fas fa-spinner fa-spin"></i> Enviando...'
+                : btnRework.innerHTML;
+        }
+
         try {
             const formData = new FormData(document.getElementById('form-report-data'));
             const reportData = Object.fromEntries(formData.entries());
+            const patch = {
+                report: reportData,
+                lastEditor: auth.currentUser.uid
+            };
+
+            if ((currentTask?.status === 'liberar' || currentTask?.status === 'em_correcao') && permission.canCorrectReport) {
+                patch.status = 'revisar_correcoes';
+                patch.correctedBy = auth.currentUser.uid;
+                patch.correctedAt = new Date().toISOString();
+            }
+
+            if (sendBackToCorrection && currentTask?.status === 'revisar_correcoes') {
+                patch.status = 'em_correcao';
+                patch.sentBackForCorrectionBy = auth.currentUser.uid;
+                patch.sentBackForCorrectionAt = new Date().toISOString();
+            }
+
             await updateDoc(doc(db, "tasks", currentTask.id), { 
-                report: reportData, 
-                lastEditor: auth.currentUser.uid 
+                ...patch
             });
             currentTask.report = reportData;
+            if (patch.status) currentTask.status = patch.status;
             document.getElementById('report-editor-modal').classList.add('hidden');
             renderDetails(currentTask); 
+            if (sendBackToCorrection) {
+                alert('Laudo enviado novamente para correção.');
+            }
         } catch(e) { alert("Erro ao salvar: " + e.message); } 
-        finally { btn.innerHTML = '<i class="fas fa-save"></i> Salvar e Voltar'; btn.disabled = false; }
+        finally {
+            btn.innerHTML = originalPrimary || '<i class="fas fa-save"></i> Salvar e Voltar';
+            btn.disabled = false;
+            if (btnRework) {
+                btnRework.innerHTML = originalRework || '<i class="fas fa-undo"></i> Enviar para Correção';
+                btnRework.disabled = false;
+            }
+        }
+    };
+
+    btnSaveReport.addEventListener('click', async () => {
+        await persistReport({ sendBackToCorrection: false });
     });
+
+    if (btnSendBackCorrection) {
+        btnSendBackCorrection.addEventListener('click', async () => {
+            if (!confirm('Deseja enviar este laudo novamente para correção do professor?')) return;
+            await persistReport({ sendBackToCorrection: true });
+        });
+    }
 }
 
 async function finishReportWrapper() {
     if(!currentTask) return;
+    if (currentTask.status === 'em_correcao') {
+        alert('Este laudo está em correção e precisa ser corrigido pelo professor antes de liberar.');
+        return;
+    }
+
+    const permission = getPermissionContext(currentTask);
+    const isPostReviewStage = currentTask.status === 'revisar_correcoes';
+    const canReleaseInStage = isPostReviewStage
+        ? permission.canReleaseAfterReview
+        : permission.canReleaseInitial;
+
+    if (!canReleaseInStage) {
+        if (isPostReviewStage) {
+            alert('Na fase pós-revisão, apenas professor, pós-graduando responsável ou admin podem liberar o laudo.');
+        } else {
+            alert('Na fase pré-correção, apenas professor ou admin podem liberar o laudo.');
+        }
+        return;
+    }
+
+    if (isPostReviewStage && permission.usesLegacyPosMatch && !permission.isAdmin && !permission.isProfessor) {
+        if (!confirm('Este caso ainda usa vínculo por nome do pós responsável (modo legado). Deseja continuar com a liberação?')) return;
+    }
+
     const finStatus = currentTask.financialStatus || 'pendente';
     if (finStatus !== 'pago' && finStatus !== 'didatico') {
         if(!confirm("⚠️ AVISO FINANCEIRO: Status PENDENTE.\nDeseja liberar o laudo mesmo assim?")) return;
     }
-    if(!confirm("Tem certeza que deseja LIBERAR e FINALIZAR este laudo?\nA data será congelada e ele irá para os Concluídos.")) return;
+    const releasePrompt = isPostReviewStage
+        ? "Tem certeza que deseja LIBERAR este laudo após revisão das correções?\nA data será congelada e ele irá para os Concluídos."
+        : "Tem certeza que deseja LIBERAR e FINALIZAR este laudo na fase pré-correção?\nA data será congelada e ele irá para os Concluídos.";
+    if(!confirm(releasePrompt)) return;
 
     try {
         const dataCongelada = new Date().toISOString();
+        const patch = {
+            status: 'concluido',
+            releasedBy: auth.currentUser.uid,
+            releasedAt: dataCongelada
+        };
+
+        if (currentTask.status === 'revisar_correcoes') {
+            patch.reviewedBy = auth.currentUser.uid;
+            patch.reviewedAt = dataCongelada;
+        }
+
         await updateDoc(doc(db, "tasks", currentTask.id), { 
-            status: 'concluido', 
-            releasedBy: auth.currentUser.uid, 
-            releasedAt: dataCongelada 
+            ...patch
         });
         alert("Laudo Liberado com Sucesso!"); 
         closeTaskModal();
@@ -406,6 +593,12 @@ async function finishReportWrapper() {
 
 async function exportToPDF() {
     if (!currentTask) return alert("Nenhuma tarefa selecionada.");
+    const permission = getPermissionContext(currentTask);
+    if (!permission.canDownloadReport) {
+        alert('Sem permissão para baixar ou visualizar este laudo.');
+        return;
+    }
+
     const form = document.getElementById('form-report-data');
     let finalData = currentTask.report || {};
     if (form && !document.getElementById('report-editor-modal').classList.contains('hidden')) {
@@ -417,6 +610,22 @@ async function exportToPDF() {
 }
 
 function openReportEditor(task) {
+    const permission = getPermissionContext(task);
+    if ((task.status === 'liberar' || task.status === 'em_correcao') && !permission.canCorrectReport) {
+        alert('Apenas professor pode corrigir laudos.');
+        return;
+    }
+
+    if (task.status === 'analise' && !permission.canFillReport) {
+        alert('Somente o dono da tarefa (pós responsável), professor ou admin podem preencher o laudo nesta etapa.');
+        return;
+    }
+
+    if (task.status === 'revisar_correcoes' && !permission.canCorrectReport && !permission.isPosResponsavel) {
+        alert('Somente o pós responsável ou professor podem abrir esta revisão.');
+        return;
+    }
+
     const reportModal = document.getElementById('report-editor-modal');
     if (!reportModal) return;
     
@@ -427,7 +636,8 @@ function openReportEditor(task) {
     container.classList.remove('report-paper'); 
 
     const rep = task.report || {};
-    const isReadOnly = task.status === 'concluido';
+    const canEditInCorrectionReview = task.status === 'revisar_correcoes' && (permission.isPosResponsavel || permission.canCorrectReport);
+    const isReadOnly = task.status === 'concluido' || (task.status === 'revisar_correcoes' && !canEditInCorrectionReview);
     const disabledAttr = isReadOnly ? 'disabled style="background:#f0f0f0; color:#555;"' : '';
     const isChecked = (val, fieldName) => {
         if (fieldName === 'tipo_material_radio') {
@@ -494,20 +704,26 @@ function openReportEditor(task) {
     
     const btnDown = document.getElementById('btn-download-word');
     if(btnDown) btnDown.classList.add('hidden');
+
+    if (btnSendBackCorrection) {
+        const showReworkButton = task.status === 'revisar_correcoes' && (permission.isPosResponsavel || permission.canCorrectReport);
+        btnSendBackCorrection.classList.toggle('hidden', !showReworkButton);
+    }
+
     reportModal.classList.remove('hidden');
 }
 
 function handleNextStage() {
     if (!currentTask) return;
     if (currentTask.status === 'clivagem') { openK7FormSmart(currentTask); return; }
-    const flow = ['clivagem', 'processamento', 'laminas_prontas', 'analise', 'liberar', 'concluido'];
+    const flow = ['clivagem', 'processamento', 'laminas_prontas', 'analise', 'liberar', 'em_correcao', 'revisar_correcoes', 'concluido'];
     const currIdx = flow.indexOf(currentTask.status);
     if (currIdx >= 0 && currIdx < flow.length - 1) updateStatus(flow[currIdx + 1]);
 }
 
 function handlePrevStage() {
     if (!currentTask) return;
-    const flow = ['clivagem', 'processamento', 'laminas_prontas', 'analise', 'liberar', 'concluido'];
+    const flow = ['clivagem', 'processamento', 'laminas_prontas', 'analise', 'liberar', 'em_correcao', 'revisar_correcoes', 'concluido'];
     const currIdx = flow.indexOf(currentTask.status);
     if (currIdx > 0) updateStatus(flow[currIdx - 1]);
 }

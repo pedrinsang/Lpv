@@ -3,7 +3,7 @@
  */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import '../js/animations.js';
 
 console.log(">>> CORE.JS V8.1 CARREGADO <<<");
@@ -25,6 +25,7 @@ const db = getFirestore(app);
 
 window.currentUserRole = null;
 window.currentUserRoles = [];
+let unsubscribeCurrentUserProfile = null;
 
 const FULL_CONTROL_ROLES = ['admin', 'professor', 'pós graduando'];
 
@@ -117,6 +118,11 @@ onAuthStateChanged(auth, async (user) => {
     if (user) {
         // --- LOGADO ---
         console.log("Core: Usuário detectado:", user.uid);
+
+        if (unsubscribeCurrentUserProfile) {
+            unsubscribeCurrentUserProfile();
+            unsubscribeCurrentUserProfile = null;
+        }
         
         const userDoc = await getDoc(doc(db, "users", user.uid));
         
@@ -144,12 +150,43 @@ onAuthStateChanged(auth, async (user) => {
             if (!isPublicPage || currentPath.includes('hub.html')) {
                 loadUserInterface(data, user.uid);
             }
+
+            // Mantém roles/perfil sincronizados em tempo real após login.
+            unsubscribeCurrentUserProfile = onSnapshot(doc(db, "users", user.uid), (profileSnap) => {
+                if (!profileSnap.exists()) return;
+
+                const liveData = profileSnap.data();
+                const liveStatus = liveData.status || 'active';
+
+                if (liveStatus === 'pending') {
+                    signOut(auth).catch(() => {});
+                    return;
+                }
+
+                const liveRoles = normalizeRoles(liveData.role);
+                window.currentUserRoles = liveRoles;
+                window.currentUserRole = primaryRole(liveData.role);
+
+                if (!isPublicPage || currentPath.includes('hub.html')) {
+                    loadUserInterface(liveData, user.uid);
+                }
+            }, (err) => {
+                console.warn('Core: falha ao sincronizar perfil em tempo real:', err);
+            });
         } else {
             console.log("⚠️ Core: Perfil não encontrado. Aguardando criação...");
         }
     } else {
         // --- DESLOGADO ---
         console.log("Core: Nenhum usuário logado.");
+
+        if (unsubscribeCurrentUserProfile) {
+            unsubscribeCurrentUserProfile();
+            unsubscribeCurrentUserProfile = null;
+        }
+        window.currentUserRole = null;
+        window.currentUserRoles = [];
+
         if (!isPublicPage) {
             window.location.href = isPagesDir ? 'auth.html' : 'pages/auth.html';
         }

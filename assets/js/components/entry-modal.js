@@ -28,6 +28,7 @@ const contents = document.querySelectorAll('.tab-content');
 // Selects de Equipe (Agora capturando de ambos os formulários)
 const selectsDocente = document.querySelectorAll('#select-docente, #select-docente-vn');
 const selectsPos = document.querySelectorAll('#select-pos, #select-pos-vn');
+const hiddenPosUidInputs = document.querySelectorAll('#select-pos-uid, #select-pos-uid-vn');
 
 // Código Aleatório (Capturando múltiplos displays e inputs hidden)
 const displayCodes = document.querySelectorAll('#display-code, #display-code-vn');
@@ -64,6 +65,7 @@ function openModal() {
             setupSubmitButton(f, f.id === 'form-new-v' ? 'Salvar Entrada' : 'Salvar Necropsia');
         }
     });
+    hiddenPosUidInputs.forEach(i => i.value = '');
 
     // Seta data de hoje para ambos os campos de data
     const today = new Date().toISOString().split('T')[0];
@@ -127,6 +129,21 @@ function fillForm(form, data) {
     // Garante que o input hidden do código receba o valor
     const codeInput = form.querySelector('[name="accessCode"]');
     if(codeInput && data.accessCode) codeInput.value = data.accessCode;
+
+    const posUidInput = form.querySelector('input[name="posResponsavelUid"]');
+    if (posUidInput) posUidInput.value = data.posResponsavelUid || '';
+
+    syncPosResponsavelUid(form);
+}
+
+function syncPosResponsavelUid(form) {
+    if (!form) return;
+    const posSelect = form.querySelector('select[name="posGraduando"]');
+    const uidInput = form.querySelector('input[name="posResponsavelUid"]');
+    if (!posSelect || !uidInput) return;
+
+    const selectedOption = posSelect.options[posSelect.selectedIndex];
+    uidInput.value = selectedOption?.dataset?.uid || '';
 }
 
 function setupSubmitButton(form, text) {
@@ -166,6 +183,7 @@ async function loadTeamData() {
         
         snapshot.forEach(docSnap => {
             const data = docSnap.data();
+            const userId = docSnap.id;
             const roles = Array.isArray(data.role)
                 ? data.role.map(r => r.toLowerCase())
                 : [(data.role || '').toLowerCase()];
@@ -174,6 +192,7 @@ async function loadTeamData() {
                 const opt = document.createElement('option');
                 opt.value = data.name;
                 opt.textContent = data.name;
+                opt.dataset.uid = userId;
                 return opt;
             };
 
@@ -224,6 +243,8 @@ async function saveEntry(e, originType) {
     try {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
+        syncPosResponsavelUid(form);
+        data.posResponsavelUid = form.querySelector('input[name="posResponsavelUid"]')?.value || '';
 
         if (editingTaskId) {
             // --- MODO EDIÇÃO ---
@@ -278,3 +299,9 @@ async function saveEntry(e, originType) {
 // Listeners de Envio
 if (formV) formV.addEventListener('submit', (e) => saveEntry(e, 'v'));
 if (formVn) formVn.addEventListener('submit', (e) => saveEntry(e, 'vn'));
+
+selectsPos.forEach((select) => {
+    select.addEventListener('change', () => {
+        syncPosResponsavelUid(select.closest('form'));
+    });
+});

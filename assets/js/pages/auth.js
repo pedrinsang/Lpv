@@ -213,6 +213,9 @@ if (registerForm) {
                 email: email,
                 role: ['estagiario'], 
                 status: 'pending',
+                crmv: '',
+                canSelfSignReports: false,
+                signatureBase64: null,
                 createdAt: new Date()
             });
 
