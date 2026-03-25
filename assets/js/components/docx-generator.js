@@ -71,7 +71,8 @@ async function fetchSignature(releasedByUid) {
                 base64: data.signatureBase64, 
                 name: data.name || null,
                 role: data.role || null,
-                crmv: data.crmv || null
+                crmv: data.crmv || null,
+                signatureGuideRatio: data.signatureGuideRatio ?? null
             };
         }
     } catch (err) {
@@ -119,6 +120,19 @@ function formatCrmv(crmv, fallback = '') {
     return /^crmv/i.test(value) ? value.toUpperCase() : `CRMV ${value}`;
 }
 
+function formatAnimalSexLabel(sexo) {
+    const raw = (sexo || '').toString().trim();
+    const normalized = raw.toLowerCase();
+    if (normalized === 'f' || normalized === 'femea' || normalized === 'fêmea') return 'Fêmea';
+    if (normalized === 'm' || normalized === 'macho') return 'Macho';
+    return raw || '-';
+}
+
+function formatAnimalBreedLabel(raca) {
+    const value = (raca || '').toString().trim().replace(/\s+/g, ' ');
+    return value || 'SRD';
+}
+
 function normalizeSignerData(profile, fallbackName, fallbackCrmv = '') {
     return {
         uid: profile?.uid || null,
@@ -126,18 +140,67 @@ function normalizeSignerData(profile, fallbackName, fallbackCrmv = '') {
         role: profile?.role || null,
         base64: profile?.signatureBase64 || null,
         crmv: formatCrmv(profile?.crmv, fallbackCrmv),
-        signatureRatio: null
+        signatureGuideRatio: profile?.signatureGuideRatio ?? null,
+        signatureRatio: null,
+        signatureInkBottomRatio: null
     };
 }
 
-async function getBase64ImageRatio(base64) {
+async function getBase64ImageMetrics(base64) {
     if (!base64) return null;
 
     return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
-            if (!img.width) return resolve(null);
-            resolve(img.height / img.width);
+            if (!img.width || !img.height) return resolve(null);
+
+            const ratio = img.height / img.width;
+
+            // Detecta onde termina o traço da assinatura para alinhar a linha guia
+            // de forma consistente entre assinaturas feitas em diferentes dispositivos.
+            let inkBottomRatio = null;
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0);
+                    const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                    let bottomInkRow = -1;
+                    const whiteThreshold = 245;
+                    const alphaThreshold = 20;
+
+                    for (let y = height - 1; y >= 0; y--) {
+                        let hasInk = false;
+                        for (let x = 0; x < width; x++) {
+                            const idx = (y * width + x) * 4;
+                            const r = data[idx];
+                            const g = data[idx + 1];
+                            const b = data[idx + 2];
+                            const a = data[idx + 3];
+                            const looksLikeInk = a > alphaThreshold && (r < whiteThreshold || g < whiteThreshold || b < whiteThreshold);
+                            if (looksLikeInk) {
+                                hasInk = true;
+                                break;
+                            }
+                        }
+                        if (hasInk) {
+                            bottomInkRow = y;
+                            break;
+                        }
+                    }
+
+                    if (bottomInkRow >= 0) {
+                        inkBottomRatio = (bottomInkRow + 1) / height;
+                    }
+                }
+            } catch (_) {
+                inkBottomRatio = null;
+            }
+
+            resolve({ ratio, inkBottomRatio });
         };
         img.onerror = () => resolve(null);
         img.src = base64;
@@ -146,8 +209,12 @@ async function getBase64ImageRatio(base64) {
 
 async function enrichSignerWithMetrics(signer) {
     if (!signer?.base64) return signer;
-    const ratio = await getBase64ImageRatio(signer.base64);
-    return { ...signer, signatureRatio: ratio };
+    const metrics = await getBase64ImageMetrics(signer.base64);
+    return {
+        ...signer,
+        signatureRatio: metrics?.ratio || null,
+        signatureInkBottomRatio: metrics?.inkBottomRatio || null
+    };
 }
 
 async function resolveSignatureForPdf(task) {
@@ -188,7 +255,8 @@ async function resolveSignatureForPdf(task) {
                 ...signatureData,
                 base64: releasedSig.base64,
                 name: releasedSig.name || signatureData.name,
-                crmv: formatCrmv(releasedSig.crmv, signatureData.crmv)
+                crmv: formatCrmv(releasedSig.crmv, signatureData.crmv),
+                signatureGuideRatio: releasedSig.signatureGuideRatio ?? signatureData.signatureGuideRatio
             };
         }
     }
@@ -219,13 +287,18 @@ function buildSeparatorLine(marginTop = 0) {
 
 function buildSignatureCard(signer, subtitle) {
     const signatureWidth = 220;
-    const baselineRatio = 0.72; // Mesmo ratio da linha guia no canvas de assinatura.
+    const signatureLiftPx = 40;
+    const canvasGuideRatio = 0.72; // Mesma altura da linha guia do canvas de assinatura.
 
     const derivedRatio = signer?.signatureRatio || (200 / 600);
-    const renderedHeight = Math.max(55, Math.min(130, Math.round(signatureWidth * derivedRatio)));
-    const lineOverlayOffset = -Math.round(renderedHeight * (1 - baselineRatio));
+    const renderedHeight = Math.max(1, signatureWidth * derivedRatio);
+    const guideRatio = Math.max(0.55, Math.min(0.9, signer?.signatureGuideRatio ?? canvasGuideRatio));
+    const guideCompensationPx = Math.max(18, Math.round(renderedHeight * 0.2));
+    // Alinha a linha do PDF com a referência do canvas e aplica compensação
+    // para evitar a linha baixa demais em diferentes proporções de assinatura.
+    const lineOverlayOffset = -Math.round((renderedHeight * (1 - guideRatio)) + guideCompensationPx);
 
-    const separatorLine = buildSeparatorLine(signer?.base64 ? lineOverlayOffset : 0);
+    const separatorLine = buildSeparatorLine(signer?.base64 ? lineOverlayOffset + signatureLiftPx : 0);
     const signerName = signer?.name || 'Responsável';
     const signerCrmv = signer?.crmv ? ` / ${signer.crmv}` : '';
     const caption = `${signerName}\n${subtitle}${signerCrmv}`;
@@ -237,7 +310,7 @@ function buildSignatureCard(signer, subtitle) {
                     image: signer.base64,
                     width: signatureWidth,
                     alignment: 'center',
-                    margin: [0, 0, 0, 2]
+                    margin: [0, -signatureLiftPx, 0, 2]
                 },
                 separatorLine,
                 {
@@ -250,7 +323,7 @@ function buildSignatureCard(signer, subtitle) {
                 }
             ],
             alignment: 'center',
-            margin: [0, 30, 0, 0],
+            margin: [0, 15, 0, 0],
             unbreakable: true
         };
     }
@@ -267,7 +340,7 @@ function buildSignatureCard(signer, subtitle) {
             }
         ],
         alignment: 'center',
-        margin: [0, 30, 0, 0],
+        margin: [0, 15, 0, 0],
         unbreakable: true
     };
 }
@@ -275,14 +348,15 @@ function buildSignatureCard(signer, subtitle) {
 function buildTeacherTextOnlyCard(teacher) {
     const teacherName = teacher?.name || 'Docente responsável';
     const teacherCrmv = teacher?.crmv || '';
-    const text = teacherCrmv ? `${teacherName}\n${teacherCrmv}` : teacherName;
+    const roleLine = teacherCrmv ? `Docente Responsável / ${teacherCrmv}` : 'Docente Responsável';
+    const text = `${teacherName}\n${roleLine}`;
 
     return {
         text,
         alignment: 'center',
         fontSize: 11,
         lineHeight: 1.4,
-        margin: [0, 12, 0, 0],
+        margin: [0, 6, 0, 0],
         unbreakable: true
     };
 }
@@ -335,6 +409,8 @@ export async function generateLaudoPDF(task, reportData) {
     const enderecoReq    = task.remetenteEndereco      || reportData.endereco_requisitante  || '-';
     const contatoProp    = task.proprietarioContato    || reportData.telefone_proprietario  || '-';
     const enderecoProp   = task.proprietarioEndereco   || reportData.endereco_proprietario  || '-';
+    const sexoAnimal     = formatAnimalSexLabel(task.sexo || reportData.sexo);
+    const racaAnimal     = formatAnimalBreedLabel(task.raca || reportData.raca);
 
     const chk    = (val) => val ? '[ X ]' : '[   ]';
     const isBio  = reportData.tipo_material_radio
@@ -344,6 +420,18 @@ export async function generateLaudoPDF(task, reportData) {
         ? reportData.tipo_material_radio === 'necropsia'
         : task.type === 'necropsia';
 
+    const materialDetails = [
+        { text: [{ text: 'Material Remetido: ', bold: true }, `Biópsia ${chk(isBio)}    Necropsia ${chk(isNecro)}`] },
+        { text: [{ text: 'Tipo de Material: ',  bold: true }, reportData.tipo_material_desc || '-'] },
+        ...(isNecro
+            ? [
+                { text: [{ text: 'Data e hora da morte: ', bold: true }, (reportData.tempo_morte || '-') + ' horas'] },
+                { text: [{ text: 'Morte: ', bold: true }, `Morte Espontânea ${chk(reportData.morte_tipo === 'espontanea')}    Eutanásia ${chk(reportData.morte_tipo === 'eutanasia')}`] }
+            ]
+            : []),
+        { text: [{ text: 'Conservação: ', bold: true }, `Formol ${chk(!reportData.conservacao || reportData.conservacao === 'formol')}   Refrig. ${chk(reportData.conservacao === 'refrigerado')}   Cong. ${chk(reportData.conservacao === 'congelado')}`] }
+    ];
+
     // Bloco de assinatura condicional (docente default ou autoassinatura do pós)
     const assinaturaBlock = buildSignatureBlock(signatureContext);
 
@@ -352,6 +440,45 @@ export async function generateLaudoPDF(task, reportData) {
         { text: title + ':', style: 'sectionHeader', margin: [0, 10, 0, 2] },
         { text: content || '-', style: boldBody ? 'bodyBold' : 'body', margin: [0, 0, 0, 5] }
     ];
+
+    const createDiagnosisSection = (content) => {
+        const rawContent = (content || '').toString().trim();
+        const margin = [0, 0, 0, 5];
+
+        if (!rawContent) {
+            return [
+                { text: 'DIAGNÓSTICO(S):', style: 'sectionHeader', margin: [0, 10, 0, 2] },
+                { text: '-', style: 'bodyDiagnosis', margin }
+            ];
+        }
+
+        const firstCommaIndex = rawContent.indexOf(',');
+        if (firstCommaIndex === -1) {
+            return [
+                { text: 'DIAGNÓSTICO(S):', style: 'sectionHeader', margin: [0, 10, 0, 2] },
+                {
+                    text: [{ text: rawContent, decoration: 'underline' }],
+                    style: 'bodyDiagnosis',
+                    margin
+                }
+            ];
+        }
+
+        const beforeComma = rawContent.slice(0, firstCommaIndex).trimEnd();
+        const afterComma = rawContent.slice(firstCommaIndex);
+
+        return [
+            { text: 'DIAGNÓSTICO(S):', style: 'sectionHeader', margin: [0, 10, 0, 2] },
+            {
+                text: [
+                    { text: beforeComma, decoration: 'underline' },
+                    { text: afterComma }
+                ],
+                style: 'bodyDiagnosis',
+                margin
+            }
+        ];
+    };
 
     // ── DEFINIÇÃO DO DOCUMENTO ────────────────────────────────────
     const docDefinition = {
@@ -384,7 +511,7 @@ export async function generateLaudoPDF(task, reportData) {
 
             // TÍTULO
             { text: `LAUDO HISTOPATOLÓGICO (${protocolo})`, style: 'mainTitle', margin: [0, 20, 0, 5] },
-            { text: [{ text: 'Data de recebimento: ', bold: true }, dataReceb], fontSize: 11, margin: [0, 0, 0, 15] },
+            { text: [{ text: 'Data de recebimento: ', bold: true }, dataReceb], fontSize: 11, margin: [0, 15, 0, 15] },
 
             // TABELA DE DADOS
             {
@@ -401,9 +528,15 @@ export async function generateLaudoPDF(task, reportData) {
                         ],
                         [
                             { text: 'Raça:', style: 'label' },
-                            { text: task.raca || 'SRD', style: 'value' },
+                            { text: racaAnimal, style: 'value', colSpan: 3 },
+                            {},
+                            {}
+                        ],
+                        [
                             { text: 'Sexo/Idade:', style: 'label' },
-                            { text: `${task.sexo || '-'} / ${task.idade || '-'}`, style: 'value' }
+                            { text: `${sexoAnimal} / ${task.idade || '-'}`, style: 'value', colSpan: 3 },
+                            {},
+                            {}
                         ],
 
                         [{ text: 'REQUISITANTE', style: 'tableHeaderGray', colSpan: 4, border: [false,false,false,false] }, {}, {}, {}],
@@ -435,6 +568,7 @@ export async function generateLaudoPDF(task, reportData) {
                             { text: 'Endereço:', style: 'label' },
                             { text: enderecoProp, style: 'value', colSpan: 3 }, {}, {}
                         ]
+                        
                     ]
                 },
                 layout: {
@@ -447,16 +581,11 @@ export async function generateLaudoPDF(task, reportData) {
                 }
             },
 
-            // MATERIAL
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 535, y2: 0, lineWidth: 1 }], margin: [0, 15, 0, 0] },
+            { text: 'MATERIAL REMETIDO:', style: 'sectionHeader', margin: [0, 10, 0, 2] },
             {
-                margin: [0, 15, 0, 15],
-                stack: [
-                    { text: [{ text: 'Material Remetido: ', bold: true }, `Biópsia ${chk(isBio)}    Necropsia ${chk(isNecro)}`] },
-                    { text: [{ text: 'Tipo de Material: ',  bold: true }, reportData.tipo_material_desc || '-'] },
-                    { text: [{ text: 'Data e hora da morte: ', bold: true }, (reportData.tempo_morte || '-') + ' horas'] },
-                    { text: [{ text: 'Morte: ', bold: true }, `Morte Espontânea ${chk(reportData.morte_tipo === 'espontanea')}    Eutanásia ${chk(reportData.morte_tipo === 'eutanasia')}`] },
-                    { text: [{ text: 'Conservação: ', bold: true }, `Formol ${chk(!reportData.conservacao || reportData.conservacao === 'formol')}   Refrig. ${chk(reportData.conservacao === 'refrigerado')}   Cong. ${chk(reportData.conservacao === 'congelado')}`] }
-                ],
+                margin: [0, 0, 0, 15],
+                stack: materialDetails,
                 fontSize: 11
             },
 
@@ -467,7 +596,7 @@ export async function generateLaudoPDF(task, reportData) {
             ...createSection('DIAGNÓSTICO PRESUNTIVO/SUSPEITA',   reportData.suspeita),
             ...createSection('DESCRIÇÃO MACROSCÓPICA',            reportData.macroscopia),
             ...createSection('DESCRIÇÃO MICROSCÓPICA',            reportData.microscopia),
-            ...createSection('DIAGNÓSTICO(S)',                    reportData.diagnostico, true),
+            ...createDiagnosisSection(reportData.diagnostico),
             ...createSection('COMENTÁRIOS',                       reportData.comentarios),
 
             // DATA + ASSINATURA
@@ -481,6 +610,7 @@ export async function generateLaudoPDF(task, reportData) {
             sectionHeader:   { fontSize: 11, bold: true, decoration: 'underline' },
             body:            { fontSize: 11, alignment: 'justify', lineHeight: 1.3 },
             bodyBold:        { fontSize: 11, alignment: 'justify', bold: true, lineHeight: 1.3 },
+            bodyDiagnosis:   { fontSize: 11, alignment: 'justify', bold: true, italics: true, lineHeight: 1.3 },
             label:           { fontSize: 11, bold: true },
             value:           { fontSize: 11 },
             tableHeaderGray: { fillColor: '#E6E6E6', bold: true, alignment: 'center', fontSize: 10, margin: [0, 2, 0, 2] }

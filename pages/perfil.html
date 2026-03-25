@@ -178,19 +178,8 @@
         #signature-canvas {
             display: block;
             width: 100%;
-            height: 260px;
+            height: 200px;
             touch-action: none;
-        }
-
-        .canvas-wrapper::after {
-            content: '';
-            position: absolute;
-            left: 16px;
-            right: 16px;
-            top: 72%;
-            border-top: 1px solid #334155;
-            opacity: 0.9;
-            pointer-events: none;
         }
 
         .canvas-hint {
@@ -287,10 +276,6 @@
             gap: 10px;
         }
 
-        .sig-modal-footer .btn-clear-canvas {
-            margin-right: auto;
-        }
-
         /* Status de salvamento */
         .save-status {
             display: flex;
@@ -375,19 +360,15 @@
             position: fixed;
             /* left/top/width/height definidos por JS */
             border-radius: 16px;
-            padding: 10px 12px 12px;
+            padding: 14px 18px;
             box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
             overflow-y: auto;
-            overscroll-behavior: contain;
             /* transform-origin no centro do elemento — JS define o translate correto */
             transform-origin: top left;
         }
 
         .sig-modal-content.rotated #signature-canvas {
-            height: clamp(120px, 30vh, 200px);
+            height: 150px;
         }
 
         .sig-modal-content.rotated .sig-modal-header {
@@ -399,30 +380,11 @@
         }
 
         .sig-modal-content.rotated .canvas-controls {
-            margin-bottom: 4px;
+            margin-bottom: 8px;
         }
 
         .sig-modal-content.rotated .sig-modal-footer {
-            margin-top: auto;
-            position: sticky;
-            bottom: 0;
-            padding-top: 8px;
-            background: linear-gradient(to top, var(--bg-card) 70%, rgba(0, 0, 0, 0));
-            justify-content: space-between;
-        }
-
-        .sig-modal-content.rotated .sig-modal-footer .btn {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .sig-modal-content.rotated .canvas-wrapper {
-            margin-bottom: 6px;
-        }
-
-        .sig-modal-content.rotated .save-status {
-            margin-bottom: 4px;
-            padding: 6px 10px;
+            margin-top: 6px;
         }
 
         /* Esconde parágrafo de instrução no modo compacto */
@@ -495,19 +457,6 @@
                 </div>
             </div>
 
-            <div id="crmv-section" class="card fade-in hidden" style="margin-top: 1rem;">
-                <div class="profile-label" style="margin-bottom: 0.5rem;">CRMV Profissional</div>
-                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                    <input id="profile-crmv-input" type="text" class="input-field" placeholder="Ex: CRMV-RS 12345" style="flex: 1; min-width: 220px;">
-                    <button id="btn-save-crmv" class="btn btn-primary" type="button">
-                        <i class="fas fa-save"></i> Salvar CRMV
-                    </button>
-                </div>
-                <p style="font-size: 0.78rem; color: var(--text-tertiary); margin-top: 0.6rem;">
-                    Este CRMV será usado no bloco de assinatura do laudo.
-                </p>
-            </div>
-
             <!-- SEÇÃO DE ASSINATURA (só aparece para professor/pós-graduando) -->
             <div id="signature-section" class="signature-section fade-in hidden">
                 <div class="signature-section-title">
@@ -567,7 +516,8 @@
 
             <!-- Dica de uso -->
             <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.5;">
-                Desenhe sua assinatura abaixo, ela aparecerá no laudo, caso necessario.
+                Desenhe sua assinatura abaixo. Use uma mesa digitalizadora para melhor precisão.
+                O canvas é branco — sua assinatura aparecerá em preto.
             </p>
 
             <!-- Canvas -->
@@ -579,14 +529,23 @@
                 </div>
             </div>
 
+            <!-- Controles -->
+            <div class="canvas-controls">
+                <span class="stroke-size-label">Espessura:</span>
+                <input type="range" id="stroke-slider" class="stroke-slider" min="1" max="8" value="2" step="0.5">
+                <div class="stroke-preview">
+                    <div class="stroke-dot" id="stroke-dot" style="width: 4px; height: 4px;"></div>
+                </div>
+                <button class="btn-clear-canvas" id="btn-clear-canvas">
+                    <i class="fas fa-eraser"></i> Limpar
+                </button>
+            </div>
+
             <!-- Status -->
             <div id="sig-save-status" class="save-status hidden"></div>
 
             <!-- Footer -->
             <div class="sig-modal-footer">
-                <button class="btn-clear-canvas" id="btn-clear-canvas">
-                    <i class="fas fa-eraser"></i> Limpar
-                </button>
                 <button id="btn-cancel-sig" class="btn btn-secondary">Cancelar</button>
                 <button id="btn-save-sig" class="btn btn-primary">
                     <i class="fas fa-save"></i> Salvar Assinatura
@@ -618,12 +577,9 @@
         const btnClearCanvas  = document.getElementById('btn-clear-canvas');
         const canvasHint      = document.getElementById('canvas-hint');
         const saveStatus      = document.getElementById('sig-save-status');
+        const strokeSlider    = document.getElementById('stroke-slider');
+        const strokeDot       = document.getElementById('stroke-dot');
         const btnSigLabel     = document.getElementById('btn-sig-label');
-        const crmvSection     = document.getElementById('crmv-section');
-        const crmvInput       = document.getElementById('profile-crmv-input');
-        const btnSaveCrmv     = document.getElementById('btn-save-crmv');
-
-        let canEditCrmv = false;
 
         // ─── CANVAS SETUP ────────────────────────────────────────
         const canvas  = document.getElementById('signature-canvas');
@@ -632,53 +588,24 @@
         let hasDrawn  = false;
         let lastX = 0, lastY = 0;
         let strokeWidth = 2;
-        let currentDpr = 1;
-
-        function getCanvasTargetHeight() {
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
-            const shortestSide = Math.min(vw, vh);
-            const longestSide = Math.max(vw, vh);
-            const isRotatedModal = document.querySelector('.sig-modal-content')?.classList.contains('rotated');
-            const isTablet = shortestSide >= 700 && longestSide >= 900;
-
-            // Em celular (principalmente com modal girado), mantém o canvas compacto
-            // para preservar o rodapé com botões sempre visível.
-            if (isRotatedModal) return Math.min(190, Math.round(vh * 0.30));
-            if (shortestSide <= 600) return 160;
-            if (isTablet) return Math.max(280, Math.round(vh * 0.62));
-            return 220;
-        }
 
         function resizeCanvas() {
             const wrapper = document.getElementById('canvas-wrapper');
             const rect = wrapper.getBoundingClientRect();
-            const targetHeight = getCanvasTargetHeight();
-            const prevCanvas = document.createElement('canvas');
-            let hasPreviousDrawing = false;
-
-            if (canvas.width > 0 && canvas.height > 0) {
-                prevCanvas.width = canvas.width;
-                prevCanvas.height = canvas.height;
-                prevCanvas.getContext('2d').drawImage(canvas, 0, 0);
-                hasPreviousDrawing = true;
-            }
-
-            canvas.style.height = `${targetHeight}px`;
-            currentDpr = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = Math.max(1, Math.floor(rect.width * currentDpr));
-            canvas.height = Math.max(1, Math.floor(targetHeight * currentDpr));
-
+            // Salva o conteúdo atual antes de redimensionar
+            const imgData = canvas.width > 0 ? ctx.getImageData(0, 0, canvas.width, canvas.height) : null;
+            canvas.width  = rect.width;
+            canvas.height = 200;
+            // Restaura
             setupCtx();
-
-            if (hasPreviousDrawing) {
-                ctx.drawImage(prevCanvas, 0, 0, prevCanvas.width, prevCanvas.height, 0, 0, canvas.width, canvas.height);
+            if (imgData && imgData.width > 0) {
+                ctx.putImageData(imgData, 0, 0);
             }
         }
 
         function setupCtx() {
             ctx.strokeStyle = '#0f172a';
-            ctx.lineWidth   = strokeWidth * currentDpr;
+            ctx.lineWidth   = strokeWidth;
             ctx.lineCap     = 'round';
             ctx.lineJoin    = 'round';
             ctx.imageSmoothingEnabled = true;
@@ -706,7 +633,7 @@
             const pos = getPos(e);
             lastX = pos.x; lastY = pos.y;
             ctx.beginPath();
-            ctx.arc(pos.x, pos.y, (strokeWidth * currentDpr) / 2, 0, Math.PI * 2);
+            ctx.arc(pos.x, pos.y, strokeWidth / 2, 0, Math.PI * 2);
             ctx.fillStyle = '#0f172a';
             ctx.fill();
             document.getElementById('canvas-wrapper').classList.add('drawing');
@@ -745,6 +672,15 @@
         canvas.addEventListener('touchmove',  draw,      { passive: false });
         canvas.addEventListener('touchend',   stopDraw);
 
+        // Slider de espessura
+        strokeSlider.addEventListener('input', () => {
+            strokeWidth = parseFloat(strokeSlider.value);
+            const dotSize = Math.max(2, strokeWidth * 2);
+            strokeDot.style.width  = dotSize + 'px';
+            strokeDot.style.height = dotSize + 'px';
+            setupCtx();
+        });
+
         // Limpar canvas
         btnClearCanvas.addEventListener('click', () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -754,53 +690,9 @@
 
         // ─── ROTAÇÃO FORÇADA (MOBILE PORTRAIT) ───────────────────
         const sigContent = document.querySelector('.sig-modal-content');
-        let orientationLockActive = false;
 
         function isMobilePortrait() {
             return window.innerWidth < 900 && window.innerWidth < window.innerHeight;
-        }
-
-        function isMobileScreen() {
-            return window.innerWidth < 900;
-        }
-
-        async function tryLockLandscape() {
-            if (!isMobileScreen()) return false;
-            if (!screen.orientation || typeof screen.orientation.lock !== 'function') return false;
-
-            try {
-                // Alguns navegadores exigem fullscreen para permitir orientation.lock().
-                if (!document.fullscreenElement && sigModal.requestFullscreen) {
-                    await sigModal.requestFullscreen();
-                }
-
-                await screen.orientation.lock('landscape');
-                orientationLockActive = true;
-                return true;
-            } catch (err) {
-                orientationLockActive = false;
-                return false;
-            }
-        }
-
-        async function releaseLandscapeLock() {
-            try {
-                if (screen.orientation && typeof screen.orientation.unlock === 'function') {
-                    screen.orientation.unlock();
-                }
-            } catch (err) {
-                console.debug('Nao foi possivel liberar lock de orientacao:', err);
-            }
-
-            if (document.fullscreenElement && document.exitFullscreen) {
-                try {
-                    await document.exitFullscreen();
-                } catch (err) {
-                    console.debug('Nao foi possivel sair do fullscreen:', err);
-                }
-            }
-
-            orientationLockActive = false;
         }
 
         /**
@@ -845,16 +737,12 @@
         }
 
         // ─── MODAL ───────────────────────────────────────────────
-        async function openSignatureModal() {
+        function openSignatureModal() {
             sigModal.classList.remove('hidden');
             document.body.classList.add('sig-modal-open');
 
-            await tryLockLandscape();
-
             if (isMobilePortrait()) {
                 applyLandscapeRotation();
-            } else {
-                removeRotation();
             }
 
             setTimeout(() => {
@@ -866,13 +754,10 @@
             }, 80);
         }
 
-        async function closeSignatureModal() {
+        function closeSignatureModal() {
             sigModal.classList.add('hidden');
             document.body.classList.remove('sig-modal-open');
             removeRotation();
-            if (orientationLockActive) {
-                await releaseLandscapeLock();
-            }
         }
 
         btnOpenModal.addEventListener('click',   openSignatureModal);
@@ -936,36 +821,6 @@
             }
         });
 
-        btnSaveCrmv.addEventListener('click', async () => {
-            if (!canEditCrmv) {
-                alert('Somente professor e pós-graduando podem editar CRMV.');
-                return;
-            }
-
-            const user = auth.currentUser;
-            if (!user) return;
-
-            const value = (crmvInput.value || '').trim();
-            btnSaveCrmv.disabled = true;
-            const oldLabel = btnSaveCrmv.innerHTML;
-            btnSaveCrmv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
-
-            try {
-                await updateDoc(doc(db, 'users', user.uid), {
-                    crmv: value
-                });
-                btnSaveCrmv.innerHTML = '<i class="fas fa-check"></i> CRMV salvo';
-                setTimeout(() => {
-                    btnSaveCrmv.innerHTML = oldLabel;
-                }, 1200);
-            } catch (err) {
-                alert('Erro ao salvar CRMV: ' + err.message);
-                btnSaveCrmv.innerHTML = oldLabel;
-            } finally {
-                btnSaveCrmv.disabled = false;
-            }
-        });
-
         // ─── HELPERS DE UI ────────────────────────────────────────
         function updateSignaturePreview(base64) {
             if (base64) {
@@ -1017,14 +872,6 @@
                     r === 'admin'
                 );
 
-                canEditCrmv = roles.some(r => r.includes('professor') || r.includes('graduando'));
-                if (canEditCrmv) {
-                    crmvSection.classList.remove('hidden');
-                    crmvInput.value = data.crmv || '';
-                } else {
-                    crmvSection.classList.add('hidden');
-                }
-
                 if (canSign) {
                     sigSection.classList.remove('hidden');
                     // Carrega assinatura existente
@@ -1045,13 +892,7 @@
 
         // Redimensiona canvas se a janela mudar (ex: desktop resize)
         window.addEventListener('resize', () => {
-            if (sigModal.classList.contains('hidden')) return;
-            if (isMobilePortrait()) {
-                applyLandscapeRotation();
-            } else {
-                removeRotation();
-            }
-            resizeCanvas();
+            if (!sigModal.classList.contains('hidden')) resizeCanvas();
         });
     </script>
 </body>

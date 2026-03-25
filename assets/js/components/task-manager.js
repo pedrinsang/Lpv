@@ -609,6 +609,25 @@ async function exportToPDF() {
     try { await generateLaudoPDF(currentTask, finalData); } catch (e) { alert("Erro PDF: " + e.message); }
 }
 
+function syncNecropsyOnlyFields(form) {
+    if (!form) return;
+
+    const selectedType = form.querySelector('input[name="tipo_material_radio"]:checked')?.value || currentTask?.type || 'biopsia';
+    const showNecropsyFields = selectedType === 'necropsia';
+
+    form.querySelectorAll('[data-necropsia-only="true"]').forEach((row) => {
+        row.classList.toggle('hidden', !showNecropsyFields);
+    });
+}
+
+function bindReportMaterialVisibility(form) {
+    if (!form) return;
+    form.querySelectorAll('input[name="tipo_material_radio"]').forEach((radio) => {
+        radio.addEventListener('change', () => syncNecropsyOnlyFields(form));
+    });
+    syncNecropsyOnlyFields(form);
+}
+
 function openReportEditor(task) {
     const permission = getPermissionContext(task);
     if ((task.status === 'liberar' || task.status === 'em_correcao') && !permission.canCorrectReport) {
@@ -684,7 +703,7 @@ function openReportEditor(task) {
                     <div class="form-col"><label>Material Remetido</label><div class="radio-cards-container"><label><input type="radio" name="tipo_material_radio" value="biopsia" ${isChecked('biopsia', 'tipo_material_radio')} ${disabledAttr}><div class="radio-card-label"><i class="fas fa-microscope"></i> Biópsia</div></label><label><input type="radio" name="tipo_material_radio" value="necropsia" ${isChecked('necropsia', 'tipo_material_radio')} ${disabledAttr}><div class="radio-card-label"><i class="fas fa-skull"></i> Necropsia</div></label></div></div>
                     <div class="form-col"><label>Descrição do Material</label><input type="text" name="tipo_material_desc" class="input-field-sm" value="${rep.tipo_material_desc || ''}" ${disabledAttr}></div>
                 </div>
-                <div class="form-row">
+                <div class="form-row" data-necropsia-only="true">
                     <div class="form-col"><label>Tipo de Morte</label><div class="radio-cards-container"><label><input type="radio" name="morte_tipo" value="espontanea" ${isChecked('espontanea', 'morte_tipo')} ${disabledAttr}><div class="radio-card-label">Espontânea</div></label><label><input type="radio" name="morte_tipo" value="eutanasia" ${isChecked('eutanasia', 'morte_tipo')} ${disabledAttr}><div class="radio-card-label">Eutanásia</div></label></div></div>
                     <div class="form-col"><label>Tempo Morte/Colheita</label><input type="text" name="tempo_morte" class="input-field-sm" value="${rep.tempo_morte || ''}" ${disabledAttr}></div>
                 </div>
@@ -709,6 +728,8 @@ function openReportEditor(task) {
         const showReworkButton = task.status === 'revisar_correcoes' && (permission.isPosResponsavel || permission.canCorrectReport);
         btnSendBackCorrection.classList.toggle('hidden', !showReworkButton);
     }
+
+    bindReportMaterialVisibility(document.getElementById('form-report-data'));
 
     reportModal.classList.remove('hidden');
 }

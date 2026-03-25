@@ -108,8 +108,8 @@ class LpvEntryForm extends HTMLElement {
                             <div class="form-group">        
                                 <label>Sexo</label>
                                 <select name="sexo" class="input-field">
-                                    <option value="M">M</option>
-                                    <option value="F">F</option>
+                                    <option value="M">Macho</option>
+                                    <option value="F">Fêmea</option>
                                 </select>
                             </div>
                             <div style="flex: 1;">
@@ -237,8 +237,8 @@ class LpvEntryForm extends HTMLElement {
                             <div class="form-group">        
                                 <label>Sexo</label>
                                 <select name="sexo" class="input-field">
-                                    <option value="M">M</option>
-                                    <option value="F">F</option>
+                                    <option value="M">Macho</option>
+                                    <option value="F">Fêmea</option>
                                 </select>
                             </div>
                             <div style="flex: 1;">
