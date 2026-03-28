@@ -19,7 +19,7 @@
     <style>
         .profile-header-card {
             display: flex; flex-direction: column; align-items: center; text-align: center;
-            padding: 2rem; margin-bottom: 1.5rem;
+            padding: 2rem; margin-bottom: 1.5rem; margin-top: 1.5rem; 
         }
         .profile-avatar-large {
             width: 100px; height: 100px; border-radius: 50%;
@@ -29,11 +29,34 @@
             box-shadow: 0 10px 25px rgba(2, 132, 199, 0.3);
         }
         .profile-data-group {
-            width: 100%; text-align: left; margin-bottom: 1rem;
+            width: 100%; text-align: left;
             padding: 1rem; border-bottom: 1px solid var(--border-glass);
         }
         .profile-label { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px; }
         .profile-value { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); }
+        .profile-crmv-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .profile-crmv-row .input-field {
+            flex: 1;
+            min-width: 170px;
+        }
+        .profile-crmv-feedback {
+            margin-top: 8px;
+            min-height: 18px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-tertiary);
+        }
+        .profile-crmv-feedback.success {
+            color: #10b981;
+        }
+        .profile-crmv-feedback.error {
+            color: var(--color-error);
+        }
 
         /* =============================================
            BLOCO DE ASSINATURA
@@ -66,7 +89,7 @@
         .signature-preview-box {
             width: 100%;
             min-height: 80px;
-            background: rgba(255,255,255,0.03);
+            background: transparent;
             border: 1px dashed var(--border-glass);
             border-radius: 10px;
             display: flex;
@@ -81,8 +104,7 @@
             max-height: 80px;
             max-width: 100%;
             object-fit: contain;
-            /* Inverte para ficar visível no dark mode (assinatura preta em fundo escuro) */
-            filter: invert(1) brightness(2);
+            filter: none;
         }
 
         .signature-preview-empty {
@@ -162,7 +184,7 @@
             border-radius: 12px;
             overflow: hidden;
             border: 2px solid var(--border-glass);
-            background: #ffffff; /* Canvas sempre branco para a assinatura */
+            background: #ffffff;
             cursor: crosshair;
             touch-action: none;
             transition: border-color 0.2s ease;
@@ -182,9 +204,21 @@
             touch-action: none;
         }
 
+        .canvas-guide-line {
+            position: absolute;
+            left: 20px;
+            right: 20px;
+            border-top: 1px solid #000000;
+            pointer-events: none;
+            transform: translateY(-0.5px);
+            z-index: 1;
+        }
+
+        /* Hint que some ao começar a desenhar */
         .canvas-hint {
             position: absolute;
-            top: 50%;
+            /* posicionado acima da linha guia — ~35% do topo */
+            top: 35%;
             left: 50%;
             transform: translate(-50%, -50%);
             color: #94a3b8;
@@ -196,6 +230,7 @@
             align-items: center;
             gap: 8px;
             transition: opacity 0.3s ease;
+            z-index: 2;
         }
 
         .canvas-hint i {
@@ -327,10 +362,7 @@
 
         /* =============================================
            MODAL DE ASSINATURA — MODO PAISAGEM FORÇADO
-           Controlado por JS, não por media query
            ============================================= */
-
-        /* Estado padrão: modal centralizado (desktop / landscape real) */
         #signature-modal {
             position: fixed;
             inset: 0;
@@ -352,18 +384,14 @@
             width: 100%;
             max-width: 600px;
             box-shadow: 0 25px 50px rgba(0,0,0,0.5);
-            /* transform e dimensões controlados por JS no mobile */
         }
 
-        /* Quando JS aplica o modo girado */
         .sig-modal-content.rotated {
             position: fixed;
-            /* left/top/width/height definidos por JS */
             border-radius: 16px;
             padding: 14px 18px;
             box-sizing: border-box;
             overflow-y: auto;
-            /* transform-origin no centro do elemento — JS define o translate correto */
             transform-origin: top left;
         }
 
@@ -387,7 +415,6 @@
             margin-top: 6px;
         }
 
-        /* Esconde parágrafo de instrução no modo compacto */
         .sig-modal-content.rotated > p {
             display: none;
         }
@@ -455,9 +482,19 @@
                     <div class="profile-label">Email Cadastrado</div>
                     <div id="profile-display-email" class="profile-value">...</div>
                 </div>
+                <div class="profile-data-group">
+                    <div class="profile-label">CRMV (usado no PDF)</div>
+                    <div class="profile-crmv-row">
+                        <input id="profile-crmv-input" class="input-field" type="text" placeholder="Ex: CRMV 12345">
+                        <button id="btn-save-crmv" class="btn btn-secondary" type="button">
+                            <i class="fas fa-save"></i> Salvar CRMV
+                        </button>
+                    </div>
+                    <div id="profile-crmv-feedback" class="profile-crmv-feedback"></div>
+                </div>
             </div>
 
-            <!-- SEÇÃO DE ASSINATURA (só aparece para professor/pós-graduando) -->
+            <!-- SEÇÃO DE ASSINATURA -->
             <div id="signature-section" class="signature-section fade-in hidden">
                 <div class="signature-section-title">
                     <i class="fas fa-signature"></i>
@@ -467,7 +504,6 @@
                     </span>
                 </div>
 
-                <!-- Preview da assinatura atual -->
                 <div class="signature-preview-box" id="sig-preview-box">
                     <div class="signature-preview-empty" id="sig-preview-empty">
                         <i class="fas fa-pen-nib"></i>
@@ -495,7 +531,7 @@
 
             <!-- LOGOUT -->
             <div style="margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem;">
-                <button id="logout-btn-profile" class="btn" style="background: rgba(239, 68, 68, 0.1); color: var(--color-error); width: 100%;">
+                <button id="logout-btn-profile" class="btn" style="background: rgba(239, 68, 68, 0.1); color: var(--color-error); width: 100%; margin-bottom: 1.5rem;">
                     <i class="fas fa-sign-out-alt"></i> Sair da Conta
                 </button>
             </div>
@@ -514,15 +550,14 @@
                 </button>
             </div>
 
-            <!-- Dica de uso -->
             <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.5;">
-                Desenhe sua assinatura abaixo. Use uma mesa digitalizadora para melhor precisão.
-                O canvas é branco — sua assinatura aparecerá em preto.
+                Assine <strong>sobre a linha</strong> abaixo. A posição em relação à linha será preservada no PDF do laudo.
             </p>
 
             <!-- Canvas -->
             <div class="canvas-wrapper" id="canvas-wrapper">
                 <canvas id="signature-canvas"></canvas>
+                <div id="canvas-guide-line" class="canvas-guide-line" aria-hidden="true"></div>
                 <div class="canvas-hint" id="canvas-hint">
                     <i class="fas fa-pen-alt"></i>
                     <span>Clique e arraste para assinar</span>
@@ -563,7 +598,14 @@
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
         import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-        // ─── ELEMENTOS ───────────────────────────────────────────
+        // ─── CONSTANTE DA LINHA GUIA ─────────────────────────────────────────────
+        // Fração da altura do canvas onde a linha guia é desenhada.
+        // 0.72 = 72% do topo → deixa ~72% acima para escrever, ~28% abaixo.
+        // Este valor é salvo junto com a assinatura para que o PDF use
+        // exatamente o mesmo ponto de referência ao posicionar a linha horizontal.
+        const GUIDE_LINE_RATIO = 0.72;
+
+        // ─── ELEMENTOS ───────────────────────────────────────────────────────────
         const sigSection      = document.getElementById('signature-section');
         const sigModal        = document.getElementById('signature-modal');
         const sigPreviewImg   = document.getElementById('sig-preview-img');
@@ -575,13 +617,70 @@
         const btnSaveSig      = document.getElementById('btn-save-sig');
         const btnDeleteSig    = document.getElementById('btn-delete-sig');
         const btnClearCanvas  = document.getElementById('btn-clear-canvas');
+        const canvasGuideLine = document.getElementById('canvas-guide-line');
         const canvasHint      = document.getElementById('canvas-hint');
         const saveStatus      = document.getElementById('sig-save-status');
         const strokeSlider    = document.getElementById('stroke-slider');
         const strokeDot       = document.getElementById('stroke-dot');
         const btnSigLabel     = document.getElementById('btn-sig-label');
+        const crmvInput       = document.getElementById('profile-crmv-input');
+        const btnSaveCrmv     = document.getElementById('btn-save-crmv');
+        const crmvFeedback    = document.getElementById('profile-crmv-feedback');
 
-        // ─── CANVAS SETUP ────────────────────────────────────────
+        function normalizeCrmv(value) {
+            return (value || '').toString().trim().toUpperCase();
+        }
+
+        function showCrmvFeedback(message, type = '') {
+            if (!crmvFeedback) return;
+            crmvFeedback.textContent = message;
+            crmvFeedback.className = `profile-crmv-feedback ${type}`.trim();
+        }
+
+        async function saveCrmv() {
+            const user = auth.currentUser;
+            if (!user) {
+                showCrmvFeedback('Usuário não autenticado.', 'error');
+                return;
+            }
+
+            const normalized = normalizeCrmv(crmvInput?.value);
+
+            btnSaveCrmv.disabled = true;
+            btnSaveCrmv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+
+            try {
+                await updateDoc(doc(db, 'users', user.uid), {
+                    crmv: normalized
+                });
+
+                if (crmvInput) {
+                    crmvInput.value = normalized;
+                }
+                showCrmvFeedback('CRMV salvo com sucesso.', 'success');
+            } catch (err) {
+                console.error('Erro ao salvar CRMV:', err);
+                showCrmvFeedback('Erro ao salvar CRMV. Tente novamente.', 'error');
+            } finally {
+                btnSaveCrmv.disabled = false;
+                btnSaveCrmv.innerHTML = '<i class="fas fa-save"></i> Salvar CRMV';
+            }
+        }
+
+        if (btnSaveCrmv) {
+            btnSaveCrmv.addEventListener('click', saveCrmv);
+        }
+
+        if (crmvInput) {
+            crmvInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    saveCrmv();
+                }
+            });
+        }
+
+        // ─── CANVAS SETUP ────────────────────────────────────────────────────────
         const canvas  = document.getElementById('signature-canvas');
         const ctx     = canvas.getContext('2d');
         let isDrawing = false;
@@ -589,18 +688,37 @@
         let lastX = 0, lastY = 0;
         let strokeWidth = 2;
 
+        function positionGuideLine() {
+            if (canvasGuideLine) {
+                canvasGuideLine.style.top = `${GUIDE_LINE_RATIO * 100}%`;
+            }
+        }
+
         function resizeCanvas() {
             const wrapper = document.getElementById('canvas-wrapper');
             const rect = wrapper.getBoundingClientRect();
-            // Salva o conteúdo atual antes de redimensionar
-            const imgData = canvas.width > 0 ? ctx.getImageData(0, 0, canvas.width, canvas.height) : null;
+
+            // Salva pixels atuais antes de redimensionar
+            const imgData = canvas.width > 0 && canvas.height > 0
+                ? ctx.getImageData(0, 0, canvas.width, canvas.height)
+                : null;
+
             canvas.width  = rect.width;
-            canvas.height = 200;
-            // Restaura
-            setupCtx();
+            canvas.height = rect.height > 0 ? rect.height : 200;
+
+            // Redesenha fundo branco + conteúdo anterior
+            drawBackground();
             if (imgData && imgData.width > 0) {
                 ctx.putImageData(imgData, 0, 0);
             }
+
+            positionGuideLine();
+            setupCtx();
+        }
+
+        /** Limpa o canvas mantendo fundo transparente */
+        function drawBackground() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
         function setupCtx() {
@@ -609,6 +727,7 @@
             ctx.lineCap     = 'round';
             ctx.lineJoin    = 'round';
             ctx.imageSmoothingEnabled = true;
+            ctx.setLineDash([]); // garante traço contínuo para a caneta
         }
 
         function getPos(e) {
@@ -632,10 +751,13 @@
             isDrawing = true;
             const pos = getPos(e);
             lastX = pos.x; lastY = pos.y;
+
+            setupCtx();
             ctx.beginPath();
             ctx.arc(pos.x, pos.y, strokeWidth / 2, 0, Math.PI * 2);
             ctx.fillStyle = '#0f172a';
             ctx.fill();
+
             document.getElementById('canvas-wrapper').classList.add('drawing');
         }
 
@@ -643,10 +765,13 @@
             if (!isDrawing) return;
             e.preventDefault();
             const pos = getPos(e);
+
+            setupCtx();
             ctx.beginPath();
             ctx.moveTo(lastX, lastY);
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
+
             lastX = pos.x; lastY = pos.y;
 
             if (!hasDrawn) {
@@ -655,7 +780,7 @@
             }
         }
 
-        function stopDraw(e) {
+        function stopDraw() {
             if (!isDrawing) return;
             isDrawing = false;
             document.getElementById('canvas-wrapper').classList.remove('drawing');
@@ -667,7 +792,7 @@
         canvas.addEventListener('mouseup',    stopDraw);
         canvas.addEventListener('mouseleave', stopDraw);
 
-        // Eventos touch (mesa digitalizadora / celular)
+        // Eventos touch
         canvas.addEventListener('touchstart', startDraw, { passive: false });
         canvas.addEventListener('touchmove',  draw,      { passive: false });
         canvas.addEventListener('touchend',   stopDraw);
@@ -681,36 +806,25 @@
             setupCtx();
         });
 
-        // Limpar canvas
+        // Limpar canvas — apaga tudo e redesenha linha guia
         btnClearCanvas.addEventListener('click', () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground();
+            setupCtx();
             hasDrawn = false;
             canvasHint.classList.remove('hidden');
         });
 
-        // ─── ROTAÇÃO FORÇADA (MOBILE PORTRAIT) ───────────────────
+        // ─── ROTAÇÃO FORÇADA (MOBILE PORTRAIT) ───────────────────────────────────
         const sigContent = document.querySelector('.sig-modal-content');
 
         function isMobilePortrait() {
             return window.innerWidth < 900 && window.innerWidth < window.innerHeight;
         }
 
-        /**
-         * Aplica transform: rotate(90deg) com translate calculado precisamente
-         * para que o elemento rotacionado ocupe toda a tela como se fosse landscape.
-         *
-         * Lógica:
-         *  - O conteúdo girado 90° terá width = altura da tela, height = largura da tela
-         *  - Ancoramos em top:0, left:0 e usamos translateX/Y para centralizar
-         */
         function applyLandscapeRotation() {
             const vw = window.innerWidth;
             const vh = window.innerHeight;
             const margin = 10;
-
-            // O modal rotacionado tem:
-            // largura visual = vh (ocupa toda a altura da tela)
-            // altura visual  = vw (ocupa toda a largura da tela)
             const modalW = vh - margin * 2;
             const modalH = vw - margin * 2;
 
@@ -721,11 +835,6 @@
             sigContent.style.maxHeight      = 'none';
             sigContent.style.position       = 'fixed';
             sigContent.style.transformOrigin = 'top left';
-
-            // rotate(90deg) em torno de top-left move o elemento para fora da tela.
-            // Para centralizar: translateX(0) translateY(-vw) após o rotate
-            // faz o canto superior-esquerdo do elemento rotacionado ir para
-            // (0, 0) da tela, e o margin desloca levemente do canto.
             sigContent.style.top       = '0';
             sigContent.style.left      = '0';
             sigContent.style.transform = `rotate(90deg) translateY(-${vw}px) translateX(${margin}px)`;
@@ -733,10 +842,10 @@
 
         function removeRotation() {
             sigContent.classList.remove('rotated');
-            sigContent.style.cssText = ''; // limpa todos os estilos inline
+            sigContent.style.cssText = '';
         }
 
-        // ─── MODAL ───────────────────────────────────────────────
+        // ─── MODAL ───────────────────────────────────────────────────────────────
         function openSignatureModal() {
             sigModal.classList.remove('hidden');
             document.body.classList.add('sig-modal-open');
@@ -747,7 +856,9 @@
 
             setTimeout(() => {
                 resizeCanvas();
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // Limpa e desenha fundo + linha guia
+                drawBackground();
+                setupCtx();
                 hasDrawn = false;
                 canvasHint.classList.remove('hidden');
                 saveStatus.classList.add('hidden');
@@ -764,12 +875,11 @@
         btnCloseModal.addEventListener('click',  closeSignatureModal);
         btnCancelSig.addEventListener('click',   closeSignatureModal);
 
-        // Fechar clicando fora
         sigModal.addEventListener('click', (e) => {
             if (e.target === sigModal) closeSignatureModal();
         });
 
-        // ─── SALVAR ASSINATURA ────────────────────────────────────
+        // ─── SALVAR ASSINATURA ────────────────────────────────────────────────────
         btnSaveSig.addEventListener('click', async () => {
             if (!hasDrawn) {
                 showStatus('Por favor, desenhe sua assinatura antes de salvar.', 'error');
@@ -780,21 +890,22 @@
             btnSaveSig.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
 
             try {
-                // Exporta como PNG com fundo transparente
+                // Exporta em PNG com fundo transparente.
                 const dataURL = canvas.toDataURL('image/png');
 
                 const user = auth.currentUser;
                 if (!user) throw new Error('Usuário não autenticado');
 
+                // Salva também o GUIDE_LINE_RATIO para que o docx-generator
+                // saiba exatamente onde está a linha de referência na imagem.
                 await updateDoc(doc(db, 'users', user.uid), {
                     signatureBase64: dataURL,
+                    signatureGuideRatio: GUIDE_LINE_RATIO,
                     signatureUpdatedAt: new Date().toISOString()
                 });
 
-                // Atualiza preview
                 updateSignaturePreview(dataURL);
                 showStatus('Assinatura salva com sucesso!', 'success');
-
                 setTimeout(() => closeSignatureModal(), 1200);
 
             } catch (err) {
@@ -806,13 +917,14 @@
             }
         });
 
-        // ─── DELETAR ASSINATURA ───────────────────────────────────
+        // ─── DELETAR ASSINATURA ───────────────────────────────────────────────────
         btnDeleteSig.addEventListener('click', async () => {
             if (!confirm('Remover sua assinatura cadastrada?')) return;
             try {
                 const user = auth.currentUser;
                 await updateDoc(doc(db, 'users', user.uid), {
                     signatureBase64: null,
+                    signatureGuideRatio: null,
                     signatureUpdatedAt: new Date().toISOString()
                 });
                 updateSignaturePreview(null);
@@ -821,10 +933,65 @@
             }
         });
 
-        // ─── HELPERS DE UI ────────────────────────────────────────
-        function updateSignaturePreview(base64) {
+        // ─── HELPERS DE UI ────────────────────────────────────────────────────────
+        async function buildSignaturePreviewImage(base64) {
+            return new Promise((resolve) => {
+                const img = new Image();
+
+                img.onload = () => {
+                    const previewCanvas = document.createElement('canvas');
+                    previewCanvas.width = img.naturalWidth || img.width;
+                    previewCanvas.height = img.naturalHeight || img.height;
+
+                    const previewCtx = previewCanvas.getContext('2d', { willReadFrequently: true });
+                    if (!previewCtx) {
+                        resolve(base64);
+                        return;
+                    }
+
+                    previewCtx.drawImage(img, 0, 0);
+                    const imageData = previewCtx.getImageData(0, 0, previewCanvas.width, previewCanvas.height);
+                    const pixels = imageData.data;
+
+                    for (let i = 0; i < pixels.length; i += 4) {
+                        const r = pixels[i];
+                        const g = pixels[i + 1];
+                        const b = pixels[i + 2];
+                        const a = pixels[i + 3];
+
+                        if (a === 0) continue;
+
+                        // Remove fundo quase branco (compatível com assinaturas antigas).
+                        const isWhiteBackground = r > 245 && g > 245 && b > 245;
+                        if (isWhiteBackground) {
+                            pixels[i + 3] = 0;
+                            continue;
+                        }
+
+                        // Força o traço para branco preservando alpha.
+                        pixels[i] = 255;
+                        pixels[i + 1] = 255;
+                        pixels[i + 2] = 255;
+                    }
+
+                    previewCtx.putImageData(imageData, 0, 0);
+                    resolve(previewCanvas.toDataURL('image/png'));
+                };
+
+                img.onerror = () => resolve(base64);
+                img.src = base64;
+            });
+        }
+
+        let previewRenderToken = 0;
+
+        async function updateSignaturePreview(base64) {
             if (base64) {
-                sigPreviewImg.src   = base64;
+                const renderToken = ++previewRenderToken;
+                const processedPreview = await buildSignaturePreviewImage(base64);
+                if (renderToken !== previewRenderToken) return;
+
+                sigPreviewImg.src   = processedPreview;
                 sigPreviewImg.style.display = 'block';
                 sigPreviewEmpty.style.display = 'none';
                 sigBadge.innerHTML  = '<i class="fas fa-check-circle"></i> Cadastrada';
@@ -832,6 +999,7 @@
                 btnSigLabel.textContent = 'Atualizar Assinatura';
                 btnDeleteSig.classList.remove('hidden');
             } else {
+                previewRenderToken++;
                 sigPreviewImg.src   = '';
                 sigPreviewImg.style.display = 'none';
                 sigPreviewEmpty.style.display = 'flex';
@@ -852,7 +1020,7 @@
             saveStatus.className = `save-status ${type}`;
         }
 
-        // ─── AUTH & DADOS ─────────────────────────────────────────
+        // ─── AUTH & DADOS ─────────────────────────────────────────────────────────
         onAuthStateChanged(auth, async (user) => {
             if (!user) return;
 
@@ -865,7 +1033,11 @@
                     ? data.role.map(r => r.toLowerCase())
                     : [(data.role || '').toLowerCase()];
 
-                // Exibe seção de assinatura apenas para quem pode assinar laudos
+                if (crmvInput) {
+                    crmvInput.value = normalizeCrmv(data.crmv || '');
+                }
+                showCrmvFeedback('');
+
                 const canSign = roles.some(r =>
                     r.includes('professor') ||
                     r.includes('graduando') ||
@@ -874,7 +1046,6 @@
 
                 if (canSign) {
                     sigSection.classList.remove('hidden');
-                    // Carrega assinatura existente
                     if (data.signatureBase64) {
                         updateSignaturePreview(data.signatureBase64);
                     }
@@ -890,10 +1061,13 @@
             await signOut(auth);
         });
 
-        // Redimensiona canvas se a janela mudar (ex: desktop resize)
+        // Redimensiona canvas se a janela mudar
         window.addEventListener('resize', () => {
             if (!sigModal.classList.contains('hidden')) resizeCanvas();
         });
+
+        // Garante o posicionamento da guia desde a primeira abertura.
+        positionGuideLine();
     </script>
 </body>
 </html>

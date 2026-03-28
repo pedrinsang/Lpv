@@ -53,13 +53,7 @@ async function getImageAsBase64(url) {
 }
 
 // ─── 3. BUSCA ASSINATURA DO USUÁRIO NO FIRESTORE ─────────────────────────────
-/**
- * Retorna o Base64 da assinatura do usuário que está liberando o laudo.
- * Tenta primeiro pelo uid do releasedBy (quem liberou), depois pelo usuário atual.
- * Retorna null se nenhuma assinatura for encontrada — o PDF cai no fallback textual.
- */
 async function fetchSignature(releasedByUid) {
-    // Tenta uid de quem liberou o laudo
     const uidToTry = releasedByUid || (auth.currentUser ? auth.currentUser.uid : null);
     if (!uidToTry) return null;
 
@@ -72,6 +66,7 @@ async function fetchSignature(releasedByUid) {
                 name: data.name || null,
                 role: data.role || null,
                 crmv: data.crmv || null,
+                // guideRatio: posição da linha guia no canvas (0–1, fração da altura)
                 signatureGuideRatio: data.signatureGuideRatio ?? null
             };
         }
@@ -140,12 +135,25 @@ function normalizeSignerData(profile, fallbackName, fallbackCrmv = '') {
         role: profile?.role || null,
         base64: profile?.signatureBase64 || null,
         crmv: formatCrmv(profile?.crmv, fallbackCrmv),
+        // Posição (0–1) da linha guia no canvas original — salva em perfil.html
         signatureGuideRatio: profile?.signatureGuideRatio ?? null,
+        // Campos calculados após análise de pixels (enriquecimento abaixo)
         signatureRatio: null,
         signatureInkBottomRatio: null
     };
 }
 
+// ─── 4. ANÁLISE DE MÉTRICAS DA IMAGEM ────────────────────────────────────────
+/**
+ * Retorna:
+ *  - ratio             : altura / largura da imagem (proporção)
+ *  - inkBottomRatio    : posição relativa (0–1) da última linha com traço de tinta
+ *
+ * O inkBottomRatio é a chave para o alinhamento preciso:
+ * ele indica onde, na imagem exportada, termina o traço da assinatura —
+ * portanto onde a linha guia do PDF deve ser posicionada para coincidir
+ * com a linha guia que estava no canvas quando a pessoa assinou.
+ */
 async function getBase64ImageMetrics(base64) {
     if (!base64) return null;
 
@@ -156,21 +164,23 @@ async function getBase64ImageMetrics(base64) {
 
             const ratio = img.height / img.width;
 
-            // Detecta onde termina o traço da assinatura para alinhar a linha guia
-            // de forma consistente entre assinaturas feitas em diferentes dispositivos.
             let inkBottomRatio = null;
             try {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
+                const offscreen = document.createElement('canvas');
+                offscreen.width  = img.width;
+                offscreen.height = img.height;
+                const ctx = offscreen.getContext('2d');
                 if (ctx) {
                     ctx.drawImage(img, 0, 0);
-                    const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const { data, width, height } = ctx.getImageData(0, 0, offscreen.width, offscreen.height);
+
+                    // Linha guia tracejada cinza: #94a3b8 ≈ RGB(148, 163, 184)
+                    // Excluímos esses pixels para detectar apenas o traço da caneta (escuro).
+                    const WHITE_MIN   = 240; // pixels brancos do fundo
+                    const ALPHA_MIN   = 20;  // ignora pixels quase transparentes
+                    const INK_MAX_L   = 180; // luminância máxima para ser considerado "tinta"
 
                     let bottomInkRow = -1;
-                    const whiteThreshold = 245;
-                    const alphaThreshold = 20;
 
                     for (let y = height - 1; y >= 0; y--) {
                         let hasInk = false;
@@ -180,11 +190,20 @@ async function getBase64ImageMetrics(base64) {
                             const g = data[idx + 1];
                             const b = data[idx + 2];
                             const a = data[idx + 3];
-                            const looksLikeInk = a > alphaThreshold && (r < whiteThreshold || g < whiteThreshold || b < whiteThreshold);
-                            if (looksLikeInk) {
-                                hasInk = true;
-                                break;
-                            }
+
+                            if (a < ALPHA_MIN) continue; // transparente
+
+                            // Exclui pixels brancos (fundo)
+                            if (r >= WHITE_MIN && g >= WHITE_MIN && b >= WHITE_MIN) continue;
+
+                            // Luminância aproximada
+                            const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                            // Exclui a linha guia cinza (luminância alta, não é tinta escura)
+                            if (lum > INK_MAX_L) continue;
+
+                            hasInk = true;
+                            break;
                         }
                         if (hasInk) {
                             bottomInkRow = y;
@@ -212,11 +231,12 @@ async function enrichSignerWithMetrics(signer) {
     const metrics = await getBase64ImageMetrics(signer.base64);
     return {
         ...signer,
-        signatureRatio: metrics?.ratio || null,
+        signatureRatio:         metrics?.ratio         || null,
         signatureInkBottomRatio: metrics?.inkBottomRatio || null
     };
 }
 
+// ─── 5. RESOLUÇÃO DE QUEM ASSINA O LAUDO ─────────────────────────────────────
 async function resolveSignatureForPdf(task) {
     const nomeDocente = task.docente || 'Dra. Mariana Martins Flores';
     const nomePosGrad = task.posGraduando || null;
@@ -231,9 +251,9 @@ async function resolveSignatureForPdf(task) {
     const posProfile = posProfileRaw && hasPostGradRole(posProfileRaw.role) ? posProfileRaw : null;
 
     const docenteData = normalizeSignerData(docenteProfile, nomeDocente, '14.636');
-    const posData = normalizeSignerData(posProfile, nomePosGrad);
+    const posData     = normalizeSignerData(posProfile, nomePosGrad);
 
-    const canSelfSign = hasPostGradRole(posData.role) && !!posProfile?.canSelfSignReports;
+    const canSelfSign         = hasPostGradRole(posData.role) && !!posProfile?.canSelfSignReports;
     const hasPostGradSignature = !!posData.base64;
 
     if (canSelfSign && hasPostGradSignature) {
@@ -245,8 +265,7 @@ async function resolveSignatureForPdf(task) {
         };
     }
 
-    // Fallback de assinatura da docente responsável:
-    // tenta perfil da docente e, se não houver imagem, tenta quem liberou.
+    // Fallback: assinatura da docente responsável
     let signatureData = docenteData;
     if (!signatureData.base64) {
         const releasedSig = await fetchSignature(task.releasedBy || null);
@@ -254,65 +273,107 @@ async function resolveSignatureForPdf(task) {
             signatureData = {
                 ...signatureData,
                 base64: releasedSig.base64,
-                name: releasedSig.name || signatureData.name,
-                crmv: formatCrmv(releasedSig.crmv, signatureData.crmv),
+                name:   releasedSig.name || signatureData.name,
+                crmv:   formatCrmv(releasedSig.crmv, signatureData.crmv),
                 signatureGuideRatio: releasedSig.signatureGuideRatio ?? signatureData.signatureGuideRatio
             };
         }
     }
 
-    const enrichedTeacherSignature = await enrichSignerWithMetrics(signatureData);
+    const enrichedTeacher = await enrichSignerWithMetrics(signatureData);
 
     return {
         mode: 'teacher-default-sign',
-        primary: enrichedTeacherSignature,
+        primary: enrichedTeacher,
         teacher: docenteData
     };
 }
 
-// ─── 4. MONTA BLOCO DE ASSINATURA ────────────────────────────────────────────
+// ─── 6. BLOCO DE ASSINATURA NO PDF ───────────────────────────────────────────
+
 /**
- * Retorna o bloco pdfMake da área de assinatura.
- * Se houver imagem, exibe a imagem + linha + nome.
- * Se não houver, exibe apenas linha + nome em texto (fallback).
+ * Calcula o offset vertical (em pontos PDF) da linha horizontal do laudo
+ * em relação à borda inferior da imagem renderizada.
+ *
+ * Lógica:
+ *   A imagem é renderizada com largura `signatureWidth` no PDF.
+ *   A altura renderizada = signatureWidth * ratio.
+ *
+ *   A linha guia estava em `guideRatio` da altura do canvas (ex: 0.72 = 72%).
+ *   Isso significa que ela estava a `(1 - guideRatio)` da borda inferior (28%).
+ *
+ *   No PDF, posicionamos a linha logo abaixo da imagem usando margin negativo.
+ *   Queremos que a linha fique exatamente onde a linha guia do canvas estava.
+ *
+ *   Para isso, deslocamos a linha `(1 - guideRatio) * renderedHeight` px
+ *   para cima a partir da borda inferior da imagem → margem negativa.
+ *
+ *   Exemplo com guideRatio=0.72, renderedHeight=110px:
+ *     distância da base = (1 - 0.72) * 110 = 30.8px → margem negativa de ~31pt
  */
-function buildSeparatorLine(marginTop = 0) {
+function computeLineMarginTop(signer, signatureWidth) {
+    const guideRatio    = signer?.signatureGuideRatio ?? 0.72;   // padrão conservador
+    const ratio         = signer?.signatureRatio       ?? 0.333;  // H/W padrão
+    const renderedHeight = signatureWidth * ratio;
+
+    // Distância da linha guia até a borda inferior da imagem
+    const distFromBottom = (1 - guideRatio) * renderedHeight;
+
+    // Margem negativa para subir a linha até esse ponto
+    // +2 ajuste visual fino para centralizar sobre o traço
+    return -(distFromBottom - 2);
+}
+
+function buildSeparatorLine(marginTop = 0, visible = true) {
     const lineWidth = 220;
+    if (!visible) {
+        // Mantém a mesma geometria vertical sem desenhar a linha no PDF.
+        return {
+            text: '',
+            alignment: 'center',
+            margin: [0, marginTop, 0, 4]
+        };
+    }
+
     return {
-        canvas: [{ type: 'line', x1: 0, y1: 0, x2: lineWidth, y2: 0, lineWidth: 0.5, lineColor: '#334155' }],
+        canvas: [{ type: 'line', x1: 0, y1: 0, x2: lineWidth, y2: 0, lineWidth: 1, lineColor: '#000000' }],
         alignment: 'center',
         margin: [0, marginTop, 0, 4]
     };
 }
 
+/**
+ * Constrói o card de assinatura para o PDF.
+ *
+ * Se há imagem:
+ *   1. Renderiza a imagem com a largura padrão.
+ *   2. Calcula margem negativa para que a linha do PDF coincida com
+ *      a linha guia original do canvas.
+ *   3. Renderiza a linha com essa margem.
+ *   4. Exibe nome e cargo abaixo da linha.
+ *
+ * Se não há imagem: fallback com espaço em branco + linha + nome.
+ */
 function buildSignatureCard(signer, subtitle) {
     const signatureWidth = 220;
-    const signatureLiftPx = 40;
-    const canvasGuideRatio = 0.72; // Mesma altura da linha guia do canvas de assinatura.
 
-    const derivedRatio = signer?.signatureRatio || (200 / 600);
-    const renderedHeight = Math.max(1, signatureWidth * derivedRatio);
-    const guideRatio = Math.max(0.55, Math.min(0.9, signer?.signatureGuideRatio ?? canvasGuideRatio));
-    const guideCompensationPx = Math.max(18, Math.round(renderedHeight * 0.2));
-    // Alinha a linha do PDF com a referência do canvas e aplica compensação
-    // para evitar a linha baixa demais em diferentes proporções de assinatura.
-    const lineOverlayOffset = -Math.round((renderedHeight * (1 - guideRatio)) + guideCompensationPx);
-
-    const separatorLine = buildSeparatorLine(signer?.base64 ? lineOverlayOffset + signatureLiftPx : 0);
     const signerName = signer?.name || 'Responsável';
     const signerCrmv = signer?.crmv ? ` / ${signer.crmv}` : '';
-    const caption = `${signerName}\n${subtitle}${signerCrmv}`;
+    const caption    = `${signerName}\n${subtitle}${signerCrmv}`;
 
     if (signer?.base64) {
+        const lineMarginTop = computeLineMarginTop(signer, signatureWidth);
+
         return {
             stack: [
                 {
                     image: signer.base64,
                     width: signatureWidth,
                     alignment: 'center',
-                    margin: [0, -signatureLiftPx, 0, 2]
+                    margin: [0, 0, 0, 0]
                 },
-                separatorLine,
+                // Renderiza a linha no mesmo ponto da guia do canvas.
+                buildSeparatorLine(lineMarginTop, true),
                 {
                     text: caption,
                     alignment: 'center',
@@ -328,10 +389,11 @@ function buildSignatureCard(signer, subtitle) {
         };
     }
 
+    // Fallback sem imagem
     return {
         stack: [
             { text: '\n\n' },
-            separatorLine,
+            buildSeparatorLine(0),
             {
                 text: caption,
                 alignment: 'center',
@@ -348,8 +410,8 @@ function buildSignatureCard(signer, subtitle) {
 function buildTeacherTextOnlyCard(teacher) {
     const teacherName = teacher?.name || 'Docente responsável';
     const teacherCrmv = teacher?.crmv || '';
-    const roleLine = teacherCrmv ? `Docente Responsável / ${teacherCrmv}` : 'Docente Responsável';
-    const text = `${teacherName}\n${roleLine}`;
+    const roleLine    = teacherCrmv ? `Docente Responsável / ${teacherCrmv}` : 'Docente Responsável';
+    const text        = `${teacherName}\n${roleLine}`;
 
     return {
         text,
@@ -382,35 +444,34 @@ function buildSignatureBlock(signatureContext) {
     return buildSignatureCard(primary, 'Patologista');
 }
 
-// ─── 5. FUNÇÃO PRINCIPAL ─────────────────────────────────────────────────────
+// ─── 7. FUNÇÃO PRINCIPAL ─────────────────────────────────────────────────────
 export async function generateLaudoPDF(task, reportData) {
     await loadPdfMake();
 
     const signatureContext = await resolveSignatureForPdf(task);
 
-    // Carrega imagens e assinatura em paralelo
     const [base64UFSM, base64LPV] = await Promise.all([
         getImageAsBase64('../assets/images/Logo-UFSM.png'),
         getImageAsBase64('../assets/images/LPV.png')
     ]);
 
     // ── PREPARAÇÃO DOS DADOS ──────────────────────────────────────
-    const protocolo      = task.protocolo || task.accessCode || '---';
-    const dataReceb      = task.dataEntrada
+    const protocolo   = task.protocolo || task.accessCode || '---';
+    const dataReceb   = task.dataEntrada
         ? new Date(task.dataEntrada + 'T12:00:00').toLocaleDateString('pt-BR')
         : new Date(task.createdAt).toLocaleDateString('pt-BR');
 
-    const dataEmissao    = task.releasedAt
+    const dataEmissao = task.releasedAt
         ? new Date(task.releasedAt).toLocaleDateString('pt-BR')
         : new Date().toLocaleDateString('pt-BR');
 
-    const contatoReq     = task.remetenteContato      || reportData.telefone_requisitante || '-';
-    const clinicaReq     = task.remetenteClinicaEmpresa|| reportData.clinica_requisitante  || '-';
-    const enderecoReq    = task.remetenteEndereco      || reportData.endereco_requisitante  || '-';
-    const contatoProp    = task.proprietarioContato    || reportData.telefone_proprietario  || '-';
-    const enderecoProp   = task.proprietarioEndereco   || reportData.endereco_proprietario  || '-';
-    const sexoAnimal     = formatAnimalSexLabel(task.sexo || reportData.sexo);
-    const racaAnimal     = formatAnimalBreedLabel(task.raca || reportData.raca);
+    const contatoReq  = task.remetenteContato       || reportData.telefone_requisitante || '-';
+    const clinicaReq  = task.remetenteClinicaEmpresa || reportData.clinica_requisitante  || '-';
+    const enderecoReq = task.remetenteEndereco       || reportData.endereco_requisitante  || '-';
+    const contatoProp = task.proprietarioContato     || reportData.telefone_proprietario  || '-';
+    const enderecoProp= task.proprietarioEndereco    || reportData.endereco_proprietario  || '-';
+    const sexoAnimal  = formatAnimalSexLabel(task.sexo || reportData.sexo);
+    const racaAnimal  = formatAnimalBreedLabel(task.raca || reportData.raca);
 
     const chk    = (val) => val ? '[ X ]' : '[   ]';
     const isBio  = reportData.tipo_material_radio
@@ -432,10 +493,8 @@ export async function generateLaudoPDF(task, reportData) {
         { text: [{ text: 'Conservação: ', bold: true }, `Formol ${chk(!reportData.conservacao || reportData.conservacao === 'formol')}   Refrig. ${chk(reportData.conservacao === 'refrigerado')}   Cong. ${chk(reportData.conservacao === 'congelado')}`] }
     ];
 
-    // Bloco de assinatura condicional (docente default ou autoassinatura do pós)
     const assinaturaBlock = buildSignatureBlock(signatureContext);
 
-    // Seções de texto do laudo
     const createSection = (title, content, boldBody = false) => [
         { text: title + ':', style: 'sectionHeader', margin: [0, 10, 0, 2] },
         { text: content || '-', style: boldBody ? 'bodyBold' : 'body', margin: [0, 0, 0, 5] }
@@ -465,7 +524,7 @@ export async function generateLaudoPDF(task, reportData) {
         }
 
         const beforeComma = rawContent.slice(0, firstCommaIndex).trimEnd();
-        const afterComma = rawContent.slice(firstCommaIndex);
+        const afterComma  = rawContent.slice(firstCommaIndex);
 
         return [
             { text: 'DIAGNÓSTICO(S):', style: 'sectionHeader', margin: [0, 10, 0, 2] },
@@ -529,14 +588,12 @@ export async function generateLaudoPDF(task, reportData) {
                         [
                             { text: 'Raça:', style: 'label' },
                             { text: racaAnimal, style: 'value', colSpan: 3 },
-                            {},
-                            {}
+                            {}, {}
                         ],
                         [
                             { text: 'Sexo/Idade:', style: 'label' },
                             { text: `${sexoAnimal} / ${task.idade || '-'}`, style: 'value', colSpan: 3 },
-                            {},
-                            {}
+                            {}, {}
                         ],
 
                         [{ text: 'REQUISITANTE', style: 'tableHeaderGray', colSpan: 4, border: [false,false,false,false] }, {}, {}, {}],
@@ -568,7 +625,6 @@ export async function generateLaudoPDF(task, reportData) {
                             { text: 'Endereço:', style: 'label' },
                             { text: enderecoProp, style: 'value', colSpan: 3 }, {}, {}
                         ]
-                        
                     ]
                 },
                 layout: {
@@ -592,12 +648,12 @@ export async function generateLaudoPDF(task, reportData) {
             { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 535, y2: 0, lineWidth: 1 }] },
 
             // CONTEÚDO DO LAUDO
-            ...createSection('HISTÓRICO CLÍNICO',                 reportData.historico),
-            ...createSection('DIAGNÓSTICO PRESUNTIVO/SUSPEITA',   reportData.suspeita),
-            ...createSection('DESCRIÇÃO MACROSCÓPICA',            reportData.macroscopia),
-            ...createSection('DESCRIÇÃO MICROSCÓPICA',            reportData.microscopia),
+            ...createSection('HISTÓRICO CLÍNICO',               reportData.historico),
+            ...createSection('DIAGNÓSTICO PRESUNTIVO/SUSPEITA', reportData.suspeita),
+            ...createSection('DESCRIÇÃO MACROSCÓPICA',          reportData.macroscopia),
+            ...createSection('DESCRIÇÃO MICROSCÓPICA',          reportData.microscopia),
             ...createDiagnosisSection(reportData.diagnostico),
-            ...createSection('COMENTÁRIOS',                       reportData.comentarios),
+            ...createSection('COMENTÁRIOS',                     reportData.comentarios),
 
             // DATA + ASSINATURA
             { text: [{ text: 'Data de emissão de laudo: ', bold: true }, dataEmissao], margin: [0, 20, 0, 10], fontSize: 11 },
