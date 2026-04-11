@@ -1,5 +1,5 @@
 import { db, auth } from '../core.js';
-import { doc, getDoc, runTransaction } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+import { doc, getDoc, runTransaction, deleteField } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 import { getStorageProviderConfig } from './storage-provider-config.js';
 
 function ensureAuthenticatedUser() {
@@ -153,6 +153,7 @@ async function uploadToCloudinary({ blob, taskId, fileName }) {
     formData.append('folder', folder);
     formData.append('public_id', publicId);
     formData.append('resource_type', 'image');
+    formData.append('return_delete_token', 'true');
 
     const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
         method: 'POST',
@@ -186,23 +187,37 @@ async function uploadToCloudinary({ blob, taskId, fileName }) {
 
 async function deleteFromCloudinaryByToken(deleteToken) {
     const token = (deleteToken || '').toString().trim();
-    if (!token) return;
+    if (!token) {
+        throw new Error('Foto sem token de exclusao no Cloudinary.');
+    }
 
     const config = getStorageProviderConfig();
     const cloudName = (config.cloudinaryCloudName || '').trim();
-    if (!cloudName) return;
+    if (!cloudName) {
+        throw new Error('Cloudinary nao configurado para exclusao.');
+    }
 
     const formData = new FormData();
     formData.append('token', token);
 
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/delete_by_token`, {
+        method: 'POST',
+        body: formData
+    });
+
+    let data = null;
     try {
-        await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/delete_by_token`, {
-            method: 'POST',
-            body: formData
-        });
+        data = await response.json();
     } catch (_) {
-        // Melhor esforço: se falhar, seguimos removendo metadados locais.
+        data = null;
     }
+
+    if (!response.ok) {
+        const message = data?.error?.message || `Falha ao excluir foto no Cloudinary (${response.status})`;
+        throw new Error(message);
+    }
+
+    return { ok: true };
 }
 
 export async function uploadInternalPhoto(taskId, file, options = {}) {
@@ -309,7 +324,29 @@ export async function removeInternalPhoto(taskId, photoId) {
     const roles = normalizeRoleList(userContext.role || []);
 
     const taskRef = doc(db, 'tasks', taskId);
-    let removedPhoto = null;
+    const taskSnap = await getDoc(taskRef);
+    if (!taskSnap.exists()) {
+        throw new Error('Tarefa nao encontrada.');
+    }
+
+    const taskData = taskSnap.data() || {};
+    if (!hasReportAccess(userContext, taskData)) {
+        throw new Error('Sem permissao para remover fotos internas nesta tarefa.');
+    }
+
+    const photos = Array.isArray(taskData.internalPhotos) ? taskData.internalPhotos : [];
+    const target = photos.find((item) => item.photoId === photoId);
+    if (!target) {
+        throw new Error('Foto nao encontrada.');
+    }
+
+    const canDeleteAsRole = roles.includes('admin') || roles.includes('professor');
+    const canDeleteAsOwner = (target.uploadedBy || '') === userContext.uid;
+    if (!canDeleteAsRole && !canDeleteAsOwner) {
+        throw new Error('Sem permissao para remover esta foto.');
+    }
+
+    await deleteFromCloudinaryByToken(target.deleteToken);
 
     await runTransaction(db, async (tx) => {
         const snap = await tx.get(taskRef);
@@ -317,36 +354,30 @@ export async function removeInternalPhoto(taskId, photoId) {
             throw new Error('Tarefa nao encontrada.');
         }
 
-        const taskData = snap.data() || {};
-        if (!hasReportAccess(userContext, taskData)) {
-            throw new Error('Sem permissao para remover fotos internas nesta tarefa.');
+        const freshData = snap.data() || {};
+        const freshPhotos = Array.isArray(freshData.internalPhotos) ? freshData.internalPhotos : [];
+        const stillExists = freshPhotos.some((item) => item.photoId === photoId);
+        if (!stillExists) {
+            return;
         }
 
-        const photos = Array.isArray(taskData.internalPhotos) ? taskData.internalPhotos : [];
-        const target = photos.find((item) => item.photoId === photoId);
-        if (!target) {
-            throw new Error('Foto nao encontrada.');
-        }
+        const filtered = freshPhotos.filter((item) => item.photoId !== photoId);
 
-        const canDeleteAsRole = roles.includes('admin') || roles.includes('professor');
-        const canDeleteAsOwner = (target.uploadedBy || '') === userContext.uid;
-        if (!canDeleteAsRole && !canDeleteAsOwner) {
-            throw new Error('Sem permissao para remover esta foto.');
-        }
-
-        removedPhoto = target;
-        const filtered = photos.filter((item) => item.photoId !== photoId);
-
-        tx.update(taskRef, {
-            internalPhotos: filtered,
+        const updateData = {
             lastEditor: userContext.uid,
             lastEditedAt: nowIso()
-        });
+        };
+
+        if (filtered.length > 0) {
+            updateData.internalPhotos = filtered;
+        } else {
+            updateData.internalPhotos = deleteField();
+        }
+
+        tx.update(taskRef, updateData);
     });
 
-    if (removedPhoto?.deleteToken) {
-        await deleteFromCloudinaryByToken(removedPhoto.deleteToken);
-    }
-
-    return { ok: true };
+    return {
+        ok: true
+    };
 }

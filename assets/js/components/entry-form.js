@@ -20,16 +20,16 @@ class LpvEntryForm extends HTMLElement {
                         <div class="form-grid">
                             <div class="form-group">
                                 <label>Nº Protocolo Interno</label>
-                                <input type="text" name="protocolo" placeholder="Ex: V-123/26" class="input-field" required>
+                                <input type="text" name="protocolo" placeholder="Ex: V-123/26" class="input-field">
                             </div>
                             <div class="form-group">
                                 <label>Data Entrada</label>
-                                <input type="date" name="dataEntrada" id="date-v" class="input-field" required>
+                                <input type="date" name="dataEntrada" id="date-v" class="input-field">
                             </div>
 
                             <div class="form-group span-2">
                                 <label>Remetente</label>
-                                <input type="text" name="remetente" class="input-field" required>
+                                <input type="text" name="remetente" class="input-field">
                             </div>
                             <div class="form-group">
                                 <label>CRMV do Remetente</label>
@@ -62,13 +62,13 @@ class LpvEntryForm extends HTMLElement {
 
                             <div class="form-group">
                                 <label>Docente Responsável</label>
-                                <select name="docente" id="select-docente" class="input-field" required>
+                                <select name="docente" id="select-docente" class="input-field">
                                     <option value="" disabled selected>Carregando...</option>
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label>Pós-Graduando</label>
-                                <select name="posGraduando" id="select-pos" class="input-field" required>
+                                <select name="posGraduando" id="select-pos" class="input-field">
                                     <option value="" disabled selected>Carregando...</option>
                                 </select>
                             </div>
@@ -78,7 +78,7 @@ class LpvEntryForm extends HTMLElement {
 
                             <div class="form-group span-2">
                                 <label>Nome do Animal</label>
-                                <input type="text" name="animalNome" class="input-field" required>
+                                <input type="text" name="animalNome" class="input-field">
                             </div>
                             <div class="form-group">
                                 <label>RG do Animal</label>
@@ -86,7 +86,7 @@ class LpvEntryForm extends HTMLElement {
                             </div>
                             <div class="form-group">
                                 <label>Proprietário</label>
-                                <input type="text" name="proprietario" class="input-field" required>
+                                <input type="text" name="proprietario" class="input-field">
                             </div>
                             <div class="form-group">
                                 <label>Contato do Proprietário</label>
@@ -99,7 +99,7 @@ class LpvEntryForm extends HTMLElement {
 
                             <div class="form-group">
                                 <label>Espécie</label>
-                                <input type="text" name="especie" placeholder="Canina" class="input-field" required>
+                                <input type="text" name="especie" placeholder="Canina" class="input-field">
                             </div>
                             <div class="form-group">
                                 <label>Raça</label>
@@ -155,16 +155,16 @@ class LpvEntryForm extends HTMLElement {
                         <div class="form-grid">
                             <div class="form-group">
                                 <label>Nº Protocolo Interno</label>
-                                <input type="text" name="protocolo" placeholder="Ex: Vn-123/26" class="input-field" required>
+                                <input type="text" name="protocolo" placeholder="Ex: Vn-123/26" class="input-field">
                             </div>
                             <div class="form-group">
                                 <label>Data Entrada</label>
-                                <input type="date" name="dataEntrada" id="date-vn" class="input-field" required>
+                                <input type="date" name="dataEntrada" id="date-vn" class="input-field">
                             </div>
 
                             <div class="form-group span-2">
                                 <label>Remetente</label>
-                                <input type="text" name="remetente" class="input-field" required>
+                                <input type="text" name="remetente" class="input-field">
                             </div>
                             <div class="form-group">
                                 <label>CRMV do Remetente</label>
@@ -197,13 +197,13 @@ class LpvEntryForm extends HTMLElement {
 
                             <div class="form-group">
                                 <label>Docente Responsável</label>
-                                <select name="docente" id="select-docente-vn" class="input-field" required>
+                                <select name="docente" id="select-docente-vn" class="input-field">
                                     <option value="" disabled selected>Carregando...</option>
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label>Pós-Graduando</label>
-                                <select name="posGraduando" id="select-pos-vn" class="input-field" required>
+                                <select name="posGraduando" id="select-pos-vn" class="input-field">
                                     <option value="" disabled selected>Carregando...</option>
                                 </select>
                             </div>
@@ -213,7 +213,7 @@ class LpvEntryForm extends HTMLElement {
 
                             <div class="form-group span-2">
                                 <label>Nome do Animal</label>
-                                <input type="text" name="animalNome" class="input-field" required>
+                                <input type="text" name="animalNome" class="input-field">
                             </div>
                             <div class="form-group">
                                 <label>RG do Animal</label>
@@ -221,7 +221,7 @@ class LpvEntryForm extends HTMLElement {
                             </div>
                             <div class="form-group">
                                 <label>Proprietário</label>
-                                <input type="text" name="proprietario" class="input-field" required>
+                                <input type="text" name="proprietario" class="input-field">
                             </div>
                             <div class="form-group">
                                 <label>Contato do Proprietário</label>
@@ -234,7 +234,7 @@ class LpvEntryForm extends HTMLElement {
 
                             <div class="form-group">
                                 <label>Espécie</label>
-                                <input type="text" name="especie" placeholder="Canina" class="input-field" required>
+                                <input type="text" name="especie" placeholder="Canina" class="input-field">
                             </div>
                             <div class="form-group">
                                 <label>Raça</label>

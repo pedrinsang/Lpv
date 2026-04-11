@@ -561,6 +561,8 @@ function renderDetails(task) {
     const permission = getPermissionContext(task);
     const { isStaff, canFillReport, canReleaseInitial, canReleaseAfterReview, canDownloadReport, canCorrectReport, isPosResponsavel } = permission;
     const hasUploadedWordAsPrimary = ENABLE_EXTERNAL_STORAGE_INTEGRATION && hasActiveUploadedWord(task);
+    const canShowReportFilesPanel = ['analise', 'liberar', 'em_correcao', 'revisar_correcoes', 'concluido', 'arquivado']
+        .includes((task.status || '').toString().trim().toLowerCase());
     const reportFilesState = ENABLE_EXTERNAL_STORAGE_INTEGRATION
         ? getReportFilesState(task)
         : { activePdfVersionId: null, pdfVersions: [] };
@@ -568,8 +570,8 @@ function renderDetails(task) {
     const hasOnlineReport = !!(task.report && Object.keys(task.report).length > 0);
     const canShowPdfAction = canDownloadReport && (hasOnlineReport || hasStoredPdf);
     const storagePanelsHtml = ENABLE_EXTERNAL_STORAGE_INTEGRATION
-        ? `${renderReportFilesPanel(task, permission)}${renderInternalPhotosPanel(task, permission)}`
-        : renderLocalModePanel();
+        ? `${canShowReportFilesPanel ? renderReportFilesPanel(task, permission) : ''}${renderInternalPhotosPanel(task, permission)}`
+        : (canShowReportFilesPanel ? renderLocalModePanel() : '');
 
     if(btnNext) { 
         btnNext.classList.remove('hidden'); 

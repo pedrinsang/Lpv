@@ -1,5 +1,5 @@
 import { db, auth } from '../core.js';
-import { doc, getDoc, runTransaction } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+import { doc, getDoc, runTransaction, deleteField } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 import { getStorageProviderConfig } from './storage-provider-config.js';
 
 let supabaseModulePromise = null;
@@ -302,7 +302,31 @@ export async function removeReportFileVersion({ taskId, fileType, versionId = nu
     const user = ensureAuthenticatedUser();
     const { supabase, bucket } = await getSupabaseStorageContext();
     const taskRef = doc(db, 'tasks', taskId);
-    let removedVersion = null;
+
+    const taskSnap = await getDoc(taskRef);
+    if (!taskSnap.exists()) {
+        throw new Error('Tarefa nao encontrada.');
+    }
+
+    const taskData = taskSnap.data() || {};
+    const reportFiles = normalizeReportFiles(taskData.reportFiles);
+    const targetVersion = fileType === 'word'
+        ? findWordVersion(reportFiles, versionId)
+        : findPdfVersion(reportFiles, versionId);
+
+    if (!targetVersion) {
+        throw new Error('Versao de arquivo nao encontrada para remocao.');
+    }
+
+    const storagePath = (targetVersion.storagePath || '').toString().trim();
+    if (!storagePath) {
+        throw new Error('Versao sem storagePath; nao foi possivel confirmar exclusao no Supabase.');
+    }
+
+    const removeResult = await supabase.storage.from(bucket).remove([storagePath]);
+    if (removeResult.error) {
+        throw new Error(`Falha ao apagar no Supabase: ${removeResult.error.message || 'erro desconhecido'}`);
+    }
 
     await runTransaction(db, async (tx) => {
         const snap = await tx.get(taskRef);
@@ -310,52 +334,49 @@ export async function removeReportFileVersion({ taskId, fileType, versionId = nu
             throw new Error('Tarefa nao encontrada.');
         }
 
-        const taskData = snap.data() || {};
-        const reportFiles = normalizeReportFiles(taskData.reportFiles);
-        const targetVersion = fileType === 'word'
-            ? findWordVersion(reportFiles, versionId)
-            : findPdfVersion(reportFiles, versionId);
+        const freshData = snap.data() || {};
+        const freshReportFiles = normalizeReportFiles(freshData.reportFiles);
+        const freshTarget = fileType === 'word'
+            ? findWordVersion(freshReportFiles, targetVersion.versionId)
+            : findPdfVersion(freshReportFiles, targetVersion.versionId);
 
-        if (!targetVersion) {
-            throw new Error('Versao de arquivo nao encontrada para remocao.');
+        if (!freshTarget) {
+            return;
         }
-
-        removedVersion = targetVersion;
 
         if (fileType === 'word') {
-            reportFiles.wordVersions = reportFiles.wordVersions.filter((item) => item.versionId !== targetVersion.versionId);
-            if (reportFiles.activeWordVersionId === targetVersion.versionId) {
-                reportFiles.activeWordVersionId = getLastVersionId(reportFiles.wordVersions);
+            freshReportFiles.wordVersions = freshReportFiles.wordVersions.filter((item) => item.versionId !== targetVersion.versionId);
+            if (freshReportFiles.activeWordVersionId === targetVersion.versionId) {
+                freshReportFiles.activeWordVersionId = getLastVersionId(freshReportFiles.wordVersions);
             }
         } else {
-            reportFiles.pdfVersions = reportFiles.pdfVersions.filter((item) => item.versionId !== targetVersion.versionId);
-            if (reportFiles.activePdfVersionId === targetVersion.versionId) {
-                reportFiles.activePdfVersionId = getLastVersionId(reportFiles.pdfVersions);
+            freshReportFiles.pdfVersions = freshReportFiles.pdfVersions.filter((item) => item.versionId !== targetVersion.versionId);
+            if (freshReportFiles.activePdfVersionId === targetVersion.versionId) {
+                freshReportFiles.activePdfVersionId = getLastVersionId(freshReportFiles.pdfVersions);
             }
         }
 
-        normalizeActiveSource(reportFiles);
+        normalizeActiveSource(freshReportFiles);
 
-        tx.update(taskRef, {
-            reportFiles,
+        const hasAnyStoredVersion = freshReportFiles.wordVersions.length > 0 || freshReportFiles.pdfVersions.length > 0;
+        const updateData = {
             lastEditor: user.uid,
             lastEditedAt: nowIso()
-        });
-    });
+        };
 
-    let warning = null;
-    const storagePath = removedVersion?.storagePath || '';
-    if (storagePath) {
-        const { error } = await supabase.storage.from(bucket).remove([storagePath]);
-        if (error) {
-            warning = `Arquivo removido da tarefa, mas houve falha ao apagar no Supabase: ${error.message || 'erro desconhecido'}`;
+        if (hasAnyStoredVersion) {
+            updateData.reportFiles = freshReportFiles;
+        } else {
+            updateData.reportFiles = deleteField();
         }
-    }
+
+        tx.update(taskRef, updateData);
+    });
 
     return {
         ok: true,
-        removedVersion,
-        warning
+        removedVersion: targetVersion,
+        warning: null
     };
 }
 

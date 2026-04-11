@@ -158,6 +158,50 @@ function findPdfVersion(reportFiles, versionId = null) {
   return list.find((item) => item.versionId === targetId) || null;
 }
 
+function findWordVersion(reportFiles, versionId = null) {
+  const list = Array.isArray(reportFiles?.wordVersions) ? reportFiles.wordVersions : [];
+  if (list.length === 0) return null;
+
+  const targetId = versionId || reportFiles.activeWordVersionId;
+  if (!targetId) return null;
+
+  return list.find((item) => item.versionId === targetId) || null;
+}
+
+function getLastVersionId(list = []) {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  return list[list.length - 1]?.versionId || null;
+}
+
+function normalizeActiveSource(reportFiles) {
+  const hasActiveWord = !!reportFiles.activeWordVersionId
+    && reportFiles.wordVersions.some((item) => item.versionId === reportFiles.activeWordVersionId);
+  const hasActivePdf = !!reportFiles.activePdfVersionId
+    && reportFiles.pdfVersions.some((item) => item.versionId === reportFiles.activePdfVersionId);
+
+  if (!hasActiveWord) {
+    reportFiles.activeWordVersionId = null;
+  }
+
+  if (!hasActivePdf) {
+    reportFiles.activePdfVersionId = null;
+  }
+
+  if (reportFiles.activeSource === "uploaded_word" && !hasActiveWord) {
+    reportFiles.activeSource = hasActivePdf ? "uploaded_pdf" : "online_report";
+    return;
+  }
+
+  if (reportFiles.activeSource === "uploaded_pdf" && !hasActivePdf) {
+    reportFiles.activeSource = hasActiveWord ? "uploaded_word" : "online_report";
+    return;
+  }
+
+  if (!hasActiveWord && !hasActivePdf) {
+    reportFiles.activeSource = "online_report";
+  }
+}
+
 function buildPublicTaskPayload(taskId, taskData) {
   const reportFiles = normalizeReportFiles(taskData.reportFiles);
   const hasStoredPdf = !!findPdfVersion(reportFiles);
@@ -550,6 +594,118 @@ exports.getReportFileDownloadUrl = withCors(async (req, res) => {
   });
 });
 
+exports.removeReportFileVersion = withCors(async (req, res) => {
+  if (!requirePost(req, res)) return;
+
+  const authCtx = await parseAuthContext(req);
+  const { taskId, fileType, versionId = null } = req.body || {};
+
+  if (!taskId || !fileType) {
+    return res.status(400).json({ ok: false, error: "missing-fields" });
+  }
+
+  if (!["word", "pdf"].includes(fileType)) {
+    return res.status(400).json({ ok: false, error: "invalid-file-type" });
+  }
+
+  const taskRef = db.collection("tasks").doc(taskId);
+  const taskSnap = await taskRef.get();
+  if (!taskSnap.exists) {
+    return res.status(404).json({ ok: false, error: "task-not-found" });
+  }
+
+  const taskData = taskSnap.data() || {};
+  if (!hasReportAccess(authCtx, taskData)) {
+    return res.status(403).json({ ok: false, error: "forbidden" });
+  }
+
+  const reportFiles = normalizeReportFiles(taskData.reportFiles);
+  const targetVersion = fileType === "word"
+    ? findWordVersion(reportFiles, versionId || null)
+    : findPdfVersion(reportFiles, versionId || null);
+
+  if (!targetVersion) {
+    return res.status(404).json({ ok: false, error: "version-not-found" });
+  }
+
+  const storagePath = (targetVersion.storagePath || "").toString().trim();
+  if (!storagePath) {
+    return res.status(400).json({
+      ok: false,
+      error: "invalid-storage-path",
+      message: "Versao sem storagePath; nao foi possivel confirmar exclusao no Supabase."
+    });
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const removeResult = await supabase.storage.from(REPORTS_BUCKET).remove([storagePath]);
+  if (removeResult.error) {
+    logger.error("Supabase delete failed", {
+      taskId,
+      fileType,
+      versionId: targetVersion.versionId,
+      storagePath,
+      message: removeResult.error.message
+    });
+
+    return res.status(502).json({
+      ok: false,
+      error: "storage-delete-failed",
+      message: removeResult.error.message || "Falha ao remover arquivo no Supabase."
+    });
+  }
+
+  await db.runTransaction(async (tx) => {
+    const freshSnap = await tx.get(taskRef);
+    if (!freshSnap.exists) {
+      throw new Error("Task not found while persisting deletion.");
+    }
+
+    const freshData = freshSnap.data() || {};
+    const freshReportFiles = normalizeReportFiles(freshData.reportFiles);
+    const freshTarget = fileType === "word"
+      ? findWordVersion(freshReportFiles, targetVersion.versionId)
+      : findPdfVersion(freshReportFiles, targetVersion.versionId);
+
+    if (!freshTarget) {
+      return;
+    }
+
+    if (fileType === "word") {
+      freshReportFiles.wordVersions = freshReportFiles.wordVersions.filter((item) => item.versionId !== targetVersion.versionId);
+      if (freshReportFiles.activeWordVersionId === targetVersion.versionId) {
+        freshReportFiles.activeWordVersionId = getLastVersionId(freshReportFiles.wordVersions);
+      }
+    } else {
+      freshReportFiles.pdfVersions = freshReportFiles.pdfVersions.filter((item) => item.versionId !== targetVersion.versionId);
+      if (freshReportFiles.activePdfVersionId === targetVersion.versionId) {
+        freshReportFiles.activePdfVersionId = getLastVersionId(freshReportFiles.pdfVersions);
+      }
+    }
+
+    normalizeActiveSource(freshReportFiles);
+
+    const hasAnyStoredVersion = freshReportFiles.wordVersions.length > 0 || freshReportFiles.pdfVersions.length > 0;
+    const updateData = {
+      lastEditor: authCtx.uid,
+      lastEditedAt: nowIso()
+    };
+
+    if (hasAnyStoredVersion) {
+      updateData.reportFiles = freshReportFiles;
+    } else {
+      updateData.reportFiles = admin.firestore.FieldValue.delete();
+    }
+
+    tx.update(taskRef, updateData);
+  });
+
+  return res.json({
+    ok: true,
+    removedVersion: targetVersion
+  });
+});
+
 exports.getPublicTaskByAccessCode = withCors(async (req, res) => {
   if (!requirePost(req, res)) return;
 
@@ -750,21 +906,52 @@ exports.removeInternalPhoto = withCors(async (req, res) => {
     return res.status(403).json({ ok: false, error: "forbidden" });
   }
 
+  const targetPublicId = (target.publicId || "").toString().trim();
+  if (!targetPublicId) {
+    return res.status(400).json({
+      ok: false,
+      error: "invalid-public-id",
+      message: "Foto sem publicId; nao foi possivel confirmar exclusao no Cloudinary."
+    });
+  }
+
+  let destroyResult = null;
   try {
-    await cloudinary.uploader.destroy(target.publicId, {
+    destroyResult = await cloudinary.uploader.destroy(targetPublicId, {
       resource_type: "image",
       invalidate: true
     });
   } catch (error) {
-    logger.warn("Cloudinary destroy failed", { taskId, photoId, message: error.message });
+    logger.error("Cloudinary destroy failed", { taskId, photoId, message: error.message });
+    return res.status(502).json({
+      ok: false,
+      error: "storage-delete-failed",
+      message: error.message || "Falha ao remover foto no Cloudinary."
+    });
+  }
+
+  const destroyState = (destroyResult?.result || "").toString().toLowerCase();
+  if (destroyState && destroyState !== "ok" && destroyState !== "not found") {
+    return res.status(502).json({
+      ok: false,
+      error: "storage-delete-failed",
+      message: `Resposta inesperada do Cloudinary ao excluir foto: ${destroyState}`
+    });
   }
 
   const filtered = photos.filter((item) => item.photoId !== photoId);
-  await taskRef.update({
-    internalPhotos: filtered,
+  const updateData = {
     lastEditor: authCtx.uid,
     lastEditedAt: nowIso()
-  });
+  };
+
+  if (filtered.length > 0) {
+    updateData.internalPhotos = filtered;
+  } else {
+    updateData.internalPhotos = admin.firestore.FieldValue.delete();
+  }
+
+  await taskRef.update(updateData);
 
   return res.json({ ok: true });
 });
