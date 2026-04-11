@@ -181,6 +181,8 @@
   line-height: 1.5;
   background: #fff;
   color: #000000 !important;
+  resize: none;
+  overflow-y: hidden;
   transition: border-color var(--duration-normal) ease,
               background var(--duration-fast) ease,
               box-shadow var(--duration-normal) ease;

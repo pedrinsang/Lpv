@@ -173,7 +173,8 @@
 }
 
 .input-area {
-  resize: vertical;
+  resize: none;
+  overflow-y: hidden;
   min-height: 80px;
 }
 

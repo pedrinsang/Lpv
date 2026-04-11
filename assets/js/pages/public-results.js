@@ -1,10 +1,8 @@
 import { db } from '../core.js';
 import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-
-// ALTERAÇÃO: Importa nova função PDF
 import { generateLaudoPDF } from '../components/docx-generator.js';
 
-console.log("Public Results Loaded - PDF Enabled");
+console.log("Public Results Loaded - Firestore Mode");
 
 const searchInput = document.getElementById('access-code'); 
 const searchBtn = document.getElementById('btn-search');
@@ -149,7 +147,6 @@ if (btnDownload) {
         try {
             const reportData = foundTask.report || {};
             const finalData = { ...reportData, ...foundTask };
-            // ALTERAÇÃO: Chama geração PDF
             await generateLaudoPDF(foundTask, finalData);
         } catch (e) {
             console.error(e);

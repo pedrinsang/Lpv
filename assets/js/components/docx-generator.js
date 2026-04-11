@@ -128,6 +128,15 @@ function formatAnimalBreedLabel(raca) {
     return value || 'SRD';
 }
 
+function pickFilledValue(...values) {
+    for (const value of values) {
+        if (value === undefined || value === null) continue;
+        if (typeof value === 'string' && value.trim() === '') continue;
+        return value;
+    }
+    return '';
+}
+
 function normalizeSignerData(profile, fallbackName, fallbackCrmv = '') {
     return {
         uid: profile?.uid || null,
@@ -265,7 +274,7 @@ async function resolveSignatureForPdf(task) {
         };
     }
 
-    // Fallback: assinatura da docente responsável
+    // Fallback: assinatura da docente supervisora
     let signatureData = docenteData;
     if (!signatureData.base64) {
         const releasedSig = await fetchSignature(task.releasedBy || null);
@@ -408,9 +417,9 @@ function buildSignatureCard(signer, subtitle) {
 }
 
 function buildTeacherTextOnlyCard(teacher) {
-    const teacherName = teacher?.name || 'Docente responsável';
+    const teacherName = teacher?.name || 'Docente Supervisor';
     const teacherCrmv = teacher?.crmv || '';
-    const roleLine    = teacherCrmv ? `Docente Responsável / ${teacherCrmv}` : 'Docente Responsável';
+    const roleLine    = teacherCrmv ? `Docente Supervisor / ${teacherCrmv}` : 'Docente Supervisor';
     const text        = `${teacherName}\n${roleLine}`;
 
     return {
@@ -455,42 +464,52 @@ export async function generateLaudoPDF(task, reportData) {
         getImageAsBase64('../assets/images/LPV.png')
     ]);
 
+    const report = reportData || {};
+
     // ── PREPARAÇÃO DOS DADOS ──────────────────────────────────────
-    const protocolo   = task.protocolo || task.accessCode || '---';
-    const dataReceb   = task.dataEntrada
-        ? new Date(task.dataEntrada + 'T12:00:00').toLocaleDateString('pt-BR')
-        : new Date(task.createdAt).toLocaleDateString('pt-BR');
+    const protocolo = pickFilledValue(report.protocolo, task.protocolo, task.accessCode) || '---';
+    const dataReceb = pickFilledValue(report.data_recebimento)
+        || (task.dataEntrada
+            ? new Date(task.dataEntrada + 'T12:00:00').toLocaleDateString('pt-BR')
+            : (task.createdAt ? new Date(task.createdAt).toLocaleDateString('pt-BR') : '-'));
 
-    const dataEmissao = task.releasedAt
-        ? new Date(task.releasedAt).toLocaleDateString('pt-BR')
-        : new Date().toLocaleDateString('pt-BR');
+    const dataEmissao = pickFilledValue(report.data_emissao, report.data_emissao_laudo) || '-';
 
-    const contatoReq  = task.remetenteContato       || reportData.telefone_requisitante || '-';
-    const clinicaReq  = task.remetenteClinicaEmpresa || reportData.clinica_requisitante  || '-';
-    const enderecoReq = task.remetenteEndereco       || reportData.endereco_requisitante  || '-';
-    const contatoProp = task.proprietarioContato     || reportData.telefone_proprietario  || '-';
-    const enderecoProp= task.proprietarioEndereco    || reportData.endereco_proprietario  || '-';
-    const sexoAnimal  = formatAnimalSexLabel(task.sexo || reportData.sexo);
-    const racaAnimal  = formatAnimalBreedLabel(task.raca || reportData.raca);
+    const animalNome = pickFilledValue(report.animalNome, task.animalNome) || '-';
+    const animalRg = pickFilledValue(report.animalRg, task.animalRg) || '-';
+    const especieAnimal = pickFilledValue(report.especie, task.especie) || '-';
+    const sexoAnimal = formatAnimalSexLabel(pickFilledValue(report.sexo, task.sexo));
+    const idadeAnimal = pickFilledValue(report.idade, task.idade) || '-';
+    const racaAnimal = formatAnimalBreedLabel(pickFilledValue(report.raca, task.raca));
+
+    const requisitanteNome = pickFilledValue(report.remetente, task.remetente) || '-';
+    const contatoReq = pickFilledValue(report.telefone_requisitante, task.remetenteContato) || '-';
+    const emailReq = pickFilledValue(report.email_requisitante, task.email_requisitante) || '-';
+    const clinicaReq = pickFilledValue(report.clinica_requisitante, task.remetenteClinicaEmpresa) || '-';
+    const enderecoReq = pickFilledValue(report.endereco_requisitante, task.remetenteEndereco) || '-';
+
+    const proprietarioNome = pickFilledValue(report.proprietario, task.proprietario) || '-';
+    const contatoProp = pickFilledValue(report.telefone_proprietario, task.proprietarioContato) || '-';
+    const enderecoProp = pickFilledValue(report.endereco_proprietario, task.proprietarioEndereco) || '-';
 
     const chk    = (val) => val ? '[ X ]' : '[   ]';
-    const isBio  = reportData.tipo_material_radio
-        ? reportData.tipo_material_radio === 'biopsia'
+    const isBio  = report.tipo_material_radio
+        ? report.tipo_material_radio === 'biopsia'
         : task.type === 'biopsia';
-    const isNecro= reportData.tipo_material_radio
-        ? reportData.tipo_material_radio === 'necropsia'
+    const isNecro= report.tipo_material_radio
+        ? report.tipo_material_radio === 'necropsia'
         : task.type === 'necropsia';
 
     const materialDetails = [
         { text: [{ text: 'Material Remetido: ', bold: true }, `Biópsia ${chk(isBio)}    Necropsia ${chk(isNecro)}`] },
-        { text: [{ text: 'Tipo de Material: ',  bold: true }, reportData.tipo_material_desc || '-'] },
+        { text: [{ text: 'Tipo de Material: ',  bold: true }, report.tipo_material_desc || '-'] },
         ...(isNecro
             ? [
-                { text: [{ text: 'Data e hora da morte: ', bold: true }, (reportData.tempo_morte || '-') + ' horas'] },
-                { text: [{ text: 'Morte: ', bold: true }, `Morte Espontânea ${chk(reportData.morte_tipo === 'espontanea')}    Eutanásia ${chk(reportData.morte_tipo === 'eutanasia')}`] }
+                { text: [{ text: 'Data e hora da morte: ', bold: true }, (report.tempo_morte || '-') + ' horas'] },
+                { text: [{ text: 'Morte: ', bold: true }, `Morte Espontânea ${chk(report.morte_tipo === 'espontanea')}    Eutanásia ${chk(report.morte_tipo === 'eutanasia')}`] }
             ]
             : []),
-        { text: [{ text: 'Conservação: ', bold: true }, `Formol ${chk(!reportData.conservacao || reportData.conservacao === 'formol')}   Refrig. ${chk(reportData.conservacao === 'refrigerado')}   Cong. ${chk(reportData.conservacao === 'congelado')}`] }
+        { text: [{ text: 'Conservação: ', bold: true }, `Formol ${chk(!report.conservacao || report.conservacao === 'formol')}   Refrigerado ${chk(report.conservacao === 'refrigerado')}   Congelado ${chk(report.conservacao === 'congelado')}`] }
     ];
 
     const assinaturaBlock = buildSignatureBlock(signatureContext);
@@ -581,9 +600,9 @@ export async function generateLaudoPDF(task, reportData) {
                         [{ text: 'DADOS DO ANIMAL',     style: 'tableHeaderGray', colSpan: 4, border: [false,false,false,false] }, {}, {}, {}],
                         [
                             { text: 'Nome / RG:', style: 'label' },
-                            { text: `${task.animalNome || '-'} / ${task.animalRg || '-'}`, style: 'value' },
+                            { text: `${animalNome} / ${animalRg}`, style: 'value' },
                             { text: 'Espécie:', style: 'label' },
-                            { text: task.especie || '-', style: 'value' }
+                            { text: especieAnimal, style: 'value' }
                         ],
                         [
                             { text: 'Raça:', style: 'label' },
@@ -592,20 +611,20 @@ export async function generateLaudoPDF(task, reportData) {
                         ],
                         [
                             { text: 'Sexo/Idade:', style: 'label' },
-                            { text: `${sexoAnimal} / ${task.idade || '-'}`, style: 'value', colSpan: 3 },
+                            { text: `${sexoAnimal} / ${idadeAnimal}`, style: 'value', colSpan: 3 },
                             {}, {}
                         ],
 
                         [{ text: 'REQUISITANTE', style: 'tableHeaderGray', colSpan: 4, border: [false,false,false,false] }, {}, {}, {}],
                         [
                             { text: 'Requisitante:', style: 'label' },
-                            { text: task.remetente || '-', style: 'value' },
+                            { text: requisitanteNome, style: 'value' },
                             { text: 'Contato:', style: 'label' },
                             { text: contatoReq, style: 'value' }
                         ],
                         [
                             { text: 'Email:', style: 'label' },
-                            { text: reportData.email_requisitante || '-', style: 'value' },
+                            { text: emailReq, style: 'value' },
                             { text: 'Clínica/Empresa:', style: 'label' },
                             { text: clinicaReq, style: 'value' }
                         ],
@@ -617,7 +636,7 @@ export async function generateLaudoPDF(task, reportData) {
                         [{ text: 'PROPRIETÁRIO', style: 'tableHeaderGray', colSpan: 4, border: [false,false,false,false] }, {}, {}, {}],
                         [
                             { text: 'Proprietário:', style: 'label' },
-                            { text: task.proprietario || '-', style: 'value' },
+                            { text: proprietarioNome, style: 'value' },
                             { text: 'Contato:', style: 'label' },
                             { text: contatoProp, style: 'value' }
                         ],
@@ -648,12 +667,12 @@ export async function generateLaudoPDF(task, reportData) {
             { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 535, y2: 0, lineWidth: 1 }] },
 
             // CONTEÚDO DO LAUDO
-            ...createSection('HISTÓRICO CLÍNICO',               reportData.historico),
-            ...createSection('DIAGNÓSTICO PRESUNTIVO/SUSPEITA', reportData.suspeita),
-            ...createSection('DESCRIÇÃO MACROSCÓPICA',          reportData.macroscopia),
-            ...createSection('DESCRIÇÃO MICROSCÓPICA',          reportData.microscopia),
-            ...createDiagnosisSection(reportData.diagnostico),
-            ...createSection('COMENTÁRIOS',                     reportData.comentarios),
+            ...createSection('HISTÓRICO CLÍNICO',               report.historico),
+            ...createSection('DIAGNÓSTICO PRESUNTIVO/SUSPEITA', report.suspeita),
+            ...createSection('DESCRIÇÃO MACROSCÓPICA',          report.macroscopia),
+            ...createSection('DESCRIÇÃO MICROSCÓPICA',          report.microscopia),
+            ...createDiagnosisSection(report.diagnostico),
+            ...createSection('COMENTÁRIOS',                     report.comentarios),
 
             // DATA + ASSINATURA
             { text: [{ text: 'Data de emissão de laudo: ', bold: true }, dataEmissao], margin: [0, 20, 0, 10], fontSize: 11 },
@@ -674,6 +693,6 @@ export async function generateLaudoPDF(task, reportData) {
         defaultStyle: { font: 'Roboto' }
     };
 
-    const nomeLimpo = (task.animalNome || 'animal').replace(/[^a-z0-9]/gi, '_');
+    const nomeLimpo = (animalNome || 'animal').replace(/[^a-z0-9]/gi, '_');
     pdfMake.createPdf(docDefinition).download(`Laudo_${protocolo}_${nomeLimpo}.pdf`);
 }

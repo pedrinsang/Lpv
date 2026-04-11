@@ -6,6 +6,7 @@ import {
     doc,
     getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { uploadInternalPhotos } from '../lib/internal-photos-service.js';
 
 console.log("Entry Modal Module Loaded - vFinal (Create/Edit Unified)");
 
@@ -243,8 +244,24 @@ async function saveEntry(e, originType) {
     try {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
+        delete data.internalPhotos;
         syncPosResponsavelUid(form);
         data.posResponsavelUid = form.querySelector('input[name="posResponsavelUid"]')?.value || '';
+        const selectedPhotoFiles = Array.from(form.querySelector('input[name="internalPhotos"]')?.files || []);
+
+        const uploadPhotosIfSelected = async (taskId) => {
+            if (selectedPhotoFiles.length === 0) {
+                return { uploaded: 0, error: null };
+            }
+
+            try {
+                await uploadInternalPhotos(taskId, selectedPhotoFiles);
+                return { uploaded: selectedPhotoFiles.length, error: null };
+            } catch (uploadError) {
+                console.error('Erro ao enviar fotos internas:', uploadError);
+                return { uploaded: 0, error: uploadError };
+            }
+        };
 
         if (editingTaskId) {
             // --- MODO EDIÇÃO ---
@@ -254,12 +271,21 @@ async function saveEntry(e, originType) {
                 lastEditedAt: new Date().toISOString(),
                 lastEditor: auth.currentUser ? auth.currentUser.uid : 'anon'
             });
-            alert("Entrada atualizada com sucesso!");
-            
-            // Atualiza a tela de detalhes se estiver aberta
-            if(window.openTaskManager) window.openTaskManager(editingTaskId); 
-            closeModal();
 
+            const photoUploadResult = await uploadPhotosIfSelected(editingTaskId);
+            const uploadedMessage = photoUploadResult.uploaded > 0
+                ? `\n\n${photoUploadResult.uploaded} foto(s) interna(s) enviada(s) para o Cloudinary.`
+                : '';
+            const uploadWarning = photoUploadResult.error
+                ? `\n\nA entrada foi atualizada, mas houve falha no upload das fotos: ${photoUploadResult.error.message}`
+                : '';
+
+            alert(`Entrada atualizada com sucesso!${uploadedMessage}${uploadWarning}`);
+
+            // Atualiza a tela de detalhes se estiver aberta
+            if(window.openTaskManager) window.openTaskManager(editingTaskId);
+            closeModal();
+            return;
         } else { 
             // --- MODO CRIAÇÃO ---
             let taskType = 'biopsia'; 
@@ -281,10 +307,21 @@ async function saveEntry(e, originType) {
                 createdAt: new Date().toISOString() 
             };
 
-            await addDoc(collection(db, "tasks"), taskData);
-            alert(`Entrada de ${taskType.toUpperCase()} registrada!`);
+            const createdRef = await addDoc(collection(db, "tasks"), taskData);
+
+            const photoUploadResult = await uploadPhotosIfSelected(createdRef.id);
+            const uploadedMessage = photoUploadResult.uploaded > 0
+                ? `\n\n${photoUploadResult.uploaded} foto(s) interna(s) enviada(s) para o Cloudinary.`
+                : '';
+            const uploadWarning = photoUploadResult.error
+                ? `\n\nA entrada foi criada, mas houve falha no upload das fotos: ${photoUploadResult.error.message}`
+                : '';
+
+            alert(`Entrada de ${taskType.toUpperCase()} registrada!${uploadedMessage}${uploadWarning}`);
             closeModal();
             generateRandomCode();
+
+            return;
         }
 
     } catch (error) {

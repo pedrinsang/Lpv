@@ -1,0 +1,96 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function currentUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function hasUserProfile() {
+      return isSignedIn() && currentUserDoc().exists();
+    }
+
+    function currentUserData() {
+      return currentUserDoc().data;
+    }
+
+    function roleList() {
+      return hasUserProfile()
+        ? (currentUserData().role is list
+          ? currentUserData().role
+          : (currentUserData().role is string ? [currentUserData().role] : []))
+        : [];
+    }
+
+    function hasAnyRole(roles) {
+      return hasUserProfile() && roleList().hasAny(roles);
+    }
+
+    function isAdmin() {
+      return hasAnyRole(['admin']);
+    }
+
+    function isStaff() {
+      return hasAnyRole([
+        'admin',
+        'professor',
+        'pos-graduando',
+        'pos_graduando',
+        'posgraduando',
+        'pós-graduando',
+        'graduando',
+        'estagiario'
+      ]);
+    }
+
+    function isApprovedUser() {
+      return hasUserProfile() && currentUserData().status != 'pending';
+    }
+
+    match /config/registration {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow create: if isSignedIn() && request.auth.uid == userId;
+
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId ||
+        isStaff()
+      );
+
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (
+          request.auth.uid == userId &&
+          request.resource.data.role == resource.data.role &&
+          request.resource.data.status == resource.data.status
+        )
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isApprovedUser();
+      allow create, update, delete: if isApprovedUser();
+    }
+
+    match /intern_schedule/{scheduleId} {
+      allow read, write: if isApprovedUser();
+    }
+
+    match /slide_records/{recordId} {
+      allow read, write: if isApprovedUser();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

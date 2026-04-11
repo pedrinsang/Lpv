@@ -123,6 +123,12 @@ class LpvEntryForm extends HTMLElement {
                                     <option value="HVU">HVU</option>
                                 </select>
                             </div>
+
+                            <div class="form-group span-3">
+                                <label>Fotos Internas (uso exclusivo do laboratório)</label>
+                                <input type="file" name="internalPhotos" class="input-field" accept="image/*" multiple>
+                                <small style="display:block; margin-top:4px; color:var(--text-tertiary);">As imagens selecionadas sao enviadas para o Cloudinary.</small>
+                            </div>
                         </div>
 
                         <input type="hidden" name="accessCode" id="generated-access-code">
@@ -251,6 +257,12 @@ class LpvEntryForm extends HTMLElement {
                                     <option value="Externo">Externo</option>
                                     <option value="HVU">HVU</option>
                                 </select>
+                            </div>
+
+                            <div class="form-group span-3">
+                                <label>Fotos Internas (uso exclusivo do laboratório)</label>
+                                <input type="file" name="internalPhotos" class="input-field" accept="image/*" multiple>
+                                <small style="display:block; margin-top:4px; color:var(--text-tertiary);">As imagens selecionadas sao enviadas para o Cloudinary.</small>
                             </div>
                         </div>
 

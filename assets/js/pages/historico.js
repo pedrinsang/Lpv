@@ -160,9 +160,14 @@ function renderList(reports) {
             </div>
 
             <div class="card-actions">
-                <button onclick="event.stopPropagation(); window.downloadDoc('${task.id}')" class="btn btn-sm btn-primary" style="width:100%; display:flex; justify-content:center; align-items:center; gap:8px;">
-                    <i class="fas fa-file-pdf"></i> Baixar PDF
-                </button>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%;">
+                    <button onclick="event.stopPropagation(); window.openTaskManager('${task.id}')" class="btn btn-sm btn-secondary" style="display:flex; justify-content:center; align-items:center; gap:8px;">
+                        <i class="fas fa-eye"></i> Abrir
+                    </button>
+                    <button onclick="event.stopPropagation(); window.downloadDoc('${task.id}')" class="btn btn-sm btn-primary" style="display:flex; justify-content:center; align-items:center; gap:8px;">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                </div>
             </div>
         </div>
         `;
@@ -174,19 +179,24 @@ window.downloadDoc = async (taskId) => {
     const task = allReports.find(t => t.id === taskId);
     if (!task) return alert("Erro: Tarefa não encontrada.");
 
+    const btn = event.currentTarget;
+    const originalText = btn?.innerHTML || '';
+
     try {
-        const btn = event.currentTarget; 
-        const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         btn.disabled = true;
 
         const reportData = task.report || {};
-        await generateLaudoPDF(task, { ...reportData, ...task });
+        await generateLaudoPDF(task, { ...task, ...reportData });
 
         btn.innerHTML = originalText;
         btn.disabled = false;
     } catch (e) {
         console.error(e);
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
         alert("Erro ao gerar arquivo.");
     }
 };

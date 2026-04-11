@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lpv-ultra-fast-v3';
+const CACHE_NAME = 'lpv-ultra-fast-v8';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
