@@ -30,9 +30,8 @@
         <nav class="sidebar-nav">
             <a href="hub.html" class="sidebar-link"><i class="fas fa-home"></i> <span>Visão Geral</span></a>
             <a href="mural.html" class="sidebar-link active"><i class="fas fa-columns"></i> <span>Mural</span></a>
-            <a href="coloracao.html" class="sidebar-link"><i class="fas fa-stopwatch"></i> <span>Timers</span></a>
-            <a href="protocolos.html" class="sidebar-link"><i class="fas fa-book-medical"></i> <span>Protocolos</span></a>
             <a href="historico.html" class="sidebar-link"><i class="fas fa-history"></i> <span>Histórico</span></a>
+            <a href="estoque.html" class="sidebar-link"><i class="fas fa-boxes-stacked"></i> <span>Estoque</span></a>
             <a href="planner.html" class="sidebar-link"><i class="fas fa-calendar-alt"></i> <span>Planner</span></a>
             <button class="sidebar-link btn-sidebar-new"><i class="fas fa-plus"></i> <span>Nova Entrada</span></button>
         </nav>
@@ -115,7 +114,7 @@
         <a href="hub.html" class="nav-item"><i class="fas fa-home"></i><span>Início</span></a>
         <a href="mural.html" class="nav-item active"><i class="fas fa-columns"></i><span>Mural</span></a>
         <div class="nav-fab-container"><button class="nav-fab"><i class="fas fa-plus"></i></button></div>
-        <a href="coloracao.html" class="nav-item"><i class="fas fa-stopwatch"></i><span>Timers</span></a>
+        <a href="historico.html" class="nav-item"><i class="fas fa-history"></i><span>Histórico</span></a>
         <a href="planner.html" class="nav-item"><i class="fas fa-calendar-alt"></i><span>Planner</span></a>
     </nav>
 
@@ -134,28 +133,12 @@
                     <button id="btn-delete-task" class="btn btn-secondary" style="color: var(--color-error); border-color: var(--color-error); margin-right: auto;">
                         <i class="fas fa-trash"></i>
                     </button>
-                    <div class="mural-modal-actions" style="display: flex; gap: 10px;">
-                        <button id="btn-prev-stage" class="btn btn-secondary hidden"><i class="fas fa-undo"></i> Voltar</button>
-                        <button id="btn-next-stage" class="btn btn-primary">Próxima <i class="fas fa-arrow-right"></i></button>
-                    </div>
                 </div>
             </div>
             <div id="view-k7-form" class="hidden" style="padding: 20px; overflow-y: auto;"><form id="form-k7"></form></div>
         </div>
     </div>
 
-    <div id="report-editor-modal" class="modal-overlay hidden" style="z-index: 3000;">
-        <div class="report-paper-container">
-            <div class="report-toolbar">
-                <h3 style="color: var(--text-primary);"><i class="fas fa-file-medical"></i> Editor de Laudo</h3>
-                <div style="display: flex; gap: 10px;">
-                    <button id="btn-download-word" class="btn btn-secondary btn-sm hidden" onclick="window.exportToWord()"><i class="fas fa-file-word"></i> Baixar Word</button>
-                    <button id="btn-save-report" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Salvar</button>
-                </div>
-            </div>
-            <div class="report-paper" id="print-area"></div>
-        </div>
-    </div>
     
     
 

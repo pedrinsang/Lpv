@@ -131,7 +131,7 @@ function renderBoard() {
             card.setAttribute('role', 'button');
             card.setAttribute('tabindex', '0');
             
-            const displayProtocol = task.protocolo || task.accessCode || "---";
+            const displayProtocol = task.protocolo || "---";
             const shortPos = getShortName(task.posGraduando || "Sem Pós");
             const typeLabel = isNecropsia ? 'NECROPSIA' : 'BIÓPSIA';
             const typeColor = isNecropsia ? '#3b82f6' : '#ec4899';

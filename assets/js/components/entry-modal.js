@@ -1,79 +1,95 @@
 import { db, auth } from '../core.js';
-import { 
-    collection, 
-    addDoc, 
+import {
+    collection,
+    addDoc,
     updateDoc,
     doc,
     getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { uploadInternalPhotos } from '../lib/internal-photos-service.js';
 
-console.log("Entry Modal Module Loaded - vFinal (Create/Edit Unified)");
+console.log("Entry Modal Module Loaded - formulário único (tipo pelo protocolo)");
 
 // --- ELEMENTOS DO DOM ---
 const modal = document.getElementById('entry-modal');
 const closeBtn = document.getElementById('close-modal-btn');
 const openBtns = document.querySelectorAll('.btn-sidebar-new, .nav-fab');
-const modalTitle = document.querySelector('#entry-modal h3'); 
+const modalTitle = document.getElementById('entry-modal-title');
 
-// Forms
-const formV = document.getElementById('form-new-v');   // Form Biópsia
-const formVn = document.getElementById('form-new-vn'); // Form Necropsia
+const form = document.getElementById('form-new-entry');
+const protocoloInput = document.getElementById('entry-protocolo');
+const urgentInput = document.getElementById('entry-urgent');
+const typePill = document.getElementById('entry-type-pill');
+const typeText = document.getElementById('entry-type-text');
 
-// Inputs Gerais
-const dateInputV = document.getElementById('date-v');
-const tabs = document.querySelectorAll('.tab-btn');
-const contents = document.querySelectorAll('.tab-content');
+const selectDocente = document.getElementById('select-docente');
+const selectPos = document.getElementById('select-pos');
+const hiddenPosUid = document.getElementById('select-pos-uid');
 
-
-// Selects de Equipe (Agora capturando de ambos os formulários)
-const selectsDocente = document.querySelectorAll('#select-docente, #select-docente-vn');
-const selectsPos = document.querySelectorAll('#select-pos, #select-pos-vn');
-const hiddenPosUidInputs = document.querySelectorAll('#select-pos-uid, #select-pos-uid-vn');
-
-// Código Aleatório (Capturando múltiplos displays e inputs hidden)
-const displayCodes = document.querySelectorAll('#display-code, #display-code-vn');
-const hiddenCodeInputs = document.querySelectorAll('#generated-access-code, #generated-access-code-vn');
 // --- ESTADO LOCAL ---
 let editingTaskId = null; // null = Modo Criação | ID = Modo Edição
 
 // ==========================================================================
-// 1. ABRIR E FECHAR MODAL (MODO CRIAÇÃO)
+// 1. TIPO DERIVADO DO PROTOCOLO
+//    VN... = necropsia | V... = biópsia. Sem prefixo válido não há tipo.
+// ==========================================================================
+const TYPE_LABELS = {
+    necropsia: { text: 'Necropsia', icon: 'fa-skull', cls: 'is-necro' },
+    biopsia: { text: 'Biópsia', icon: 'fa-microscope', cls: 'is-bio' }
+};
+
+export function detectTypeFromProtocolo(protocolo) {
+    const clean = (protocolo || '').toString().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (clean.startsWith('VN')) return 'necropsia';
+    if (clean.startsWith('V')) return 'biopsia';
+    return null;
+}
+
+function updateTypePill() {
+    if (!typePill || !typeText) return;
+
+    const type = detectTypeFromProtocolo(protocoloInput?.value);
+    const info = TYPE_LABELS[type];
+
+    typePill.classList.toggle('is-empty', !info);
+    typePill.classList.toggle('is-necro', info?.cls === 'is-necro');
+    typePill.classList.toggle('is-bio', info?.cls === 'is-bio');
+
+    const icon = typePill.querySelector('i');
+    if (icon) icon.className = `fas ${info ? info.icon : 'fa-circle-question'}`;
+    typeText.textContent = info ? info.text : 'Informe o protocolo';
+}
+
+if (protocoloInput) protocoloInput.addEventListener('input', updateTypePill);
+
+// ==========================================================================
+// 2. ABRIR E FECHAR MODAL (MODO CRIAÇÃO)
 // ==========================================================================
 openBtns.forEach(btn => {
     btn.addEventListener('click', (e) => {
         e.preventDefault();
-        openModal(); // Abre como Nova Entrada
+        openModal();
     });
 });
 
 if (closeBtn) closeBtn.addEventListener('click', closeModal);
 
 function openModal() {
-    if (!modal) return;
-    
-    editingTaskId = null; 
+    if (!modal || !form) return;
+
+    editingTaskId = null;
     modal.classList.remove('hidden');
 
-    // Ativa a aba padrão (primeira)
-    const defaultTab = document.querySelector('.tab-btn[data-tab="tab-v"]');
-    if (defaultTab) defaultTab.click();
+    if (modalTitle) modalTitle.textContent = 'Nova Entrada';
 
-    // Reseta ambos os formulários
-    [formV, formVn].forEach(f => {
-        if(f) {
-            f.reset();
-            setupSubmitButton(f, f.id === 'form-new-v' ? 'Salvar Entrada' : 'Salvar Necropsia');
-        }
-    });
-    hiddenPosUidInputs.forEach(i => i.value = '');
+    form.reset();
+    if (hiddenPosUid) hiddenPosUid.value = '';
 
-    // Seta data de hoje para ambos os campos de data
-    const today = new Date().toISOString().split('T')[0];
-    const dateInputs = document.querySelectorAll('#date-v, #date-vn');
-    dateInputs.forEach(i => i.value = today);
+    const dateInput = document.getElementById('date-entrada');
+    if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
 
-    generateRandomCode();
+    setupSubmitButton('Salvar Entrada');
+    updateTypePill();
     loadTeamData();
 }
 
@@ -81,114 +97,75 @@ function closeModal() {
     if (!modal) return;
     modal.classList.add('hidden');
     editingTaskId = null;
-    if(formV) formV.reset();
-    if(formVn) formVn.reset();
+    if (form) form.reset();
+    updateTypePill();
 }
 
 // ==========================================================================
-// 2. ABRIR PARA EDIÇÃO (ACESSO EXTERNO)
+// 3. ABRIR PARA EDIÇÃO (ACESSO EXTERNO)
 // ==========================================================================
 window.openEditEntry = function(task) {
-    if (!modal) return;
+    if (!modal || !form) return;
 
-    editingTaskId = task.id; // Marca que estamos editando
+    editingTaskId = task.id;
     modal.classList.remove('hidden');
 
-    if(modalTitle) modalTitle.textContent = "Editar Entrada";
+    if (modalTitle) modalTitle.textContent = 'Editar Entrada';
 
-    loadTeamData(); // Carrega lista de veterinários
-
-    // Detecta o tipo e preenche o formulário correto
-    const type = task.type || 'biopsia';
-    
-    if (type === 'necropsia') {
-        // Clica na aba de necropsia
-        const tabN = document.querySelector('[data-tab="tab-necropsia"]');
-        if (tabN) tabN.click();
-        fillForm(formVn, task);
-        setupSubmitButton(formVn, 'Atualizar Dados');
-    } else {
-        // Clica na aba de biópsia
-        const tabB = document.querySelector('[data-tab="tab-biopsia"]');
-        if (tabB) tabB.click();
-        fillForm(formV, task);
-        setupSubmitButton(formV, 'Atualizar Dados');
-    }
-    
-    // Mostra o código existente (não gera novo)
-    if(displayCode) displayCode.textContent = task.accessCode || '---';
-}
+    loadTeamData();
+    fillForm(task);
+    setupSubmitButton('Atualizar Dados');
+};
 
 // Preenche os inputs com base no name=""
-function fillForm(form, data) {
-    if(!form) return;
+function fillForm(data) {
     Array.from(form.elements).forEach(field => {
+        if (field.type === 'file' || field.type === 'checkbox') return;
         if (field.name && data[field.name] !== undefined) {
             field.value = data[field.name];
         }
     });
-    // Garante que o input hidden do código receba o valor
-    const codeInput = form.querySelector('[name="accessCode"]');
-    if(codeInput && data.accessCode) codeInput.value = data.accessCode;
 
-    const posUidInput = form.querySelector('input[name="posResponsavelUid"]');
-    if (posUidInput) posUidInput.value = data.posResponsavelUid || '';
+    if (urgentInput) urgentInput.checked = !!data.isUrgent;
+    if (hiddenPosUid) hiddenPosUid.value = data.posResponsavelUid || '';
 
-    syncPosResponsavelUid(form);
+    syncPosResponsavelUid();
+    updateTypePill();
 }
 
-function syncPosResponsavelUid(form) {
-    if (!form) return;
-    const posSelect = form.querySelector('select[name="posGraduando"]');
-    const uidInput = form.querySelector('input[name="posResponsavelUid"]');
-    if (!posSelect || !uidInput) return;
-
-    const selectedOption = posSelect.options[posSelect.selectedIndex];
-    uidInput.value = selectedOption?.dataset?.uid || '';
+function syncPosResponsavelUid() {
+    if (!selectPos || !hiddenPosUid) return;
+    const selectedOption = selectPos.options[selectPos.selectedIndex];
+    hiddenPosUid.value = selectedOption?.dataset?.uid || '';
 }
 
-function setupSubmitButton(form, text) {
-    const btn = form.querySelector('button[type="submit"]');
-    if(btn) btn.innerHTML = `<i class="fas fa-save"></i> ${text}`;
+function setupSubmitButton(text) {
+    const btn = form?.querySelector('button[type="submit"]');
+    if (btn) btn.innerHTML = `<i class="fas fa-save"></i> ${text}`;
 }
-
-// ==========================================================================
-// 3. SISTEMA DE ABAS
-// ==========================================================================
-tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        contents.forEach(c => c.classList.remove('active'));
-        
-        tab.classList.add('active');
-        const targetId = tab.getAttribute('data-tab');
-        const targetContent = document.getElementById(targetId);
-        if(targetContent) targetContent.classList.add('active');
-    });
-});
 
 // ==========================================================================
 // 4. CARREGAR EQUIPE (DOCENTES E PÓS)
 // ==========================================================================
 async function loadTeamData() {
-    // Se o primeiro select já tem opções, assumimos que já foi carregado
-    if (selectsDocente[0] && selectsDocente[0].options.length > 1) return;
+    if (!selectDocente || !selectPos) return;
+    // Se o select já tem opções, assumimos que já foi carregado
+    if (selectDocente.options.length > 1) return;
 
     try {
         // Busca todos os usuários e filtra client-side (compatível com role string ou array)
         const snapshot = await getDocs(collection(db, "users"));
-        
-        // Limpa todos os selects antes de popular
-        selectsDocente.forEach(s => s.innerHTML = '<option value="" disabled selected>Selecione...</option>');
-        selectsPos.forEach(s => s.innerHTML = '<option value="" disabled selected>Selecione...</option>');
-        
+
+        selectDocente.innerHTML = '<option value="" disabled selected>Selecione...</option>';
+        selectPos.innerHTML = '<option value="" disabled selected>Selecione...</option>';
+
         snapshot.forEach(docSnap => {
             const data = docSnap.data();
             const userId = docSnap.id;
             const roles = Array.isArray(data.role)
                 ? data.role.map(r => r.toLowerCase())
                 : [(data.role || '').toLowerCase()];
-            
+
             const createOption = () => {
                 const opt = document.createElement('option');
                 opt.value = data.name;
@@ -197,47 +174,29 @@ async function loadTeamData() {
                 return opt;
             };
 
-            if (roles.includes('professor')) {
-                selectsDocente.forEach(s => s.appendChild(createOption()));
-            }
-            if (roles.some(r => r.includes('graduando'))) {
-                selectsPos.forEach(s => s.appendChild(createOption()));
-            }
+            if (roles.includes('professor')) selectDocente.appendChild(createOption());
+            if (roles.some(r => r.includes('graduando'))) selectPos.appendChild(createOption());
         });
     } catch (error) { console.error("Erro ao carregar equipe:", error); }
 }
 
 // ==========================================================================
-// 5. GERAR CÓDIGO
+// 5. SALVAR (CRIAÇÃO OU ATUALIZAÇÃO)
 // ==========================================================================
-window.generateRandomCode = function() {
-    if (editingTaskId) return; 
-
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; 
-    let code = "LPV-";
-    for (let i = 0; i < 4; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    
-    // Atualiza todos os locais onde o código deve aparecer
-    displayCodes.forEach(el => el.textContent = code);
-    hiddenCodeInputs.forEach(el => el.value = code);
-    
-    return code;
-}
-
-// ==========================================================================
-// 6. SALVAR (CRIAÇÃO OU ATUALIZAÇÃO)
-// ==========================================================================
-async function saveEntry(e, originType) {
+async function saveEntry(e) {
     e.preventDefault();
-    
-    const form = originType === 'v' ? formV : formVn;
     if (!form) return;
+
+    const taskType = detectTypeFromProtocolo(protocoloInput?.value);
+    if (!taskType) {
+        alert('O protocolo define o tipo do caso. Use "V" para biópsia (ex: V-123/26) ou "VN" para necropsia (ex: VN-123/26).');
+        protocoloInput?.focus();
+        return;
+    }
 
     const btn = form.querySelector('button[type="submit"]');
     const originalText = btn.innerHTML;
-    
+
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
     btn.disabled = true;
 
@@ -245,8 +204,12 @@ async function saveEntry(e, originType) {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
         delete data.internalPhotos;
-        syncPosResponsavelUid(form);
-        data.posResponsavelUid = form.querySelector('input[name="posResponsavelUid"]')?.value || '';
+
+        syncPosResponsavelUid();
+        data.posResponsavelUid = hiddenPosUid?.value || '';
+        // O checkbox só entra no FormData quando marcado — lemos direto do input.
+        data.isUrgent = !!urgentInput?.checked;
+
         const selectedPhotoFiles = Array.from(form.querySelector('input[name="internalPhotos"]')?.files || []);
 
         const uploadPhotosIfSelected = async (taskId) => {
@@ -265,8 +228,11 @@ async function saveEntry(e, originType) {
 
         if (editingTaskId) {
             // --- MODO EDIÇÃO ---
+            // A cor do cassete é gerenciada no Mural/Task Manager, então não é
+            // sobrescrita aqui mesmo quando o protocolo muda de tipo.
             await updateDoc(doc(db, "tasks", editingTaskId), {
                 ...data,
+                type: taskType,
                 financialStatus: data.situacao || undefined,
                 lastEditedAt: new Date().toISOString(),
                 lastEditor: auth.currentUser ? auth.currentUser.uid : 'anon'
@@ -282,47 +248,36 @@ async function saveEntry(e, originType) {
 
             alert(`Entrada atualizada com sucesso!${uploadedMessage}${uploadWarning}`);
 
-            // Atualiza a tela de detalhes se estiver aberta
-            if(window.openTaskManager) window.openTaskManager(editingTaskId);
+            const updatedId = editingTaskId;
             closeModal();
-            return;
-        } else { 
-            // --- MODO CRIAÇÃO ---
-            let taskType = 'biopsia'; 
-            let initialColor = 'rosa'; 
-
-            if (originType === 'vn') {
-                taskType = 'necropsia';
-                initialColor = 'azul';
-            }
-
-            const taskData = {
-                ...data,
-                type: taskType,         
-                k7Color: initialColor,  
-                k7Quantity: 0,          
-                status: 'clivagem',
-                financialStatus: data.situacao || 'pendente',
-                createdBy: auth.currentUser ? auth.currentUser.uid : 'anon',
-                createdAt: new Date().toISOString() 
-            };
-
-            const createdRef = await addDoc(collection(db, "tasks"), taskData);
-
-            const photoUploadResult = await uploadPhotosIfSelected(createdRef.id);
-            const uploadedMessage = photoUploadResult.uploaded > 0
-                ? `\n\n${photoUploadResult.uploaded} foto(s) interna(s) enviada(s) para o Cloudinary.`
-                : '';
-            const uploadWarning = photoUploadResult.error
-                ? `\n\nA entrada foi criada, mas houve falha no upload das fotos: ${photoUploadResult.error.message}`
-                : '';
-
-            alert(`Entrada de ${taskType.toUpperCase()} registrada!${uploadedMessage}${uploadWarning}`);
-            closeModal();
-            generateRandomCode();
-
+            if (window.openTaskManager) window.openTaskManager(updatedId);
             return;
         }
+
+        // --- MODO CRIAÇÃO ---
+        const taskData = {
+            ...data,
+            type: taskType,
+            k7Color: taskType === 'necropsia' ? 'azul' : 'rosa',
+            k7Quantity: 0,
+            financialStatus: data.situacao || 'pendente',
+            createdBy: auth.currentUser ? auth.currentUser.uid : 'anon',
+            createdAt: new Date().toISOString()
+        };
+
+        const createdRef = await addDoc(collection(db, "tasks"), taskData);
+
+        const photoUploadResult = await uploadPhotosIfSelected(createdRef.id);
+        const uploadedMessage = photoUploadResult.uploaded > 0
+            ? `\n\n${photoUploadResult.uploaded} foto(s) interna(s) enviada(s) para o Cloudinary.`
+            : '';
+        const uploadWarning = photoUploadResult.error
+            ? `\n\nA entrada foi criada, mas houve falha no upload das fotos: ${photoUploadResult.error.message}`
+            : '';
+        const urgentMessage = taskData.isUrgent ? '\n\nMarcada como URGENTE.' : '';
+
+        alert(`Entrada de ${taskType.toUpperCase()} registrada!${urgentMessage}${uploadedMessage}${uploadWarning}`);
+        closeModal();
 
     } catch (error) {
         console.error("Erro ao salvar:", error);
@@ -333,12 +288,7 @@ async function saveEntry(e, originType) {
     }
 }
 
-// Listeners de Envio
-if (formV) formV.addEventListener('submit', (e) => saveEntry(e, 'v'));
-if (formVn) formVn.addEventListener('submit', (e) => saveEntry(e, 'vn'));
+if (form) form.addEventListener('submit', saveEntry);
+if (selectPos) selectPos.addEventListener('change', syncPosResponsavelUid);
 
-selectsPos.forEach((select) => {
-    select.addEventListener('change', () => {
-        syncPosResponsavelUid(select.closest('form'));
-    });
-});
+updateTypePill();

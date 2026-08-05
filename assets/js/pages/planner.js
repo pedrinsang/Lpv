@@ -288,7 +288,7 @@ function openDayView(dateStr) {
 
 function renderDayView(dateStr) {
     modalPendingList.innerHTML = "";
-    const pendings = tasksCache.filter(t => !t.scheduledDate && t.status !== 'concluido');
+    const pendings = tasksCache.filter(t => !t.scheduledDate && !t.releasedAt);
     
     const isPast = isDateInPast(dateStr);
 

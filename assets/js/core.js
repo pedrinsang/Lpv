@@ -108,10 +108,9 @@ function initThemeSystem() {
 onAuthStateChanged(auth, async (user) => {
     const currentPath = window.location.pathname;
     const isPagesDir = currentPath.includes('/pages/');
-    const isPublicPage = currentPath.includes('auth.html') || 
-                         currentPath.endsWith('/') || 
-                         currentPath.includes('index.html') ||
-                         currentPath.includes('resultados.html');
+    const isPublicPage = currentPath.includes('auth.html') ||
+                         currentPath.endsWith('/') ||
+                         currentPath.includes('index.html');
     
     const isAuthPage = currentPath.includes('auth.html');
 
@@ -248,19 +247,6 @@ function applyRolePermissions(role) {
         if (adminSidebarLink) adminSidebarLink.classList.remove('hidden');
     }
 
-    const observer = new MutationObserver(() => {
-        const statusSelect = document.getElementById('task-status');
-        if (!isSuperUser && statusSelect) {
-            for (let i = 0; i < statusSelect.options.length; i++) {
-                const val = statusSelect.options[i].value;
-                if (val === 'completed' || val === 'released' || val === 'liberado') {
-                    statusSelect.options[i].style.display = 'none';
-                    statusSelect.options[i].disabled = true;
-                }
-            }
-        }
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
 }
 
 // --- FUNÇÃO DE LOGOUT GLOBAL ---

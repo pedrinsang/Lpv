@@ -1,14 +1,15 @@
-const CACHE_NAME = 'lpv-ultra-fast-v8';
+const CACHE_NAME = 'lpv-ultra-fast-v12';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/pages/auth.html',
   '/pages/hub.html',
   '/pages/mural.html',
-  '/pages/coloracao.html',
+  '/pages/estoque.html',
   '/assets/css/global.css',
+  '/assets/css/pages/estoque.css',
   '/assets/js/core.js',
-  '/assets/js/lib/timers.js',
+  '/assets/js/pages/estoque.js',
   '/assets/images/lpvminilogo2.png',
   '/manifest.json'
 ];

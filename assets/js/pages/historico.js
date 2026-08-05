@@ -1,6 +1,5 @@
 import { db, auth, logout } from '../core.js';
 import { collection, query, where, getDocs, deleteDoc, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-import { generateLaudoPDF } from '../components/docx-generator.js';
 import '../components/task-manager.js'; 
 
 console.log("Historico Module Loaded - vFinal");
@@ -57,7 +56,6 @@ function buildSearchBlob(task) {
         task.protocolo,
         task.protocoloInterno,
         task.protocoloExterno,
-        task.accessCode,
         task.codigoExterno,
         report.protocoloInterno,
         report.protocoloExterno,
@@ -98,11 +96,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 // Lógica de carregamento sem exclusão automática
 async function loadHistory() {
     try {
+        // O histórico é formado pelos casos com laudo liberado (releasedAt preenchido).
         const q = query(
-            collection(db, "tasks"), 
-            where("status", "==", "concluido")
+            collection(db, "tasks"),
+            where("releasedAt", "!=", null)
         );
-        
+
         const querySnapshot = await getDocs(q);
         allReports = [];
 
@@ -160,46 +159,14 @@ function renderList(reports) {
             </div>
 
             <div class="card-actions">
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%;">
-                    <button onclick="event.stopPropagation(); window.openTaskManager('${task.id}')" class="btn btn-sm btn-secondary" style="display:flex; justify-content:center; align-items:center; gap:8px;">
-                        <i class="fas fa-eye"></i> Abrir
-                    </button>
-                    <button onclick="event.stopPropagation(); window.downloadDoc('${task.id}')" class="btn btn-sm btn-primary" style="display:flex; justify-content:center; align-items:center; gap:8px;">
-                        <i class="fas fa-file-pdf"></i> PDF
-                    </button>
-                </div>
+                <button onclick="event.stopPropagation(); window.openTaskManager('${task.id}')" class="btn btn-sm btn-secondary" style="display:flex; justify-content:center; align-items:center; gap:8px; width:100%;">
+                    <i class="fas fa-eye"></i> Abrir
+                </button>
             </div>
         </div>
         `;
     }).join('');
 }
-
-// Download de PDF Individual
-window.downloadDoc = async (taskId) => {
-    const task = allReports.find(t => t.id === taskId);
-    if (!task) return alert("Erro: Tarefa não encontrada.");
-
-    const btn = event.currentTarget;
-    const originalText = btn?.innerHTML || '';
-
-    try {
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        btn.disabled = true;
-
-        const reportData = task.report || {};
-        await generateLaudoPDF(task, { ...task, ...reportData });
-
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    } catch (e) {
-        console.error(e);
-        if (btn) {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }
-        alert("Erro ao gerar arquivo.");
-    }
-};
 
 // Exportação Excel Estilizada
 if (btnExport) {

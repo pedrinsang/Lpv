@@ -11,3 +11,4 @@
 
 ## Excecao
 - So considerar Cloud Functions se o usuario pedir explicitamente nesta conversa.
+      

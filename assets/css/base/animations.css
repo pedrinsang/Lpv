@@ -386,26 +386,22 @@
   animation-fill-mode: both;
 }
 
-/* Número dentro do status card */
-.status-count {
-  animation: numberPop 0.5s var(--ease-spring) 0.2s both;
-}
-
-/* Barra colorida na base do status card */
-.status-bar {
-  animation: barReveal 0.6s var(--ease-spring) 0.3s both;
-}
-
 /* Badges de role */
 .user-badge,
 .card-role {
   animation: badgePop 0.4s var(--ease-bounce) 0.3s both;
 }
 
-/* Painel da fila e planner */
-.queue-panel,
-.weekly-planner-panel {
+/* Painéis do hub */
+.urgent-section,
+.week-section {
   animation: springUp 0.5s var(--ease-spring) 0.15s both;
+}
+
+/* Cartão da trilha: "backwards" em vez de "both" para o estado final não
+   fixar o transform e anular o lift do :hover. */
+.inventory-hub-panel {
+  animation: springUp 0.5s var(--ease-spring) 0.15s backwards;
 }
 
 /* Colunas do kanban no mural (desktop) */
@@ -459,7 +455,7 @@
 .anim-spring-up, .anim-spring-right,
 .anim-scale-in, .anim-card-in, .anim-pop-in,
 .anim-ticket-drop, .anim-badge-pop, .anim-number-pop,
-.fade-in, .mural-card, .status-card, .sample-ticket,
+.fade-in, .mural-card, .sample-ticket,
 .kanban-column, .sidebar-link {
   will-change: transform, opacity;
 }

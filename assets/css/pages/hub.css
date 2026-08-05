@@ -1,168 +1,850 @@
-/* Painel da Minha Fila */
-.queue-panel {
-    padding: 10px;
+/* =========================================
+   LAYOUT DO HUB — coluna de trabalho + trilha lateral
+   ========================================= */
+
+/* O dashboard ocupa a altura da janela para a agenda poder ancorar embaixo. */
+.hub-main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
-.queue-title {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    margin-bottom: 10px;
+/* Urgências e estoque dividem a faixa de cima e esticam até encostar na
+   agenda, que fica fixa no rodapé ocupando a largura toda. */
+.hub-layout {
+    --hub-muted: #94a3b8;
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 324px;
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "urgent rail"
+        "week   week";
+    align-items: stretch;
+    gap: 24px;
+    padding: 24px 12px 32px;
+}
+
+.urgent-section {
+    grid-area: urgent;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.hub-rail {
+    grid-area: rail;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.week-section {
+    grid-area: week;
+    min-width: 0;
+}
+
+/* Cabeçalho de seção — o título fica solto sobre o fundo, sem moldura. */
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.section-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-title {
+    margin: 0;
+    font-size: 1.05rem;
     font-weight: 700;
-    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+}
+
+/* =========================================
+   URGÊNCIAS
+   ========================================= */
+
+.urgent-count {
+    font-size: 0.7rem;
+    font-weight: 800;
+    white-space: nowrap;
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+
+.urgent-count.is-clear {
+    color: #6ee7b7;
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.3);
 }
 
 .queue-filter {
     display: flex;
-    gap: 8px;
-    margin-bottom: 10px;
+    gap: 6px;
 }
 
-.queue-filter .btn {
+.queue-filter-btn {
+    height: 30px;
+    padding: 0 12px;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.queue-filter-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--color-primary);
+}
+
+.queue-filter-btn.is-active {
+    font-weight: 700;
+    color: #fff;
+    background: var(--gradient-main);
+    border-color: transparent;
+}
+
+/* Cabe no mínimo 4 cartões e cresce até encostar na agenda; o que passar disso
+   rola por dentro da caixa. */
+.urgent-list {
+    --urgent-row: 51px;
+    --urgent-gap: 8px;
     flex: 1;
-    white-space: nowrap;
-    font-size: 0.78rem;
-    padding: 7px 10px;
-}
-
-.queue-board {
+    min-height: calc(var(--urgent-row) * 4 + var(--urgent-gap) * 3);
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--urgent-gap);
+    overflow-y: auto;
+    padding-right: 4px;
+    scrollbar-gutter: stable;
 }
 
-.queue-carousel {
+.urgent-list::-webkit-scrollbar { width: 5px; }
+.urgent-list::-webkit-scrollbar-track { background: transparent; }
+.urgent-list::-webkit-scrollbar-thumb {
+    background: rgba(239, 68, 68, 0.45);
+    border-radius: 10px;
+}
+
+/* minmax em vez de larguras fixas: com seis colunas, valores fixos fariam a
+   coluna do animal colapsar antes de o layout empilhar. */
+.urgent-card {
+    --card-accent: var(--color-other);
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns:
+        92px
+        minmax(90px, 1fr)
+        minmax(88px, 112px)
+        76px
+        minmax(78px, 104px)
+        88px;
+    align-items: center;
     gap: 12px;
-}
-
-.queue-column {
+    padding: 14px 16px;
     background: var(--bg-glass);
     border: 1px solid var(--border-glass);
+    border-left: 4px solid var(--card-accent);
     border-radius: 14px;
-    min-height: 190px;
-    display: flex;
-    flex-direction: column;
+    cursor: pointer;
+    transition: transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease,
+                border-color var(--duration-fast) ease;
 }
 
-.queue-column-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--border-glass);
-    font-size: 0.72rem;
+.urgent-card.type-necro { --card-accent: var(--color-necro); }
+.urgent-card.type-bio { --card-accent: var(--color-bio); }
+
+/* Sinal de urgência: barra e fundo em vermelho. O tipo continua legível na
+   pílula NECROPSIA/BIÓPSIA, então o vermelho fica livre para gritar. */
+.urgent-card.is-urgent {
+    --card-accent: #ef4444;
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.02) 45%, transparent 75%),
+                var(--bg-glass);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.urgent-card.is-urgent:hover,
+.urgent-card.is-urgent:focus-visible {
+    border-color: rgba(239, 68, 68, 0.6);
+    box-shadow: 0 6px 18px rgba(239, 68, 68, 0.18);
+}
+
+.u-flag {
+    margin-right: 7px;
+    font-size: 0.8rem;
+    color: #ef4444;
+    animation: urgentPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes urgentPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .u-flag { animation: none; }
+}
+
+.urgent-card:hover,
+.urgent-card:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    outline: none;
+}
+
+.urgent-card:focus-visible {
+    border-color: var(--color-primary);
+}
+
+/* Sem quebra: a altura da linha precisa ser constante para a caixa caber
+   exatamente quatro amostras. */
+.u-prot {
+    font-size: 0.95rem;
     font-weight: 800;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.u-animal {
+    min-width: 0;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.u-species {
+    opacity: 0.6;
+    font-size: 0.8rem;
+}
+
+.u-type {
+    justify-self: start;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    padding: 3px 8px;
+    border: 1px solid;
+    border-radius: 5px;
+    white-space: nowrap;
+}
+
+.u-type.type-necro {
+    color: var(--color-necro);
+    border-color: rgba(59, 130, 246, 0.35);
+}
+
+.u-type.type-bio {
+    color: var(--color-bio);
+    border-color: rgba(236, 72, 153, 0.35);
+}
+
+.u-date {
+    font-size: 0.75rem;
     color: var(--text-secondary);
 }
 
-.queue-column-body {
-    max-height: 290px;
-    overflow-y: auto;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+.u-resp {
+    min-width: 0;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.queue-column-body::-webkit-scrollbar {
-    width: 6px;
+.u-date i,
+.u-resp i {
+    opacity: 0.6;
+    margin-right: 5px;
 }
 
-.queue-column-body::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 10px;
+/* Prazo: verde enquanto sobra tempo, vermelho depois de vencido. */
+.u-prazo {
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-align: right;
+    white-space: nowrap;
 }
 
-.queue-column-body::-webkit-scrollbar-thumb {
-    background: var(--color-primary, #3b82f6);
-    border-radius: 10px;
+.u-prazo i {
+    margin-right: 5px;
+    font-size: 0.7rem;
+    opacity: 0.85;
+}
+
+.u-prazo.is-ok { color: #34d399; }
+.u-prazo.is-late { color: #f87171; }
+
+.u-prazo.is-unknown {
+    font-weight: 700;
+    color: var(--text-tertiary);
+    opacity: 0.6;
+}
+
+.urgent-empty {
+    padding: 2.5rem 1rem;
+    text-align: center;
+    color: var(--text-tertiary);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 14px;
+}
+
+.urgent-empty i {
+    display: block;
+    margin-bottom: 10px;
     opacity: 0.5;
 }
 
-.queue-empty {
-    text-align: center;
-    padding: 2rem 1rem;
-    color: var(--text-tertiary);
+/* =========================================
+   SEMANA
+   ========================================= */
+
+/* Linha discreta separando as urgências da agenda. */
+.week-section {
+    border-top: 1px solid var(--border-glass);
+    padding-top: 20px;
 }
 
-.queue-dots {
-    display: none;
-    justify-content: center;
+.week-nav {
+    display: flex;
+    align-items: center;
     gap: 8px;
 }
 
-.queue-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    opacity: 0.35;
-    background: var(--text-tertiary);
-    transition: all 0.2s ease;
+.btn-week-nav {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-glass);
+    color: var(--text-secondary);
+    display: grid;
+    place-items: center;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: background var(--duration-fast) ease, color var(--duration-fast) ease,
+                border-color var(--duration-fast) ease;
 }
 
-.queue-dot.active {
-    width: 24px;
-    border-radius: 12px;
-    opacity: 1;
+.btn-week-nav:hover {
     background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+}
+
+.week-range-label {
+    min-width: 132px;
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.btn-week-today {
+    height: 28px;
+    padding: 0 11px;
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.btn-week-today:hover {
+    color: var(--text-primary);
+    border-color: var(--color-primary);
+}
+
+.week-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.week-day {
+    min-width: 0;
+    min-height: 236px;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+}
+
+.week-day.today {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 12px rgba(2, 132, 199, 0.25);
+}
+
+.week-day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 11px;
+    border-bottom: 1px solid var(--border-glass);
+}
+
+.week-day-name {
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+
+.week-day.today .week-day-name {
+    color: var(--color-accent);
+}
+
+.week-day-num {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.week-day.today .week-day-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-size: 0.75rem;
+}
+
+.week-day-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Cada dia é partido em dois turnos de mesma altura; a tarde vem depois de uma
+   linha tracejada para a divisão ficar óbvia mesmo com o dia vazio. */
+.week-shift-block {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 7px;
+}
+
+.week-shift-block.shift-tarde {
+    border-top: 1px dashed var(--border-glass);
+}
+
+.week-shift {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.57rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.shift-manha .week-shift { color: #fbbf24; }
+.shift-tarde .week-shift { color: #a78bfa; }
+
+.week-shift i {
+    opacity: 0.7;
+    font-size: 0.55rem;
+}
+
+.week-shift-items {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+}
+
+.week-shift-items::-webkit-scrollbar { width: 4px; }
+.week-shift-items::-webkit-scrollbar-thumb { background: var(--color-primary); border-radius: 10px; }
+
+.week-shift-empty {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    opacity: 0.35;
+}
+
+.week-chip {
+    display: flex;
+    gap: 6px;
+    padding: 5px 7px;
+    border-radius: 6px;
+    font-size: 0.68rem;
+    line-height: 1.2;
+    cursor: pointer;
+    border-left: 3px solid var(--color-other);
+    background: rgba(100, 116, 139, 0.2);
+    color: var(--hub-muted);
+    transition: transform var(--duration-fast) ease, opacity var(--duration-fast) ease;
+}
+
+.week-chip:hover {
+    transform: scale(1.03);
+    opacity: 0.85;
+}
+
+.week-chip.type-necro {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93bbfd;
+    border-left-color: var(--color-necro);
+}
+
+.week-chip.type-bio {
+    background: rgba(236, 72, 153, 0.2);
+    color: #f9a8d4;
+    border-left-color: var(--color-bio);
+}
+
+.week-chip-time {
+    flex-shrink: 0;
+    font-size: 0.65rem;
+    font-weight: 700;
+    opacity: 0.8;
+}
+
+.week-chip-label {
+    min-width: 0;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Atalho colado no título da seção. */
+.week-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--color-accent);
+    transition: border-color var(--duration-fast) ease, background var(--duration-fast) ease;
+}
+
+.week-link:hover {
+    border-color: var(--color-accent);
+    background: rgba(56, 189, 248, 0.1);
+}
+
+.week-link i {
+    font-size: 0.65rem;
 }
 
 /* =========================================
-   SIDEBAR MOBILE (CORREÇÃO DE FUNDO)
+   TRILHA — ESTOQUE
    ========================================= */
 
-/* Esconde no Desktop por padrão */
+.inventory-hub-panel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    background: var(--bg-glass);
+    color: var(--text-primary);
+    transition: transform var(--duration-fast) ease, border-color var(--duration-fast) ease,
+                box-shadow var(--duration-fast) ease;
+}
+
+.inventory-hub-panel:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-md);
+}
+
+.inventory-hub-panel.has-attention {
+    border-color: rgba(245, 158, 11, 0.28);
+}
+
+.inventory-hub-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.inventory-hub-heading > div {
+    flex: 1;
+    min-width: 0;
+}
+
+.inventory-hub-heading strong,
+.inventory-hub-heading small {
+    display: block;
+}
+
+.inventory-hub-heading strong {
+    font-size: 0.92rem;
+}
+
+.inventory-hub-heading small {
+    margin-top: 2px;
+    font-size: 0.7rem;
+    line-height: 1.35;
+    color: var(--text-tertiary);
+}
+
+.inventory-hub-icon {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: var(--color-accent);
+    background: rgba(56, 189, 248, 0.12);
+    font-size: 0.9rem;
+}
+
+.inventory-hub-arrow {
+    color: var(--text-tertiary);
+    font-size: 0.75rem;
+}
+
+.inventory-hub-stats {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+/* Uma linha por alerta: a trilha tem só este cartão, então ele ocupa a
+   coluna na vertical em vez de espremer quatro tiles num grid. */
+.inventory-hub-stat {
+    flex: 1 1 0;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 11px;
+    border: 1px solid var(--border-glass);
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.5);
+    transition: border-color var(--duration-fast) ease, background var(--duration-fast) ease;
+}
+
+.inventory-hub-stat-icon {
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    font-size: 0.7rem;
+}
+
+.inventory-hub-stat strong {
+    font-size: 1.15rem;
+    line-height: 1;
+    color: var(--text-primary);
+}
+
+.inventory-hub-stat-label {
+    margin-left: auto;
+    text-align: right;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+}
+
+.inventory-hub-stat.stat-low,
+.inventory-hub-stat.stat-expiring {
+    --stat-accent: #fbbf24;
+    color: #fbbf24;
+}
+
+.inventory-hub-stat.stat-zero,
+.inventory-hub-stat.stat-expired {
+    --stat-accent: #f87171;
+    color: #f87171;
+}
+
+.inventory-hub-stat.has-alert {
+    background: rgba(245, 158, 11, 0.07);
+    border-color: #fbbf24;
+}
+
+.inventory-hub-stat.stat-zero.has-alert,
+.inventory-hub-stat.stat-expired.has-alert {
+    background: rgba(239, 68, 68, 0.07);
+    border-color: #f87171;
+}
+
+/* Preenche pelo --stat-accent e não por currentColor: a própria regra troca o
+   color para escurecer o glifo, o que zeraria o fundo. */
+.inventory-hub-stat.has-alert .inventory-hub-stat-icon {
+    background: var(--stat-accent);
+    color: #0f172a;
+}
+
+/* =========================================
+   RESPONSIVO — EMPILHA A TRILHA
+   ========================================= */
+
+/* Empilha cedo: abaixo disso a coluna da esquerda não comporta as seis
+   colunas do cartão de urgência sem espremer o nome do animal. */
+@media (max-width: 1300px) {
+    /* Empilhado, o dashboard volta a rolar com a página: nada de ancorar a
+       agenda no rodapé nem de esticar os painéis. */
+    .hub-main {
+        display: block;
+    }
+
+    .hub-layout {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: none;
+        grid-template-areas: none;
+        gap: 22px;
+    }
+
+    .urgent-section,
+    .hub-rail,
+    .week-section {
+        grid-area: auto;
+    }
+
+    .urgent-section { order: 1; }
+    .hub-rail { order: 2; }
+    .week-section { order: 3; }
+
+    /* Volta a caixa fechada de 4 amostras — sem a coluna ao lado não há altura
+       sobrando para distribuir. */
+    .urgent-list {
+        flex: 0 0 auto;
+        max-height: calc(var(--urgent-row) * 4 + var(--urgent-gap) * 3);
+    }
+
+    .inventory-hub-panel {
+        flex: 0 0 auto;
+    }
+
+    .inventory-hub-stat {
+        min-height: 0;
+    }
+
+    /* Empilhado o cartão é largo: os alertas voltam a ficar lado a lado. */
+    .inventory-hub-stats {
+        flex-direction: row;
+    }
+
+    .inventory-hub-stat {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .inventory-hub-stat-label {
+        margin-left: 0;
+        text-align: left;
+    }
+}
+
+/* Esconde no Desktop por padrão — precisa vir ANTES da media query abaixo:
+   as duas regras usam !important, e a última declarada vence. */
 .mobile-menu-btn, .sidebar-overlay {
     display: none !important;
 }
 
-/* APENAS PARA MOBILE (Telas menores que 900px) */
 @media (max-width: 900px) {
-    .queue-filter {
-        overflow-x: auto;
-        padding-bottom: 2px;
+    .hub-layout {
+        gap: 18px;
+        padding: 16px 10px 24px;
     }
 
-    .queue-filter .btn {
-        flex: 0 0 auto;
+    /* O cartão de urgência vira bloco: protocolo e prazo na primeira linha,
+       que são os dois campos que se lê primeiro. */
+    .urgent-card {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "prot   prazo"
+            "animal animal"
+            "type   date"
+            "resp   resp";
+        gap: 6px 12px;
+        padding: 13px 14px;
     }
 
-    .queue-dots {
+    /* O cartão empilhado é bem mais alto — a caixa cresce junto para continuar
+       mostrando quatro amostras antes de rolar. */
+    .urgent-list {
+        --urgent-row: 124px;
+    }
+
+    .u-prot { grid-area: prot; }
+    .u-animal { grid-area: animal; }
+    .u-type { grid-area: type; }
+    .u-date { grid-area: date; text-align: right; }
+    .u-resp { grid-area: resp; }
+    .u-prazo { grid-area: prazo; }
+
+    /* A semana rola na horizontal em vez de espremer 5 colunas na tela */
+    .week-grid {
         display: flex;
-    }
-
-    .queue-carousel {
-        display: flex;
         overflow-x: auto;
-        scroll-snap-type: x mandatory;
-        gap: 10px;
         -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
         padding-bottom: 4px;
     }
 
-    .queue-carousel::-webkit-scrollbar {
+    .week-grid::-webkit-scrollbar {
         display: none;
     }
 
-    .queue-column {
-        min-width: 85vw;
-        scroll-snap-align: center;
-        opacity: 0.6;
-        transform: scale(0.97);
-        transition: all 0.2s ease;
+    .week-day {
+        flex: 0 0 148px;
+        scroll-snap-align: start;
     }
 
-    .queue-column.active {
-        opacity: 1;
-        transform: scale(1);
-        border-color: var(--color-primary);
+    .inventory-hub-stats {
+        flex-wrap: wrap;
     }
 
-    .queue-column-body {
-        max-height: 250px;
+    .inventory-hub-stat {
+        flex: 1 1 calc(50% - 4px);
     }
 
     /* 1. Botão Hambúrguer Visível */
@@ -220,501 +902,5 @@
     .sidebar-overlay.active {
         opacity: 1;
         visibility: visible;
-    }
-}
-
-
-/* =========================================
-   PLANNER SEMANAL
-   ========================================= */
-
-.weekly-planner-panel {
-    padding: 10px;
-}
-
-.weekly-planner-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 14px;
-}
-
-.weekly-planner-title {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    font-weight: 700;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.weekly-nav {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.btn-week-nav {
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
-    border: 1px solid var(--border-glass);
-    background: var(--bg-glass);
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 0.75rem;
-    transition: all 0.15s ease;
-}
-
-.btn-week-nav:hover {
-    background: var(--color-primary);
-    color: #fff;
-    border-color: var(--color-primary);
-}
-
-.week-range-label {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    min-width: 130px;
-    text-align: center;
-}
-
-.btn-week-today {
-    font-size: 0.7rem;
-    padding: 4px 10px;
-    border-radius: 6px;
-}
-
-/* Grid semanal */
-.weekly-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
-}
-
-.week-day-col {
-    background: var(--bg-glass);
-    border: 1px solid var(--border-glass);
-    border-radius: 12px;
-    min-height: 120px;
-    display: flex;
-    flex-direction: column;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.week-day-col.today {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 12px rgba(2, 132, 199, 0.25);
-}
-
-.week-day-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 10px;
-    border-bottom: 1px solid var(--border-glass);
-}
-
-.week-day-name {
-    font-size: 0.7rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    letter-spacing: 0.04em;
-}
-
-.week-day-col.today .week-day-name {
-    color: var(--color-primary);
-}
-
-.week-day-num {
-    font-size: 0.85rem;
-    font-weight: 800;
-    color: var(--text-primary);
-}
-
-.week-day-col.today .week-day-num {
-    background: var(--color-primary);
-    color: #fff;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-}
-
-.week-day-body {
-    padding: 6px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex: 1;
-    overflow-y: auto;
-    max-height: 160px;
-}
-
-.week-day-body::-webkit-scrollbar { width: 4px; }
-.week-day-body::-webkit-scrollbar-thumb { background: var(--color-primary); border-radius: 10px; }
-
-.week-empty {
-    text-align: center;
-    color: var(--text-tertiary);
-    font-size: 0.75rem;
-    padding: 12px 0;
-    opacity: 0.5;
-}
-
-/* Chips de tarefas */
-.wp-chip {
-    padding: 4px 7px;
-    border-radius: 6px;
-    font-size: 0.68rem;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    cursor: pointer;
-    transition: transform 0.15s ease, opacity 0.15s ease;
-    line-height: 1.2;
-}
-
-.wp-chip:hover {
-    transform: scale(1.03);
-    opacity: 0.85;
-}
-
-.wp-necro { background: rgba(59, 130, 246, 0.2); color: #93bbfd; border-left: 3px solid #3b82f6; }
-.wp-bio { background: rgba(236, 72, 153, 0.2); color: #f9a8d4; border-left: 3px solid #ec4899; }
-.wp-other { background: rgba(100, 116, 139, 0.2); color: #94a3b8; border-left: 3px solid #64748b; }
-
-.wp-time {
-    font-weight: 700;
-    white-space: nowrap;
-    font-size: 0.65rem;
-    opacity: 0.8;
-}
-
-.wp-label {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-weight: 600;
-}
-
-
-/* =========================================
-   ESCALA DE ESTAGIÁRIOS
-   ========================================= */
-
-.intern-schedule-panel {
-    padding: 10px;
-    margin-top: 4px;
-}
-
-.intern-schedule-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 14px;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.intern-schedule-title {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    font-weight: 700;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.btn-add-schedule {
-    font-size: 0.72rem;
-    padding: 5px 12px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-/* Grid de escala */
-.intern-week-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.intern-row {
-    display: grid;
-    grid-template-columns: 110px repeat(5, minmax(180px, 1fr));
-    gap: 2px;
-    min-width: 1010px;
-}
-
-.intern-header-row {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-}
-
-.intern-header-row .intern-day-cell {
-    font-weight: 800;
-    text-transform: uppercase;
-    font-size: 0.68rem;
-    letter-spacing: 0.04em;
-    text-align: center;
-    line-height: 1.3;
-}
-
-.intern-name-cell {
-    background: var(--bg-glass);
-    border: 1px solid var(--border-glass);
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    position: sticky;
-    left: 0;
-    z-index: 1;
-}
-
-.intern-day-cell {
-    background: var(--bg-glass);
-    border: 1px solid var(--border-glass);
-    border-radius: 8px;
-    padding: 6px;
-    min-height: 42px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    color: var(--text-secondary);
-    font-size: 0.75rem;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    min-width: 0;
-}
-
-.intern-day-cell.today {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 8px rgba(2, 132, 199, 0.2);
-    background: rgba(2, 132, 199, 0.06);
-}
-
-.intern-day-num {
-    font-weight: 800;
-    font-size: 0.8rem;
-    color: var(--text-primary);
-}
-
-.intern-day-cell.today .intern-day-num {
-    color: var(--color-primary);
-}
-
-.intern-task-tag {
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 0.68rem;
-    font-weight: 600;
-    text-align: left;
-    max-width: 100%;
-    transition: transform 0.15s ease;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1px;
-    line-height: 1.3;
-    width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-    overflow-wrap: anywhere;
-}
-
-.intern-task-tag:hover {
-    transform: scale(1.03);
-}
-
-.sched-intern-name {
-    font-weight: 800;
-    font-size: 0.7rem;
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-}
-
-.sched-task-text {
-    font-size: 0.62rem;
-    opacity: 0.8;
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-}
-
-.shift-manha { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border-left: 3px solid #f59e0b; }
-.shift-tarde { background: rgba(139, 92, 246, 0.2); color: #a78bfa; border-left: 3px solid #8b5cf6; }
-.shift-integral { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border-left: 3px solid #10b981; }
-
-.intern-add-hint {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 1px dashed var(--border-glass);
-    background: transparent;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.55rem;
-    opacity: 0;
-    transition: opacity 0.15s ease, background 0.15s ease;
-    margin-top: 2px;
-}
-
-.intern-day-cell:hover .intern-add-hint {
-    opacity: 1;
-}
-
-.intern-add-hint:hover {
-    background: rgba(2, 132, 199, 0.1);
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-}
-
-.intern-empty {
-    text-align: center;
-    padding: 20px;
-    color: var(--text-tertiary);
-    font-size: 0.8rem;
-}
-
-/* =========================================
-   RESPONSIVE WEEKLY + SCHEDULE
-   ========================================= */
-@media (max-width: 900px) {
-    .weekly-grid {
-        grid-template-columns: repeat(5, 1fr);
-        gap: 4px;
-    }
-
-    .week-day-col {
-        min-height: 80px;
-        border-radius: 8px;
-    }
-
-    .week-day-header {
-        padding: 5px 6px;
-        flex-direction: column;
-        gap: 2px;
-    }
-
-    .week-day-name { font-size: 0.6rem; }
-    .week-day-num { font-size: 0.75rem; }
-
-    .week-day-body {
-        padding: 4px;
-        max-height: 100px;
-    }
-
-    .wp-chip { font-size: 0.6rem; padding: 3px 5px; }
-    .wp-time { display: none; }
-
-    .weekly-planner-header { flex-direction: column; align-items: flex-start; }
-
-    .intern-row { 
-        min-width: 890px;
-        grid-template-columns: 90px repeat(5, minmax(160px, 1fr));
-    }
-    
-    .intern-name-cell { 
-        padding: 6px 8px; 
-        font-size: 0.7rem; 
-    }
-    
-    .intern-day-cell {
-        padding: 4px;
-        min-height: 38px;
-        gap: 2px;
-    }
-    
-    .intern-day-num {
-        font-size: 0.7rem;
-    }
-    
-    .intern-task-tag {
-        padding: 3px 6px;
-        font-size: 0.6rem;
-        border-left-width: 2px;
-        width: 100%;
-    }
-    
-    .sched-intern-name {
-        font-size: 0.62rem;
-    }
-    
-    .sched-task-text {
-        font-size: 0.58rem;
-    }
-    
-    .intern-add-hint {
-        width: 18px;
-        height: 18px;
-        font-size: 0.5rem;
-    }
-    
-    /* Modal de escala - ajuste para mobile */
-    #schedule-modal .modal-glass {
-        max-width: calc(100vw - 40px) !important;
-        padding: 16px !important;
-        width: 90% !important;
-        height: auto !important;
-        align-self: center !important;
-    }
-    
-    #schedule-modal {
-        align-items: center !important;
-    }
-    
-    #schedule-modal .modal-glass h3 {
-        font-size: 0.95rem !important;
-    }
-    
-    #schedule-modal .modal-glass label {
-        font-size: 0.72rem !important;
-    }
-    
-    #schedule-modal .modal-glass .input-field,
-    #schedule-modal .modal-glass select {
-        font-size: 0.85rem !important;
-        padding: 8px 10px !important;
-    }
-    
-    #schedule-modal .modal-glass .btn {
-        font-size: 0.8rem !important;
-        padding: 8px 14px !important;
-    }
-    
-    #close-schedule-modal {
-        top: 12px !important;
-        right: 12px !important;
-        font-size: 1.2rem !important;
     }
 }

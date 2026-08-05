@@ -66,25 +66,7 @@
   .tm-actions-bar button {
     width: 100%;
     margin-bottom: 10px;
-  }
-
-  .report-paper-container {
-    padding: 0;
-    background: white;
-  }
-
-  .report-paper {
-    box-shadow: none;
-    padding: 20px;
-    width: 100%;
-    min-height: auto;
-  }
-
-  .report-toolbar {
-    border-radius: 0;
-    border-bottom: 1px solid #eee;
-  }
-}
+  }}
 
 /* Desktop */
 @media (min-width: 1024px) {

@@ -11,7 +11,6 @@
 const ANIMATION_CONFIG = {
     // Mapeamento: seletor CSS → animação que ele recebe
     selectors: {
-        '.status-card':      { animation: 'springUp',    duration: '0.55s', easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
         '.sample-ticket':    { animation: 'ticketDrop',  duration: '0.45s', easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
         '.tool-card':        { animation: 'springUp',    duration: '0.5s',  easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
         '.mural-card':       { animation: 'cardSlideIn', duration: '0.45s', easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
@@ -73,7 +72,7 @@ export function animateList(elements, animationName, duration, easing, staggerMs
 
 /**
  * Anima todos os filhos de um container com stagger.
- * Uso: animateChildren(document.getElementById('queue-necropsia-list'))
+ * Uso: animateChildren(document.getElementById('urgent-list'))
  */
 export function animateChildren(container, animationName = 'springUp', duration = '0.5s', easing = 'cubic-bezier(0.22, 1, 0.36, 1)') {
     if (!container) return;
@@ -83,7 +82,7 @@ export function animateChildren(container, animationName = 'springUp', duration 
 
 /**
  * Anima elementos por seletor dentro de um container.
- * Uso: animateSelector('.status-card', document.body)
+ * Uso: animateSelector('.sample-ticket', document.body)
  */
 export function animateSelector(selector, container = document.body) {
     const config = ANIMATION_CONFIG.selectors[selector];
@@ -149,12 +148,3 @@ if (document.body) {
     document.addEventListener('DOMContentLoaded', startObserver, { once: true });
 }
 
-// ============================================================
-// ANIMAÇÃO INICIAL — elementos já no DOM ao carregar a página
-// Ex: sidebar links, header, status cards iniciais
-// ============================================================
-document.addEventListener('DOMContentLoaded', () => {
-    // Status cards do hub (se já existirem no HTML estático)
-    const statusCards = document.querySelectorAll('.status-card');
-    animateList(statusCards, 'springUp', '0.55s', 'cubic-bezier(0.22, 1, 0.36, 1)', 70);
-});

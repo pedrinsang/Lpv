@@ -31,9 +31,8 @@
         <nav class="sidebar-nav">
             <a href="hub.html" class="sidebar-link active"><i class="fas fa-home"></i> <span>Visão Geral</span></a>
             <a href="mural.html" class="sidebar-link"><i class="fas fa-columns"></i> <span>Mural</span></a>
-            <a href="coloracao.html" class="sidebar-link"><i class="fas fa-stopwatch"></i> <span>Timers</span></a>
-            <a href="protocolos.html" class="sidebar-link"><i class="fas fa-book-medical"></i> <span>Protocolos</span></a>
             <a href="historico.html" class="sidebar-link"><i class="fas fa-history"></i> <span>Histórico</span></a>
+            <a href="estoque.html" class="sidebar-link"><i class="fas fa-boxes-stacked"></i> <span>Estoque</span></a>
             <a href="planner.html" class="sidebar-link"><i class="fas fa-calendar-alt"></i> <span>Planner</span></a>
             <a href="admin.html" class="sidebar-link hidden" id="sidebar-admin-link"><i class="fas fa-shield-alt"></i> <span>Admin</span></a>
             <button class="sidebar-link btn-sidebar-new" id="open-entry-modal">
@@ -71,131 +70,78 @@
             </div>
         </header>
 
-        <main class="main-container">
-            <div class="production-wrapper">
-                <div class="status-production-line">
-                    <div class="status-card" data-status="necropsias" style="--card-index: 0">
-                        <div class="status-count" id="count-necropsias">0</div>
-                        <div class="status-label">Necropsias</div>
-                        <div class="status-bar" style="background: #3b82f6;"></div>
-                    </div>
-                    <div class="status-card" data-status="biopsias" style="--card-index: 1">
-                        <div class="status-count" id="count-biopsias">0</div>
-                        <div class="status-label">Biopsias</div>
-                        <div class="status-bar" style="background: #ec4899;"></div>
-                    </div>
-                    <div class="status-arrow"><i class="fas fa-chevron-right"></i></div>
-                    <div class="status-card" data-status="clivagem" style="--card-index: 2">
-                        <div class="status-count" id="count-clivagem">0</div>
-                        <div class="status-label">Clivagem</div>
-                        <div class="status-bar" style="background: #eab308;"></div>
-                    </div>
-                    <div class="status-card" data-status="processamento" style="--card-index: 3">
-                        <div class="status-count" id="count-processamento">0</div>
-                        <div class="status-label">Processamento</div>
-                        <div class="status-bar" style="background: #84cc16;"></div>
-                    </div>
-                    <div class="status-arrow"><i class="fas fa-chevron-right"></i></div>
-                    <div class="status-card" data-status="laminas_prontas" style="--card-index: 4">
-                        <div class="status-count" id="count-laminas">0</div>
-                        <div class="status-label">Lâminas Prontas</div>
-                        <div class="status-bar" style="background: #3b82f6;"></div>
-                    </div>
-                    <div class="status-card" data-status="analise" style="--card-index: 5">
-                        <div class="status-count" id="count-analise">0</div>
-                        <div class="status-label">Análise</div>
-                        <div class="status-bar" style="background: #0ea5e9;"></div>
-                    </div>
-                    <div class="status-card" data-status="liberar" style="--card-index: 6">
-                        <div class="status-count" id="count-liberar">0</div>
-                        <div class="status-label">Liberar Laudo</div>
-                        <div class="status-bar" style="background: #6366f1;"></div>
-                    </div>
-                </div>
-            </div>
+        <main class="main-container hub-main">
+            <div class="hub-layout">
 
-            <div class="queue-panel">
-                <h3 class="queue-title">
-                    <i class="fas fa-tasks me-2"></i> Minha Fila
-                </h3>
-                <div id="queue-filter-container" class="queue-filter hidden" aria-label="Filtro da fila">
-                    <button id="queue-filter-mine" type="button" class="btn btn-secondary">Minhas amostras</button>
-                    <button id="queue-filter-all" type="button" class="btn btn-primary">Todas amostras</button>
-                </div>
-                <div id="queue-list-container" class="queue-board">
-                    <div class="queue-dots" id="queue-mobile-dots" aria-hidden="true"></div>
-                    <div class="queue-carousel" id="queue-mobile-carousel">
-                        <section class="queue-column" data-queue-type="necropsia">
-                            <div class="queue-column-header">Necropsias <span id="queue-count-necropsia">0</span></div>
-                            <div class="queue-column-body" id="queue-necropsia-list"></div>
-                        </section>
-                        <section class="queue-column" data-queue-type="biopsia">
-                            <div class="queue-column-header">Biópsias <span id="queue-count-biopsia">0</span></div>
-                            <div class="queue-column-body" id="queue-biopsia-list"></div>
-                        </section>
-                    </div>
-                </div>
-            </div>
-
-            <!-- PLANNER SEMANAL -->
-            <div class="weekly-planner-panel">
-                <div class="weekly-planner-header">
-                    <h3 class="weekly-planner-title">
-                        <i class="fas fa-calendar-week"></i> Planner Semanal
-                    </h3>
-                    <div class="weekly-nav">
-                        <button id="week-prev" class="btn-icon btn-week-nav"><i class="fas fa-chevron-left"></i></button>
-                        <span id="week-range-label" class="week-range-label">---</span>
-                        <button id="week-next" class="btn-icon btn-week-nav"><i class="fas fa-chevron-right"></i></button>
-                        <button id="week-today" class="btn btn-secondary btn-week-today">Hoje</button>
-                    </div>
-                </div>
-                <div id="weekly-grid" class="weekly-grid"></div>
-            </div>
-
-            <!-- ESCALA DE ESTAGIÁRIOS -->
-            <div class="intern-schedule-panel">
-                <div class="intern-schedule-header">
-                    <h3 class="intern-schedule-title">
-                        <i class="fas fa-user-clock"></i> Escala de Estagiários
-                    </h3>
-                    <button id="btn-add-schedule" class="btn btn-primary btn-sm btn-add-schedule hidden">
-                        <i class="fas fa-plus"></i> Adicionar
-                    </button>
-                </div>
-                <div id="intern-week-grid" class="intern-week-grid"></div>
-            </div>
-
-            <!-- Modal de adição/edição de escala -->
-            <div id="schedule-modal" class="modal-overlay hidden">
-                <div class="modal-glass" style="max-width: 420px; width: 90%; padding: 24px; height: auto; align-self: center; max-height: 85vh;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 18px;">
-                        <h3 id="sched-modal-title" style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary);">Escala</h3>
-                        <button id="close-schedule-modal" class="btn-close-modal"><i class="fas fa-times"></i></button>
-                    </div>
-                    <form id="schedule-form" style="display:flex; flex-direction:column; gap: 14px;">
-                        <div>
-                            <label style="font-size:0.8rem; font-weight:700; color:var(--text-secondary); margin-bottom:4px; display:block;">Estagiário</label>
-                            <select id="sched-intern" class="input-field" style="margin-bottom:0;" required>
-                                <option value="">Selecione...</option>
-                            </select>
+                <!-- URGÊNCIAS -->
+                <section class="urgent-section">
+                    <div class="section-header">
+                        <div class="section-heading">
+                            <h3 class="section-title">Urgências</h3>
+                            <span id="urgent-count" class="urgent-count">0 casos</span>
                         </div>
-                        <div>
-                            <label style="font-size:0.8rem; font-weight:700; color:var(--text-secondary); margin-bottom:4px; display:block;">Tarefa</label>
-                            <input type="text" id="sched-task" class="input-field" style="margin-bottom:0;" placeholder="Ex: Clivagem, Coloração..." required>
+                        <div id="queue-filter-container" class="queue-filter hidden" aria-label="Filtro da fila">
+                            <button id="queue-filter-mine" type="button" class="queue-filter-btn">Minhas</button>
+                            <button id="queue-filter-all" type="button" class="queue-filter-btn is-active">Todas</button>
                         </div>
-                        <input type="hidden" id="sched-id" value="">
-                        <input type="hidden" id="sched-day" value="">
-                        <input type="hidden" id="sched-shift" value="">
-                        <div style="display:flex; gap:10px; margin-top:6px;">
-                            <button type="button" id="sched-delete-btn" class="btn btn-secondary hidden" style="color:var(--color-error); border-color:var(--color-error);">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                            <button type="submit" class="btn btn-primary" style="flex:1;">Salvar</button>
+                    </div>
+                    <div id="urgent-list" class="urgent-list"></div>
+                </section>
+
+                <aside class="hub-rail">
+                    <!-- ESTOQUE -->
+                    <a href="estoque.html" class="inventory-hub-panel">
+                        <div class="inventory-hub-heading">
+                            <span class="inventory-hub-icon"><i class="fas fa-boxes-stacked"></i></span>
+                            <div>
+                                <strong>Estoque</strong>
+                                <small>Materiais que precisam de atenção</small>
+                            </div>
+                            <i class="fas fa-chevron-right inventory-hub-arrow"></i>
                         </div>
-                    </form>
-                </div>
+                        <div class="inventory-hub-stats">
+                            <div class="inventory-hub-stat stat-zero">
+                                <span class="inventory-hub-stat-icon"><i class="fas fa-ban"></i></span>
+                                <strong id="hub-stock-zero">0</strong>
+                                <span class="inventory-hub-stat-label">Zerados</span>
+                            </div>
+                            <div class="inventory-hub-stat stat-expired">
+                                <span class="inventory-hub-stat-icon"><i class="fas fa-calendar-xmark"></i></span>
+                                <strong id="hub-stock-expired">0</strong>
+                                <span class="inventory-hub-stat-label">Vencidos</span>
+                            </div>
+                            <div class="inventory-hub-stat stat-low">
+                                <span class="inventory-hub-stat-icon"><i class="fas fa-arrow-trend-down"></i></span>
+                                <strong id="hub-stock-low">0</strong>
+                                <span class="inventory-hub-stat-label">Estoque baixo</span>
+                            </div>
+                            <div class="inventory-hub-stat stat-expiring">
+                                <span class="inventory-hub-stat-icon"><i class="fas fa-hourglass-half"></i></span>
+                                <strong id="hub-stock-expiring">0</strong>
+                                <span class="inventory-hub-stat-label">Vencendo</span>
+                            </div>
+                        </div>
+                    </a>
+                </aside>
+
+                <!-- SEMANA -->
+                <section class="week-section">
+                    <div class="section-header">
+                        <div class="section-heading">
+                            <h3 class="section-title">Semana</h3>
+                            <a href="planner.html" class="week-link">Abrir planner <i class="fas fa-arrow-right"></i></a>
+                        </div>
+                        <div class="week-nav">
+                            <button id="week-prev" class="btn-week-nav" type="button" aria-label="Semana anterior"><i class="fas fa-chevron-left"></i></button>
+                            <span id="week-range-label" class="week-range-label">---</span>
+                            <button id="week-next" class="btn-week-nav" type="button" aria-label="Próxima semana"><i class="fas fa-chevron-right"></i></button>
+                            <button id="week-today" class="btn-week-today" type="button">Hoje</button>
+                        </div>
+                    </div>
+                    <div id="week-grid" class="week-grid"></div>
+                </section>
             </div>
+
         </main>
     </div>
 
@@ -205,7 +151,7 @@
         <div class="nav-fab-container">
             <button class="nav-fab" id="mobile-open-entry"><i class="fas fa-plus"></i></button>
         </div>
-        <a href="coloracao.html" class="nav-item"><i class="fas fa-stopwatch"></i><span>Timers</span></a>
+        <a href="historico.html" class="nav-item"><i class="fas fa-history"></i><span>Histórico</span></a>
         <a href="planner.html" class="nav-item"><i class="fas fa-calendar-alt"></i><span>Planner</span></a>
     </nav>
 
@@ -224,10 +170,6 @@
                     <button id="btn-delete-task" class="btn btn-secondary" style="color: var(--color-error); border-color: var(--color-error); margin-right: auto;">
                         <i class="fas fa-trash"></i>
                     </button>
-                    <div style="display: flex; gap: 10px;">
-                        <button id="btn-prev-stage" class="btn btn-secondary hidden"><i class="fas fa-undo"></i> Voltar</button>
-                        <button id="btn-next-stage" class="btn btn-primary">Próxima <i class="fas fa-arrow-right"></i></button>
-                    </div>
                 </div>
             </div>
             <div id="view-k7-form" class="hidden" style="padding: 20px; overflow-y: auto;">
@@ -236,11 +178,8 @@
         </div>
     </div>
 
-    <lpv-form-laudo></lpv-form-laudo>
-
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
-    <script type="module" src="../assets/js/components/form-laudo.js"></script>
     <script type="module" src="../assets/js/components/entry-form.js"></script>
     <script type="module" src="../assets/js/components/entry-modal.js"></script>
     <script type="module" src="../assets/js/core.js"></script>

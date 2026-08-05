@@ -60,14 +60,13 @@ Regra funcional:
 
 - Upload de fotos internas na criação e edição de entradas.
 - As fotos são mantidas no formato original enviado (ex: JPG, PNG, WEBP).
-- As fotos NÃO entram no laudo PDF/Word e NÃO são expostas no portal público.
+- As fotos NÃO entram no laudo PDF/Word.
 
 ## Backend de Arquivos (Firebase Cloud Functions)
 
 Este projeto agora inclui o diretório [functions](functions) com endpoints para:
 
 - Upload/download versionado de Word/PDF em storage externo.
-- Download público de PDF ativo por código de acesso (sem expor Word/fotos).
 - Conversão Word -> PDF (serviço HTTP configurável).
 - Upload/remoção de fotos internas no Cloudinary.
 
@@ -111,11 +110,6 @@ As regras versionadas ficam em [firestore.rules](firestore.rules).
 ```powershell
 firebase deploy --only firestore:rules
 ```
-
-Observação:
-
-- A página pública de resultados atualmente usa consulta direta no Firestore para localizar os casos concluídos.
-- Garanta regras compatíveis com esse fluxo, sem expor dados internos sensíveis.
 
 ## Modo Direto (Sem Cloud Functions)
 

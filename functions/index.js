@@ -140,12 +140,6 @@ function getTaskFinancialStatus(taskData) {
     .trim();
 }
 
-function canPublicDownloadTask(taskData) {
-  const status = (taskData?.status || "").toString().toLowerCase().trim();
-  const finStatus = getTaskFinancialStatus(taskData);
-  return status === "concluido" && finStatus !== "pendente";
-}
-
 function findPdfVersion(reportFiles, versionId = null) {
   const list = Array.isArray(reportFiles?.pdfVersions) ? reportFiles.pdfVersions : [];
   if (list.length === 0) return null;
@@ -200,24 +194,6 @@ function normalizeActiveSource(reportFiles) {
   if (!hasActiveWord && !hasActivePdf) {
     reportFiles.activeSource = "online_report";
   }
-}
-
-function buildPublicTaskPayload(taskId, taskData) {
-  const reportFiles = normalizeReportFiles(taskData.reportFiles);
-  const hasStoredPdf = !!findPdfVersion(reportFiles);
-
-  return {
-    id: taskId,
-    accessCode: taskData.accessCode || null,
-    protocolo: taskData.protocolo || null,
-    animalNome: taskData.animalNome || null,
-    proprietario: taskData.proprietario || null,
-    dataEntrada: taskData.dataEntrada || null,
-    createdAt: taskData.createdAt || null,
-    status: taskData.status || "clivagem",
-    financialStatus: getTaskFinancialStatus(taskData),
-    hasStoredPdf
-  };
 }
 
 async function parseAuthContext(req) {
@@ -703,85 +679,6 @@ exports.removeReportFileVersion = withCors(async (req, res) => {
   return res.json({
     ok: true,
     removedVersion: targetVersion
-  });
-});
-
-exports.getPublicTaskByAccessCode = withCors(async (req, res) => {
-  if (!requirePost(req, res)) return;
-
-  const { accessCode } = req.body || {};
-  const code = (accessCode || "").toString().trim();
-
-  if (!code) {
-    return res.status(400).json({ ok: false, error: "missing-access-code" });
-  }
-
-  const snap = await db
-    .collection("tasks")
-    .where("accessCode", "==", code)
-    .limit(1)
-    .get();
-
-  if (snap.empty) {
-    return res.status(404).json({ ok: false, error: "not-found" });
-  }
-
-  const taskDoc = snap.docs[0];
-  const taskData = taskDoc.data() || {};
-
-  return res.json({
-    ok: true,
-    task: buildPublicTaskPayload(taskDoc.id, taskData)
-  });
-});
-
-exports.getPublicReportPdfDownloadUrl = withCors(async (req, res) => {
-  if (!requirePost(req, res)) return;
-
-  const { accessCode, expiresIn } = req.body || {};
-  const code = (accessCode || "").toString().trim();
-
-  if (!code) {
-    return res.status(400).json({ ok: false, error: "missing-access-code" });
-  }
-
-  const snap = await db
-    .collection("tasks")
-    .where("accessCode", "==", code)
-    .limit(1)
-    .get();
-
-  if (snap.empty) {
-    return res.status(404).json({ ok: false, error: "report-not-available" });
-  }
-
-  const taskDoc = snap.docs[0];
-  const taskData = taskDoc.data() || {};
-
-  if (!canPublicDownloadTask(taskData)) {
-    return res.status(404).json({ ok: false, error: "report-not-available" });
-  }
-
-  const reportFiles = normalizeReportFiles(taskData.reportFiles);
-  const version = findPdfVersion(reportFiles);
-
-  if (!version || !version.storagePath) {
-    return res.status(404).json({ ok: false, error: "report-not-available" });
-  }
-
-  const supabase = getSupabaseAdminClient();
-  const ttl = Number.isFinite(Number(expiresIn)) ? Math.max(60, Math.min(1800, Number(expiresIn))) : 900;
-  const signed = await supabase.storage.from(REPORTS_BUCKET).createSignedUrl(version.storagePath, ttl);
-
-  if (signed.error || !signed.data?.signedUrl) {
-    return res.status(500).json({ ok: false, error: "signed-url-failed", message: signed.error?.message || "Unknown" });
-  }
-
-  return res.json({
-    ok: true,
-    url: signed.data.signedUrl,
-    version,
-    task: buildPublicTaskPayload(taskDoc.id, taskData)
   });
 });
 

@@ -69,50 +69,7 @@ img {
 
 ::-webkit-scrollbar-corner {
   background: transparent;
-}
-
-/* Scrollbar específica da linha de produção */
-.production-wrapper::-webkit-scrollbar {
-  height: 6px;
-}
-
-.production-wrapper::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 10px;
-  margin: 0 10px;
-}
-
-.production-wrapper::-webkit-scrollbar-thumb {
-  background: rgba(120, 120, 120, 0.2);
-  border-radius: 10px;
-  transition: background var(--duration-normal) ease;
-}
-
-.production-wrapper::-webkit-scrollbar-thumb:hover {
-  background: var(--color-primary);
-  cursor: grab;
-}
-
-/* Scrollbar do editor de laudo */
-.report-paper-container::-webkit-scrollbar {
-  width: 8px;
-}
-
-.report-paper-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.report-paper-container::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-}
-
-.report-paper-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.4);
-}
-
-
-/* ================================================================
+}/* ================================================================
    UTILITÁRIOS & HELPERS
    ================================================================ */
 

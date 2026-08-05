@@ -11,7 +11,8 @@ service cloud.firestore {
     }
 
     function hasUserProfile() {
-      return isSignedIn() && currentUserDoc().exists();
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
     function currentUserData() {
@@ -51,6 +52,19 @@ service cloud.firestore {
       return hasUserProfile() && currentUserData().status != 'pending';
     }
 
+    function isInventoryManager() {
+      return hasAnyRole([
+        'admin',
+        'professor',
+        'pos-graduando',
+        'pos graduando',
+        'pos_graduando',
+        'posgraduando',
+        'pós-graduando',
+        'pós graduando'
+      ]);
+    }
+
     match /config/registration {
       allow read: if true;
       allow write: if isAdmin();
@@ -81,12 +95,75 @@ service cloud.firestore {
       allow create, update, delete: if isApprovedUser();
     }
 
-    match /intern_schedule/{scheduleId} {
+    match /slide_records/{recordId} {
       allow read, write: if isApprovedUser();
     }
 
-    match /slide_records/{recordId} {
-      allow read, write: if isApprovedUser();
+    match /inventory_items/{itemId} {
+      allow read: if isApprovedUser();
+
+      allow create: if isInventoryManager()
+        && request.resource.data.currentQuantity is number
+        && request.resource.data.currentQuantity >= 0
+        && request.resource.data.minQuantity is number
+        && request.resource.data.minQuantity >= 0;
+
+      allow update: if (
+        isInventoryManager()
+        && request.resource.data.currentQuantity is number
+        && request.resource.data.currentQuantity >= 0
+        && request.resource.data.minQuantity is number
+        && request.resource.data.minQuantity >= 0
+      ) || (
+          isApprovedUser()
+          && resource.data.active != false
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'currentQuantity',
+            'lastMovementId',
+            'updatedAt',
+            'updatedBy',
+            'updatedByName'
+          ])
+          && request.resource.data.currentQuantity is number
+          && request.resource.data.currentQuantity >= 0
+          && request.resource.data.currentQuantity < resource.data.currentQuantity
+          && request.resource.data.updatedBy == request.auth.uid
+          && request.resource.data.lastMovementId is string
+          && existsAfter(/databases/$(database)/documents/inventory_movements/$(request.resource.data.lastMovementId))
+          && getAfter(/databases/$(database)/documents/inventory_movements/$(request.resource.data.lastMovementId)).data.itemId == itemId
+          && getAfter(/databases/$(database)/documents/inventory_movements/$(request.resource.data.lastMovementId)).data.type == 'saida'
+          && getAfter(/databases/$(database)/documents/inventory_movements/$(request.resource.data.lastMovementId)).data.previousQuantity == resource.data.currentQuantity
+          && getAfter(/databases/$(database)/documents/inventory_movements/$(request.resource.data.lastMovementId)).data.resultingQuantity == request.resource.data.currentQuantity
+          && getAfter(/databases/$(database)/documents/inventory_movements/$(request.resource.data.lastMovementId)).data.createdBy == request.auth.uid
+        );
+
+      // Itens sao arquivados, nunca excluidos, para preservar o historico.
+      allow delete: if false;
+    }
+
+    match /inventory_movements/{movementId} {
+      allow read: if isApprovedUser();
+
+      allow create: if isApprovedUser()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.type in ['entrada', 'saida', 'ajuste']
+        && request.resource.data.quantity is number
+        && request.resource.data.quantity > 0
+        && request.resource.data.delta is number
+        && request.resource.data.previousQuantity is number
+        && request.resource.data.resultingQuantity is number
+        && request.resource.data.resultingQuantity >= 0
+        && (
+          isInventoryManager() ||
+          (
+            request.resource.data.type == 'saida'
+            && request.resource.data.delta < 0
+            && getAfter(/databases/$(database)/documents/inventory_items/$(request.resource.data.itemId)).data.lastMovementId == movementId
+          )
+        );
+
+      // Movimentacoes sao imutaveis; correcoes devem ser feitas por ajuste.
+      allow update, delete: if false;
     }
 
     match /{document=**} {
