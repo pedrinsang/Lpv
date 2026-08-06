@@ -1,4 +1,6 @@
-const CACHE_NAME = 'lpv-ultra-fast-v12';
+// Trocar a versão descarta o cache anterior na ativação. Suba um número sempre
+// que um arquivo da lista abaixo mudar de conteúdo.
+const CACHE_NAME = 'lpv-ultra-fast-v13';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -48,12 +50,26 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // A. ESTRATÉGIA PARA ARQUIVOS ESTÁTICOS (Imagens, CSS, JS, Fontes)
-  // Cache First (Mais rápido: pega do disco, nem vai na internet)
+  //
+  // Stale-while-revalidate: responde do cache na hora (rápido igual antes) e,
+  // em paralelo, busca a versão nova e guarda para o próximo carregamento.
+  //
+  // Antes era Cache First puro (`cachedResponse || fetch(...)`), que nunca
+  // revalidava: uma vez no cache, o arquivo ficava congelado até alguém trocar
+  // o CACHE_NAME. Na prática, um deploy novo não chegava em quem já tinha
+  // aberto o site — o usuário via CSS e JS antigos sem saber por quê.
   if (url.pathname.match(/\.(css|js|png|jpg|jpeg|svg|woff2)$/)) {
     event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        return cachedResponse || fetch(event.request);
-      })
+      caches.open(CACHE_NAME).then((cache) =>
+        cache.match(event.request).then((cached) => {
+          const rede = fetch(event.request).then((resposta) => {
+            if (resposta && resposta.ok) cache.put(event.request, resposta.clone());
+            return resposta;
+          }).catch(() => cached);   // offline: fica no que já tem
+
+          return cached || rede;
+        })
+      )
     );
     return;
   }
