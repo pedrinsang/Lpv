@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
 </head>
-<body>
+<body class="ledger-page">
 
     <aside class="desktop-sidebar">
         <div class="sidebar-header">
@@ -32,9 +32,10 @@
         <nav class="sidebar-nav">
             <a href="hub.html" class="sidebar-link"><i class="fas fa-home"></i> <span>Visão Geral</span></a>
             <a href="mural.html" class="sidebar-link"><i class="fas fa-columns"></i> <span>Mural</span></a>
-            <a href="historico.html" class="sidebar-link active"><i class="fas fa-history"></i> <span>Histórico</span></a>
+            <a href="historico.html" class="sidebar-link active"><i class="fas fa-history"></i> <span>Registros</span></a>
             <a href="estoque.html" class="sidebar-link"><i class="fas fa-boxes-stacked"></i> <span>Estoque</span></a>
             <a href="planner.html" class="sidebar-link"><i class="fas fa-calendar-alt"></i> <span>Planner</span></a>
+             <a href="admin.html" class="sidebar-link hidden" id="sidebar-admin-link"><i class="fas fa-shield-alt"></i> <span>Admin</span></a>
             <button class="sidebar-link btn-sidebar-new"><i class="fas fa-plus"></i> <span>Nova Entrada</span></button>
         </nav>
         <div class="sidebar-footer">
@@ -62,6 +63,7 @@
                     <span class="brand-title">LPV<span class="brand-subtitle">Registros</span></span>
                     <span id="user-role-badge" class="user-badge">...</span>
                 </div>
+                <span class="page-title">Livro de Registros</span>
             </div>
             <div class="header-actions">
                 <div class="ledger-counters">
@@ -85,9 +87,7 @@
         <main class="main-container ledger-main">
 
             <div class="ledger-title">
-                <h1>Livro de registros</h1>
-                <p>Todos os laudos liberados, de todos os anos. Uma linha por caso — clique para abrir a ficha completa sem sair da lista.</p>
-            </div>
+                </div>
 
             <div class="ledger-mobile-actions">
                 <button type="button" id="btn-export-excel-mobile" class="btn-export">
@@ -127,9 +127,9 @@
                         </select>
                     </div>
 
-                    <div class="ledger-field" style="width: 120px;">
-                        <label for="f-ano">Ano do laudo</label>
-                        <select id="f-ano"><option value="">Todos</option></select>
+                    <div class="ledger-field" style="width: 140px;">
+                        <label for="f-ano">Ano do protocolo</label>
+                        <select id="f-ano"></select>
                     </div>
 
                     <button type="button" id="btn-painel" class="ledger-panel-btn">
@@ -232,7 +232,7 @@
         <a href="hub.html" class="nav-item"><i class="fas fa-home"></i><span>Início</span></a>
         <a href="mural.html" class="nav-item"><i class="fas fa-columns"></i><span>Mural</span></a>
         <div class="nav-fab-container"><button class="nav-fab"><i class="fas fa-plus"></i></button></div>
-        <a href="historico.html" class="nav-item active"><i class="fas fa-history"></i><span>Histórico</span></a>
+        <a href="historico.html" class="nav-item active"><i class="fas fa-history"></i><span>Registros</span></a>
         <a href="planner.html" class="nav-item"><i class="fas fa-calendar-alt"></i><span>Planner</span></a>
     </nav>
 

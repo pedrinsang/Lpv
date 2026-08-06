@@ -107,11 +107,9 @@
     display: none !important;
   }
 
-  .header-brand::after {
-    content: "Dashboard";
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--text-primary);
+  /* No desktop a logo dá lugar ao título da página, que vem do HTML. */
+  .page-title {
+    display: block;
   }
 
   .main-container {

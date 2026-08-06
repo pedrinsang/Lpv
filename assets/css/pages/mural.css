@@ -87,7 +87,6 @@
    DESKTOP — Colunas centralizadas (4 colunas no fluxo novo)
    ================================================================ */
 @media (min-width: 1024px) {
-    .header-brand::after { content: "Mural"; }
 
     .kanban-board { 
         height: calc(100vh - 160px);

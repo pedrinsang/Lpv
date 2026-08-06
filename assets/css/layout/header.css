@@ -4,13 +4,21 @@
    ================================================================ */
 
 .app-header {
+  /* Altura travada nos três eixos: o conteúdo de cada página é diferente
+     (contadores, filtros, botões) e sem isso a barra muda de altura de uma
+     página para outra. */
   height: var(--header-height);
+  min-height: var(--header-height);
+  max-height: var(--header-height);
+  flex: 0 0 var(--header-height);
+  box-sizing: border-box;
   background: var(--bg-glass-heavy);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-glass);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   padding: 0 1rem;
   position: sticky;
   top: 0;
@@ -18,6 +26,12 @@
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   animation: headerSlideDown 0.5s var(--ease-spring) both;
 }
+
+/* O conteúdo não pode empurrar a barra nem transbordar: quem cede espaço é o
+   título (que corta com reticências); os botões da direita ficam inteiros. */
+.app-header > * { min-width: 0; }
+.header-brand { flex: 1 1 auto; }
+.app-header > :last-child { flex: 0 0 auto; }
 
 /* Branding */
 .header-brand {
@@ -53,6 +67,29 @@
 
 .brand-subtitle {
   font-weight: 300;
+}
+
+/**
+ * Título da página na barra superior.
+ *
+ * Cada página declara o seu no HTML. Antes isso vivia num `::after` do
+ * .header-brand espalhado pelos CSS de página, e quem ganhava dependia da ordem
+ * dos <link> — por isso o "Dashboard" aparecia em telas que não eram o Hub.
+ * No mobile o espaço é da logo, então o título só aparece no desktop.
+ */
+.page-title {
+  display: none;
+  font-size: 1.5rem;
+  font-weight: 800;
+  /* Precisa sobrar altura para as descendentes e os acentos ("Registros",
+     "Administração"): com line-height 1 o `overflow: hidden` — que existe para
+     o corte com reticências na horizontal — corta o "g" e a cedilha. */
+  line-height: 1.4;
+  padding-block: 2px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-badge {

@@ -594,11 +594,6 @@
     color: #fca5a5;
 }
 
-@media (min-width: 1024px) {
-    .header-brand::after {
-        content: "Estoque";
-    }
-}
 
 @media (max-width: 1050px) {
     .inventory-summary {

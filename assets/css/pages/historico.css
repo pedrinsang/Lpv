@@ -104,6 +104,10 @@
     width: 100%;
 }
 
+/* O bloco de título fica vazio quando a página não usa cabeçalho próprio;
+   sem isso ele ainda cobraria o `gap` do flex. */
+.ledger-title:empty { display: none; }
+
 .ledger-title h1 {
     margin: 0;
     font-size: 1.35rem;
@@ -584,7 +588,6 @@
    DESKTOP
    ================================================================ */
 @media (min-width: 1024px) {
-    .header-brand::after { content: "Livro de registros"; }
 
     .ledger-counters { display: flex; }
     .header-actions .btn-export { display: flex; }
@@ -592,8 +595,51 @@
 
     .ledger-main {
         max-width: none;
-        padding: 20px 24px 32px;
+        padding: 20px 24px 20px;
     }
+
+    /* ============================================================
+       ALTURA: a página não rola, a lista rola
+
+       O Livro de Registros ocupa exatamente a altura da janela. Quem rola é
+       só a lista de laudos — os filtros e o rodapé ficam sempre à vista, em
+       qualquer tamanho de tela. Como a viewport da lista é o que sobra depois
+       dos filtros, a quantidade de linhas se ajusta sozinha: em tela menor
+       (ou com o painel "Mais filtros" aberto) cabem menos linhas.
+
+       O `min-height: 0` repetido é o que permite um filho flex encolher abaixo
+       do seu conteúdo — sem ele a lista empurraria a página inteira.
+       ============================================================ */
+    .ledger-page .layout-wrapper { overflow: hidden; }
+
+    .ledger-main {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .ledger-filters { flex: 0 0 auto; }
+
+    .ledger-table {
+        flex: 1;
+        min-height: 0;
+    }
+
+    .ledger-scroll-x,
+    .ledger-inner {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .ledger-viewport {
+        flex: 1;
+        min-height: 180px;
+        height: auto;
+    }
+
+    .ledger-foot { flex: 0 0 auto; }
 }
 
 /* ================================================================
@@ -619,7 +665,9 @@
     .ledger-scroll-x { overflow-x: hidden; }
     .ledger-inner { min-width: 0; }
     .ledger-head { display: none; }
-    .ledger-viewport { height: calc(100vh - 380px); min-height: 380px; }
+    /* dvh acompanha a barra de endereço do navegador móvel, que vh ignora */
+    .ledger-viewport { height: calc(100vh - 380px); min-height: 320px; }
+    .ledger-viewport { height: calc(100dvh - 380px); }
 
     .ledger-row {
         grid-template-columns: minmax(0, 1fr) auto auto;
