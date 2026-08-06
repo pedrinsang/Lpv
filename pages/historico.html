@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Histórico de Laudos | LPV</title>
-    
+    <title>Livro de Registros | LPV</title>
+
     <script>
         (function() {
             document.documentElement.setAttribute('data-theme', 'dark');
@@ -12,139 +12,11 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
+    <link rel="stylesheet" href="../assets/css/pages/historico.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
-    
-    <style>
-
-        
-        /* Estilos Locais do Histórico */
-        .history-container {
-            max-width: 1200px; 
-            margin: 0 auto; 
-            width: 100%;
-        }
-        
-        .history-controls {
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-            margin-bottom: 2rem; 
-            flex-wrap: wrap; 
-            gap: 15px;
-            background: var(--bg-card);
-            padding: 20px;
-            border-radius: 16px;
-            border: 1px solid var(--border-glass);
-        }
-
-        .search-bar {
-            flex: 1; 
-            max-width: 400px; 
-            position: relative;
-        }
-        .search-bar input {
-            width: 100%; 
-            padding: 12px 15px 12px 45px;
-            border-radius: 10px; 
-            border: 1px solid var(--border-glass);
-            background: var(--bg-glass); 
-            color: var(--text-primary);
-            transition: all 0.3s;
-        }
-        .search-bar input:focus {
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
-        }
-        .search-bar i {
-            position: absolute; 
-            left: 15px; 
-            top: 50%; 
-            transform: translateY(-50%);
-            color: var(--text-tertiary);
-        }
-
-        /* Grid de Laudos */
-        .reports-grid {
-            display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .report-card {
-            background: var(--bg-card); 
-            border: 1px solid var(--border-glass);
-            border-radius: 16px; 
-            padding: 1.5rem;
-            transition: transform 0.35s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
-                        box-shadow 0.35s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
-                        border-color 0.3s ease;
-            position: relative; 
-            overflow: hidden;
-            cursor: pointer;
-            opacity: 0;
-            animation: cardSlideIn 0.5s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)) both;
-            animation-delay: calc(var(--card-index, 0) * 0.06s);
-        }
-        .report-card:hover {
-            transform: translateY(-5px) scale(1.01);
-            border-color: var(--color-primary);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        .report-card:active {
-            transform: translateY(-2px) scale(0.98);
-            transition-duration: 0.1s;
-        }
-
-        .report-card::before {
-            content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
-            background: var(--color-success);
-        }
-
-        .card-header {
-            display: flex; justify-content: space-between; margin-bottom: 10px;
-        }
-        .card-code { font-weight: 800; font-size: 1.1rem; color: var(--color-primary); }
-        .card-date { font-size: 0.8rem; color: var(--text-tertiary); }
-
-        .card-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 5px; color: var(--text-primary); }
-        .card-subtitle { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 15px; }
-
-        .card-actions {
-            margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-glass);
-            display: flex; justify-content: flex-end;
-        }
-        
-        .empty-state {
-            grid-column: 1 / -1; text-align: center; padding: 4rem;
-            color: var(--text-tertiary);
-        }
-
-        /* Ajustes Mobile para o Header */
-        .mobile-back-btn {
-            display: none;
-            background: none;
-            border: none;
-            color: var(--text-primary);
-            font-size: 1.2rem;
-            margin-right: 15px;
-            cursor: pointer;
-        }
-
-        @media (min-width: 1024px){
-            .header-brand::after {
-                content: "Histórico de Laudos";
-            }
-        }
-
-        @media (max-width: 768px) {
-            .mobile-back-btn { display: block; }
-            .history-controls { flex-direction: column; align-items: stretch; }
-            .search-bar { max-width: 100%; }
-        }
-    </style>
 </head>
 <body>
 
@@ -176,7 +48,7 @@
     </aside>
 
     <div class="layout-wrapper">
-        
+
         <header class="app-header">
             <div class="header-brand" style="display: flex; align-items: center; gap: 10px;">
                 <button id="mobile-menu-btn" class="btn-icon mobile-menu-btn">
@@ -185,60 +57,184 @@
 
                 <img src="../assets/images/lpvminilogo2.png" alt="Logo" class="header-logo light-mode-only">
                 <img src="../assets/images/lpvminilogo.png" alt="Logo" class="header-logo dark-mode-only">
-                
+
                 <div class="header-text-column">
-                    <span class="brand-title">LPV<span class="brand-subtitle">Histórico</span></span>
+                    <span class="brand-title">LPV<span class="brand-subtitle">Registros</span></span>
                     <span id="user-role-badge" class="user-badge">...</span>
                 </div>
             </div>
-            <div style="display: flex; gap: 10px;">
+            <div class="header-actions">
+                <div class="ledger-counters">
+                    <div class="ledger-counter">
+                        <span id="total-necropsias" class="ledger-counter-val is-necro">0</span>
+                        <span class="ledger-counter-label">necropsias</span>
+                    </div>
+                    <span class="ledger-counter-sep"></span>
+                    <div class="ledger-counter">
+                        <span id="total-biopsias" class="ledger-counter-val is-bio">0</span>
+                        <span class="ledger-counter-label">biópsias</span>
+                    </div>
+                </div>
+                <button type="button" id="btn-export-excel" class="btn-export">
+                    <i class="fas fa-file-excel"></i> <span>Exportar Excel</span>
+                </button>
                 <button id="logout-btn-header" class="btn-icon" style="color: var(--color-error);"><i class="fas fa-sign-out-alt"></i></button>
             </div>
         </header>
 
-        <main class="main-container" style="padding: 1rem; overflow-y: auto;">
-            <div class="history-container">
-                
-                <div class="history-controls">
-                    <div>
-                        <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-primary);">Arquivo Digital</h2>
-                        <p style="margin-top: 5px; color: var(--text-secondary); font-size: 0.9rem;">Laudos concluídos (Últimos 365 dias)</p>
-                    </div>
-                    
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button id="btn-export-excel" class="btn btn-secondary" style="background: #107c10; border: none;">
-                            <i class="fas fa-file-excel"></i> Exportar Resumo Anual
-                        </button>
-                        <button id="btn-clear-history" class="btn btn-primary hidden" style="background: var(--color-error); border: none;">
-                            <i class="fas fa-trash-sweep"></i> Apagar Histórico
-                        </button>
-                    </div>
+        <main class="main-container ledger-main">
 
-                    <div class="search-bar">
-                        <i class="fas fa-search"></i>
-                        <input
-                            type="text"
-                            id="history-search"
-                            placeholder="Buscar por protocolo, diagnóstico, professor, pós, tutor..."
-                            autocomplete="off"
-                        >
-                    </div>
-                </div>
-
-                <div id="cleanup-notice" class="hidden" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 10px 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; border: 1px solid rgba(239, 68, 68, 0.2);">
-                    <i class="fas fa-trash-alt"></i> Limpeza automática realizada: <span id="deleted-count">0</span> laudos antigos foram removidos.
-                </div>
-
-                <div id="reports-list" class="reports-grid">
-                    <div class="empty-state">
-                        <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
-                        <p>Carregando histórico...</p>
-                    </div>
-                </div>
-
+            <div class="ledger-title">
+                <h1>Livro de registros</h1>
+                <p>Todos os laudos liberados, de todos os anos. Uma linha por caso — clique para abrir a ficha completa sem sair da lista.</p>
             </div>
+
+            <div class="ledger-mobile-actions">
+                <button type="button" id="btn-export-excel-mobile" class="btn-export">
+                    <i class="fas fa-file-excel"></i> <span>Exportar Excel</span>
+                </button>
+                <button type="button" id="btn-clear-history-mobile" class="btn-danger-ghost">
+                    <i class="fas fa-trash"></i> Apagar histórico
+                </button>
+            </div>
+
+            <section class="ledger-filters">
+                <div class="ledger-filter-row">
+                    <div class="ledger-field is-grow">
+                        <label for="f-busca">Buscar</label>
+                        <div class="ledger-search">
+                            <i class="fas fa-search"></i>
+                            <input id="f-busca" type="search" autocomplete="off" placeholder="Protocolo, proprietário, animal, diagnóstico…">
+                        </div>
+                    </div>
+
+                    <div class="ledger-field">
+                        <label>Tipo</label>
+                        <div class="ledger-segmented" id="f-tipo">
+                            <button type="button" data-tipo="todos" class="is-active">Todos</button>
+                            <button type="button" data-tipo="necropsia" class="seg-necro"><span class="seg-dot"></span>Necropsias</button>
+                            <button type="button" data-tipo="biopsia" class="seg-bio"><span class="seg-dot"></span>Biópsias</button>
+                        </div>
+                    </div>
+
+                    <div class="ledger-field" style="width: 150px;">
+                        <label for="f-situacao">Situação</label>
+                        <select id="f-situacao">
+                            <option value="">Todas</option>
+                            <option value="pago">Pago</option>
+                            <option value="didatico">Interesse Didático</option>
+                            <option value="pendente">Pendente</option>
+                        </select>
+                    </div>
+
+                    <div class="ledger-field" style="width: 120px;">
+                        <label for="f-ano">Ano do laudo</label>
+                        <select id="f-ano"><option value="">Todos</option></select>
+                    </div>
+
+                    <button type="button" id="btn-painel" class="ledger-panel-btn">
+                        <i class="fas fa-sliders-h"></i> Mais filtros
+                        <span id="painel-badge" class="ledger-panel-badge hidden">0</span>
+                    </button>
+                </div>
+
+                <div id="ledger-panel" class="ledger-filter-panel hidden">
+                    <div class="ledger-field" style="width: 190px;">
+                        <label for="f-docente">Docente</label>
+                        <select id="f-docente"><option value="">Todos</option></select>
+                    </div>
+                    <div class="ledger-field" style="width: 200px;">
+                        <label for="f-pos">Pós-graduando</label>
+                        <select id="f-pos"><option value="">Todos</option></select>
+                    </div>
+                    <div class="ledger-field" style="width: 160px;">
+                        <label for="f-especie">Espécie</label>
+                        <select id="f-especie"><option value="">Todas</option></select>
+                    </div>
+                    <div class="ledger-field" style="width: 150px;">
+                        <label for="f-sexo">Sexo</label>
+                        <select id="f-sexo"><option value="">Todos</option></select>
+                    </div>
+                    <div class="ledger-field" style="width: 150px;">
+                        <label for="f-origem">Origem</label>
+                        <select id="f-origem"><option value="">Todas</option></select>
+                    </div>
+                    <div class="ledger-field" style="width: 200px;">
+                        <label for="f-remetente">Remetente</label>
+                        <input id="f-remetente" type="text" placeholder="Nome do veterinário">
+                    </div>
+                    <div class="ledger-field" style="width: 150px;">
+                        <label for="f-raca">Raça</label>
+                        <input id="f-raca" type="text" placeholder="Ex.: SRD">
+                    </div>
+                    <div class="ledger-field">
+                        <label for="f-campo-data">Período por data de</label>
+                        <div class="ledger-period">
+                            <select id="f-campo-data">
+                                <option value="dataLaudo">Laudo</option>
+                                <option value="dataEntrada">Entrada</option>
+                            </select>
+                            <input id="f-de" type="date">
+                            <span>até</span>
+                            <input id="f-ate" type="date">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="ledger-chips" class="ledger-chips hidden"></div>
+            </section>
+
+            <section class="ledger-table">
+                <div class="ledger-scroll-x">
+                    <div class="ledger-inner">
+                        <div class="ledger-viewport" id="ledger-viewport">
+                            <div class="ledger-head" id="ledger-head">
+                                <span></span>
+                                <button type="button" data-sort="protocolo">Protocolo <i class="fas fa-sort"></i></button>
+                                <span>Animal</span>
+                                <button type="button" data-sort="proprietario">Proprietário <i class="fas fa-sort"></i></button>
+                                <button type="button" data-sort="dataEntrada">Entrada <i class="fas fa-sort"></i></button>
+                                <button type="button" data-sort="dataLaudo">Laudo <i class="fas fa-sort"></i></button>
+                                <button type="button" data-sort="situacao">Situação <i class="fas fa-sort"></i></button>
+                                <span>Pós-grad.</span>
+                                <span>Diagnóstico</span>
+                            </div>
+
+                            <div class="ledger-track" id="ledger-track"></div>
+                            <div class="ledger-empty hidden" id="ledger-empty">
+                                <p class="ledger-empty-title">Nenhum laudo encontrado</p>
+                                <p class="ledger-empty-sub">Ajuste a busca ou limpe os filtros.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ledger-foot">
+                    <div class="ledger-foot-info">
+                        <span><strong id="foot-filtrados">0</strong> laudos no filtro</span>
+                        <span class="ledger-foot-sep"></span>
+                        <span><i class="fas fa-bolt"></i> <span id="foot-render">0</span> linhas em tela · janela virtual</span>
+                        <span class="ledger-foot-sep"></span>
+                        <span>Acervo desde <span id="foot-desde">—</span></span>
+                    </div>
+                    <div style="display: flex; gap: 9px; align-items: center;">
+                        <button type="button" id="btn-clear-history" class="btn-danger-ghost" style="height: 34px; font-size: 0.78rem;">
+                            <i class="fas fa-trash"></i> Apagar histórico
+                        </button>
+                        <button type="button" id="btn-topo" class="ledger-foot-btn"><i class="fas fa-arrow-up"></i> Topo</button>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
+
+    <nav class="bottom-nav">
+        <a href="hub.html" class="nav-item"><i class="fas fa-home"></i><span>Início</span></a>
+        <a href="mural.html" class="nav-item"><i class="fas fa-columns"></i><span>Mural</span></a>
+        <div class="nav-fab-container"><button class="nav-fab"><i class="fas fa-plus"></i></button></div>
+        <a href="historico.html" class="nav-item active"><i class="fas fa-history"></i><span>Histórico</span></a>
+        <a href="planner.html" class="nav-item"><i class="fas fa-calendar-alt"></i><span>Planner</span></a>
+    </nav>
 
     <div id="task-manager-modal" class="modal-overlay hidden">
         <div class="modal-glass" style="display: flex; flex-direction: column; max-height: 90vh; padding: 0; overflow: hidden;">
