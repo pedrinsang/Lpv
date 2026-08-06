@@ -8,7 +8,8 @@
  * contadores do topo servem de legenda.
  */
 import { db, auth, logout } from '../core.js';
-import { collection, query, where, getDocs, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { collection, query, where, getDocs, getDoc, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { anoProtocolo, pesoProtocolo } from '../lib/protocolo.js';
 import '../components/task-manager.js';
 
 // ================================================================
@@ -24,7 +25,7 @@ const ROTULOS = {
     busca: 'Busca',
     tipo: 'Tipo',
     situacao: 'Situação',
-    ano: 'Ano',
+    ano: 'Ano do protocolo',
     docente: 'Docente',
     posGraduando: 'Pós-graduando',
     especie: 'Espécie',
@@ -70,12 +71,10 @@ function isoLocal(value) {
     return `${d.getFullYear()}-${mes}-${dia}`;
 }
 
-/** "Ana Maria Klein" -> "A. Klein" */
+/** "Ana Maria Klein" -> "Ana" — a coluna mostra só o primeiro nome, inteiro. */
 function curto(nome) {
     const partes = String(nome || '').trim().split(/\s+/).filter(Boolean);
-    if (partes.length === 0) return '—';
-    if (partes.length === 1) return partes[0];
-    return `${partes[0][0]}. ${partes[partes.length - 1]}`;
+    return partes.length === 0 ? '—' : partes[0];
 }
 
 /** Lê uma medida definida no CSS para JS e CSS não saírem de sincronia. */
@@ -129,7 +128,11 @@ const state = {
     aberto: null,
     scrollTop: 0,
     painelAberto: false,
-    carregado: false
+    carregado: false,
+    carregando: false,
+    // Cache por ano: trocar o filtro de ano e voltar não relê o Firestore.
+    porAno: new Map(),
+    meta: null
 };
 
 let rowH = 46;
@@ -169,9 +172,14 @@ function normalizarCaso(id, t) {
         valor: t.valor || '',
         dataEntrada,
         dataLaudo,
-        ano: dataLaudo ? dataLaudo.slice(0, 4) : '',
+        // O ano do caso é o da série do protocolo, não o da emissão do laudo:
+        // um V279-25 laudado em fevereiro de 2026 continua sendo de 2025.
+        ano: String(t.protocoloAno || anoProtocolo(t.protocolo) || ''),
         diagnostico
     };
+
+    caso.pesoProtocolo = Number.isFinite(t.protocoloPeso)
+        ? t.protocoloPeso : pesoProtocolo(caso.protocolo);
 
     caso.blob = norm([
         caso.protocolo, caso.nome, caso.rg, caso.proprietario, caso.remetente,
@@ -217,6 +225,10 @@ function processar() {
 
     const sinal = ordem.dir === 'asc' ? 1 : -1;
     out.sort((a, b) => {
+        // O protocolo é cronológico, não alfabético: ordena por ano e número.
+        if (ordem.campo === 'protocolo') {
+            return sinal * (a.pesoProtocolo - b.pesoProtocolo);
+        }
         const va = String(a[ordem.campo] ?? '');
         const vb = String(b[ordem.campo] ?? '');
         if (!va && !vb) return 0;
@@ -247,11 +259,21 @@ function preencher(select, itens, valorAtual) {
     select.value = itens.includes(valorAtual) ? valorAtual : '';
 }
 
-function atualizarOpcoes() {
-    const anos = [...new Set(state.casos.map((c) => c.ano).filter(Boolean))]
-        .sort((a, b) => b.localeCompare(a));
-    preencher(campos.ano, anos, state.f.ano);
+/**
+ * A lista de anos vem do índice (`meta/livroRegistros`), não dos casos em
+ * memória — a página carrega um ano por vez, então quem está na tela não
+ * conhece os outros anos do acervo.
+ */
+function montarSelectAnos() {
+    const anos = anosDoAcervo();
+    if (!campos.ano) return;
+    campos.ano.innerHTML = anos
+        .map((a) => `<option value="${esc(a)}">${esc(a)}</option>`)
+        .join('') + '<option value="">Todos os anos</option>';
+    campos.ano.value = state.f.ano;
+}
 
+function atualizarOpcoes() {
     ['docente', 'posGraduando', 'especie', 'sexo', 'origem'].forEach((chave) => {
         preencher(campos[chave], unicos(chave), state.f[chave]);
     });
@@ -386,13 +408,25 @@ function atualizarCabecalhoOrdem() {
     });
 }
 
+/**
+ * Os contadores do topo falam do acervo inteiro, não do ano carregado — por
+ * isso saem do índice. Sem índice, sobra o que está em memória.
+ */
 function renderTotais() {
-    const necro = state.casos.filter((c) => c.tipo === 'necropsia').length;
-    const anos = state.casos.map((c) => c.ano).filter(Boolean).sort();
+    const porAno = (state.meta && state.meta.anos) || null;
+    let necro, bio;
+
+    if (porAno) {
+        necro = Object.values(porAno).reduce((s, a) => s + (a.necropsia || 0), 0);
+        bio = Object.values(porAno).reduce((s, a) => s + (a.biopsia || 0), 0);
+    } else {
+        necro = state.casos.filter((c) => c.tipo === 'necropsia').length;
+        bio = state.casos.length - necro;
+    }
 
     el('total-necropsias').textContent = nf(necro);
-    el('total-biopsias').textContent = nf(state.casos.length - necro);
-    el('foot-desde').textContent = anos[0] || '—';
+    el('total-biopsias').textContent = nf(bio);
+    el('foot-desde').textContent = anosDoAcervo().slice(-1)[0] || '—';
 }
 
 // ================================================================
@@ -451,7 +485,24 @@ function aplicar(chave, valor) {
     render();
 }
 
+/**
+ * O ano não é um filtro em memória como os outros: ele decide o que vem do
+ * Firestore. Trocar o ano recarrega a lista (e o cache evita reler).
+ */
+function aplicarAno(valor) {
+    state.f.ano = valor;
+    state.aberto = null;
+    state.scrollTop = 0;
+    if (viewport) viewport.scrollTop = 0;
+    if (campos.ano) campos.ano.value = valor;
+    return carregarCasos(valor);
+}
+
 function limparFiltro(chave) {
+    if (chave === 'ano') {
+        aplicarAno('');   // tirar o filtro de ano = carregar o acervo inteiro
+        return;
+    }
     if (chave === 'periodo') {
         state.f.de = '';
         state.f.ate = '';
@@ -470,9 +521,10 @@ function limparFiltro(chave) {
 }
 
 function limparTudo() {
-    state.f = { ...F_VAZIO };
+    const anoAtual = state.f.ano;
+    state.f = { ...F_VAZIO, ano: anoAtual };   // o ano carregado não é um filtro a limpar
     Object.entries(campos).forEach(([chave, campo]) => {
-        if (!campo) return;
+        if (!campo || chave === 'ano') return;
         campo.value = chave === 'campoData' ? 'dataLaudo' : '';
     });
     sincronizarSegmentado('todos');
@@ -524,10 +576,12 @@ campos.busca.addEventListener('input', (e) => {
     debounceBusca = setTimeout(() => aplicar('busca', valor), 200);
 });
 
-['situacao', 'ano', 'docente', 'posGraduando', 'especie', 'sexo', 'origem',
+['situacao', 'docente', 'posGraduando', 'especie', 'sexo', 'origem',
  'campoData', 'de', 'ate'].forEach((chave) => {
     campos[chave].addEventListener('change', (e) => aplicar(chave, e.target.value));
 });
+
+campos.ano.addEventListener('change', (e) => aplicarAno(e.target.value));
 
 ['remetente', 'raca'].forEach((chave) => {
     campos[chave].addEventListener('input', (e) => {
@@ -599,6 +653,22 @@ window.addEventListener('resize', () => {
     medirLinhas();
     render();
 });
+
+/**
+ * A lista ocupa a altura que sobra da janela, então quantas linhas cabem muda
+ * sem que a janela mude de tamanho: abrir "Mais filtros", os chips de filtro
+ * ativo aparecerem, o teclado do celular subir. Observar a viewport cobre todos
+ * esses casos de uma vez — mais confiável que ligar um listener em cada um.
+ */
+if (typeof ResizeObserver === 'function') {
+    let alturaAnterior = 0;
+    new ResizeObserver(() => {
+        const altura = Math.round(viewport.clientHeight);
+        if (altura === alturaAnterior) return;   // evita re-render em cascata
+        alturaAnterior = altura;
+        render();
+    }).observe(viewport);
+}
 
 [el('btn-logout'), el('logout-btn-header')].forEach((btn) => {
     if (btn) btn.addEventListener('click', logout);
@@ -690,15 +760,19 @@ botoesExportar.forEach((btn) => btn.addEventListener('click', exportarExcel));
 // APAGAR HISTÓRICO
 // ================================================================
 async function apagarHistorico() {
-    if (state.casos.length === 0) return;
     if (!confirm('ATENÇÃO: deseja apagar permanentemente TODO o histórico de laudos liberados?')) return;
 
     botoesApagar.forEach((btn) => { btn.disabled = true; });
     try {
+        // A tela mostra um ano por vez, mas o botão apaga o acervo inteiro:
+        // busca tudo antes de excluir.
+        const todos = await buscarTudo();
+        if (todos.length === 0) return;
+
         // O Firestore limita cada lote a 500 operações.
-        for (let i = 0; i < state.casos.length; i += 450) {
+        for (let i = 0; i < todos.length; i += 450) {
             const lote = writeBatch(db);
-            state.casos.slice(i, i + 450).forEach((c) => lote.delete(doc(db, 'tasks', c.id)));
+            todos.slice(i, i + 450).forEach((c) => lote.delete(doc(db, 'tasks', c.id)));
             await lote.commit();
         }
         alert('Histórico limpo com sucesso!');
@@ -713,13 +787,83 @@ async function apagarHistorico() {
 botoesApagar.forEach((btn) => btn.addEventListener('click', apagarHistorico));
 
 // ================================================================
-// INICIALIZAÇÃO
+// CARGA DOS DADOS
+//
+// O acervo cresce um ano por vez e vai acumular décadas de laudos, então puxar
+// a coleção inteira a cada abertura não se sustenta. A página lê primeiro o
+// índice `meta/livroRegistros` (um documento com os anos e as contagens), monta
+// o filtro de ano e os totais a partir dele, e só busca no Firestore o ano
+// selecionado. Cada ano lido fica em cache, então alternar entre anos já vistos
+// não custa leitura nenhuma.
 // ================================================================
-async function carregar() {
+const REF_META = doc(db, 'meta', 'livroRegistros');
+
+/** Anos do acervo, do mais recente para o mais antigo. */
+function anosDoAcervo() {
+    if (state.meta && state.meta.anos) {
+        return Object.keys(state.meta.anos).sort((a, b) => b.localeCompare(a));
+    }
+    return [...new Set(state.casos.map((c) => c.ano).filter(Boolean))]
+        .sort((a, b) => b.localeCompare(a));
+}
+
+async function carregarMeta() {
     try {
-        // O livro de registros é formado pelos casos com laudo liberado.
-        const snapshot = await getDocs(query(collection(db, 'tasks'), where('releasedAt', '!=', null)));
-        state.casos = snapshot.docs.map((d) => normalizarCaso(d.id, d.data()));
+        const snap = await getDoc(REF_META);
+        state.meta = snap.exists() ? snap.data() : null;
+    } catch (erro) {
+        console.warn('Índice do livro indisponível, carregando o acervo inteiro.', erro);
+        state.meta = null;
+    }
+}
+
+/** Casos liberados de um ano de protocolo. */
+async function buscarAno(ano) {
+    if (state.porAno.has(ano)) return state.porAno.get(ano);
+
+    const snapshot = await getDocs(query(
+        collection(db, 'tasks'), where('protocoloAno', '==', Number(ano))
+    ));
+    // Só filtro de igualdade na consulta (não exige índice composto); o laudo
+    // liberado é conferido aqui.
+    const casos = snapshot.docs
+        .filter((d) => d.data().releasedAt)
+        .map((d) => normalizarCaso(d.id, d.data()));
+
+    state.porAno.set(ano, casos);
+    return casos;
+}
+
+/** Acervo inteiro — usado quando não há índice ou em "Todos os anos". */
+async function buscarTudo() {
+    const snapshot = await getDocs(query(collection(db, 'tasks'), where('releasedAt', '!=', null)));
+    return snapshot.docs.map((d) => normalizarCaso(d.id, d.data()));
+}
+
+function mostrarCarregando(ligado, texto) {
+    state.carregando = ligado;
+    vazioBox.classList.toggle('hidden', !ligado && state.casos.length > 0);
+    if (ligado) {
+        vazioBox.querySelector('.ledger-empty-title').textContent = texto || 'Carregando…';
+        vazioBox.querySelector('.ledger-empty-sub').textContent = '';
+    } else {
+        vazioBox.querySelector('.ledger-empty-title').textContent = 'Nenhum laudo encontrado';
+        vazioBox.querySelector('.ledger-empty-sub').textContent = 'Ajuste a busca ou limpe os filtros.';
+    }
+}
+
+async function carregarCasos(ano) {
+    mostrarCarregando(true, ano ? `Carregando ${ano}…` : 'Carregando o acervo…');
+    try {
+        if (!state.meta) {
+            state.casos = await buscarTudo();          // sem índice: tudo de uma vez
+        } else if (ano) {
+            state.casos = await buscarAno(ano);
+        } else {
+            const anos = anosDoAcervo();
+            const lotes = await Promise.all(anos.map(buscarAno));
+            state.casos = lotes.flat();
+        }
     } catch (erro) {
         console.error('Erro ao carregar o livro de registros:', erro);
         state.casos = [];
@@ -727,10 +871,24 @@ async function carregar() {
     }
 
     state.carregado = true;
+    mostrarCarregando(false);
     memoSig = null;
     atualizarOpcoes();
     renderTotais();
     render();
+}
+
+async function iniciar() {
+    await carregarMeta();
+
+    // Abre no ano mais recente: é o que se consulta no dia a dia, e é o único
+    // que precisa sair do Firestore.
+    const anos = anosDoAcervo();
+    state.f.ano = state.meta && anos.length ? anos[0] : '';
+
+    montarSelectAnos();
+    renderTotais();
+    await carregarCasos(state.f.ano);
 }
 
 auth.onAuthStateChanged((user) => {
@@ -739,5 +897,5 @@ auth.onAuthStateChanged((user) => {
         return;
     }
     medirLinhas();
-    carregar();
+    iniciar();
 });

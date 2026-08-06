@@ -55,7 +55,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 function subscribeToTasks() {
-    const q = query(collection(db, "tasks"), where("status", "!=", "arquivado"));
+    // Laudo liberado (concluido) não entra no calendário nem na lista de
+    // pendências, então é descartado já na consulta — senão o acervo inteiro
+    // seria lido a cada abertura do Planner.
+    const q = query(collection(db, "tasks"),
+        where("status", "not-in", ["arquivado", "concluido"]));
     onSnapshot(q, (snapshot) => {
         tasksCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderCalendarGrid(new Date(currYear, currMonth, 1)); 

@@ -11,6 +11,8 @@ import {
     getReportFilesState,
     hasActiveUploadedWord
 } from '../lib/report-files-service.js';
+import { camposDerivados } from '../lib/protocolo.js';
+import { registrarLiberacao } from '../lib/livro-indice.js';
 import {
     uploadInternalPhotos,
     removeInternalPhoto
@@ -959,10 +961,19 @@ async function finishReportWrapper() {
     try {
         const dataCongelada = new Date().toISOString();
 
+        // Casos antigos podem não ter os campos derivados do protocolo; o
+        // Histórico filtra por eles, então garante que existam na liberação.
+        const derivados = camposDerivados(currentTask.protocolo);
+
         await updateDoc(doc(db, "tasks", currentTask.id), {
             releasedBy: auth.currentUser.uid,
-            releasedAt: dataCongelada
+            releasedAt: dataCongelada,
+            // O caso sai do fluxo e vira histórico: é o que tira ele do Mural e
+            // do Planner, e o que impede o acervo de voltar a ser lido por eles.
+            status: 'concluido',
+            ...derivados
         });
+        await registrarLiberacao({ ...currentTask, ...derivados });
         alert("Laudo Liberado com Sucesso!");
         closeTaskModal();
         if(window.location.reload) window.location.reload();

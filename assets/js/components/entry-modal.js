@@ -7,6 +7,7 @@ import {
     getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { uploadInternalPhotos } from '../lib/internal-photos-service.js';
+import { camposDerivados, formatarProtocolo } from '../lib/protocolo.js';
 
 console.log("Entry Modal Module Loaded - formulário único (tipo pelo protocolo)");
 
@@ -232,6 +233,8 @@ async function saveEntry(e) {
             // sobrescrita aqui mesmo quando o protocolo muda de tipo.
             await updateDoc(doc(db, "tasks", editingTaskId), {
                 ...data,
+                protocolo: formatarProtocolo(data.protocolo),
+                ...camposDerivados(data.protocolo),
                 type: taskType,
                 financialStatus: data.situacao || undefined,
                 lastEditedAt: new Date().toISOString(),
@@ -257,6 +260,10 @@ async function saveEntry(e) {
         // --- MODO CRIAÇÃO ---
         const taskData = {
             ...data,
+            // Grafia oficial (V001-26 / Vn001-26) + ano e peso da série, que são
+            // o que o Livro de Registros usa para filtrar e ordenar.
+            protocolo: formatarProtocolo(data.protocolo),
+            ...camposDerivados(data.protocolo),
             type: taskType,
             k7Color: taskType === 'necropsia' ? 'azul' : 'rosa',
             k7Quantity: 0,

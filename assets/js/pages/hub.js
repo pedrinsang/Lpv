@@ -1,6 +1,7 @@
 import { auth, db, normalizeRoles, hasAnyRole } from '../core.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import { doc, getDoc, collection, query, onSnapshot, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { pesoProtocolo } from '../lib/protocolo.js';
 
 // 1. MAPEAMENTO DOS ELEMENTOS
 const els = {
@@ -107,7 +108,10 @@ function getInventoryDaysToExpiry(dateString) {
 
 // 4. DASHBOARD (LÓGICA CORRIGIDA COM FILTRO)
 function initRealTimeDashboard() {
-    const q = query(collection(db, "tasks"));
+    // A fila só mostra amostra urgente (ver isTaskRelevant), então o filtro vai
+    // na consulta e não depois: o acervo de laudos liberados não precisa sair do
+    // Firestore para ser descartado aqui — e leitura é o recurso que acaba.
+    const q = query(collection(db, "tasks"), where("isUrgent", "==", true));
 
     unsubscribeTasks = onSnapshot(q, (snapshot) => {
         let myQueue = [];
@@ -244,7 +248,8 @@ function renderUrgentList(tasks) {
         if (infoA && infoB && infoA.remaining !== infoB.remaining) {
             return infoA.remaining - infoB.remaining;
         }
-        return (a.protocolo || '').localeCompare(b.protocolo || '', undefined, { numeric: true, sensitivity: 'base' });
+        // Protocolo é cronológico: ano da série primeiro, depois o número.
+        return pesoProtocolo(a.protocolo) - pesoProtocolo(b.protocolo);
     });
 
     if (els.urgentCount) {

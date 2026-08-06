@@ -95,6 +95,14 @@ service cloud.firestore {
       allow create, update, delete: if isApprovedUser();
     }
 
+    // Índice do Livro de Registros: anos existentes e contagem por ano. Deixa a
+    // página montar o filtro de ano e os totais do acervo sem ler o acervo
+    // inteiro — só o ano selecionado é carregado.
+    match /meta/{docId} {
+      allow read: if isApprovedUser();
+      allow write: if isApprovedUser();
+    }
+
     match /slide_records/{recordId} {
       allow read, write: if isApprovedUser();
     }
