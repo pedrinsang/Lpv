@@ -9,72 +9,14 @@
             document.documentElement.setAttribute('data-theme', 'dark');
         })();
     </script>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/global.css">
     <link rel="stylesheet" href="../assets/css/pages/planner.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="manifest" href="../manifest.json">
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
 </head>
-<style>
-/* Esconde no Desktop por padrão */
-.mobile-menu-btn, .sidebar-overlay {
-    display: none !important;
-}
-
-@media (max-width: 900px) {
-    .mobile-menu-btn {
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        background: transparent;
-        border: none;
-        color: var(--text-primary, #333);
-        cursor: pointer;
-        padding: 8px;
-    }
-    [data-theme="dark"] .mobile-menu-btn {
-        color: #fff;
-    }
-    .desktop-sidebar {
-        display: flex !important;
-        flex-direction: column;
-        position: fixed;
-        top: 0;
-        left: -100%;
-        width: 280px;
-        height: 100vh;
-        z-index: 2000;
-        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        background-color: #ffffff;
-        box-shadow: 5px 0 25px rgba(0,0,0,0.2);
-    }
-    [data-theme="dark"] .desktop-sidebar {
-        background-color: var(--bg-sidebar);
-        border-right: 1px solid #333;
-    }
-    .desktop-sidebar.active {
-        left: 0;
-    }
-    .sidebar-overlay {
-        display: block !important;
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.6);
-        z-index: 1999;
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.3s;
-        backdrop-filter: blur(3px);
-    }
-    .sidebar-overlay.active {
-        opacity: 1;
-        visibility: visible;
-    }
-}
-</style>
 <body>
 
     <aside class="desktop-sidebar">
@@ -93,7 +35,7 @@
             <a href="historico.html" class="sidebar-link"><i class="fas fa-history"></i> <span>Registros</span></a>
             <a href="estoque.html" class="sidebar-link"><i class="fas fa-boxes-stacked"></i> <span>Estoque</span></a>
             <a href="planner.html" class="sidebar-link active"><i class="fas fa-calendar-alt"></i> <span>Planner</span></a>
-             <a href="admin.html" class="sidebar-link hidden" id="sidebar-admin-link"><i class="fas fa-shield-alt"></i> <span>Admin</span></a>
+            <a href="admin.html" class="sidebar-link hidden" id="sidebar-admin-link"><i class="fas fa-shield-alt"></i> <span>Admin</span></a>
             <button class="sidebar-link btn-sidebar-new"><i class="fas fa-plus"></i> <span>Nova Entrada</span></button>
         </nav>
 
@@ -103,8 +45,8 @@
                 <div id="sidebar-user-name" class="user-name-text">Carregando...</div>
                 <div id="sidebar-user-role" class="user-role-text">...</div>
             </div>
-            <button class="btn-sidebar-settings" onclick="alert('Configurações de Perfil em breve!')" title="Configurações">
-                <i class="fas fa-cog"></i>
+            <button id="logout-btn-desk" class="btn-sidebar-settings" title="Sair">
+                <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
     </aside>
@@ -122,128 +64,179 @@
                     <span class="brand-title">LPV<span class="brand-subtitle">Planner</span></span>
                     <span id="user-role-badge" class="user-badge">...</span>
                 </div>
-                <span class="page-title">Planner Mensal</span>
+                <span class="page-title">Planner</span>
             </div>
-            <div style="display: flex; gap: 10px;">
+            <div class="pl-header-actions">
+                <button id="btn-pendentes" type="button" class="pl-btn-pendentes">
+                    <i class="fas fa-inbox"></i> <span class="label">Pendentes</span>
+                    <span id="badge-pendentes" class="pl-badge-pendentes"></span>
+                </button>
+                <button id="btn-agendar" type="button" class="pl-btn-agendar">
+                    <i class="fas fa-plus"></i> <span>Agendar</span>
+                </button>
                 <button id="logout-btn" class="btn-icon" style="color: var(--color-error);"><i class="fas fa-sign-out-alt"></i></button>
             </div>
         </header>
 
-        <main class="main-container">
-            <div class="planner-layout">
-            <section class="calendar-section">
-                <div class="calendar-controls">
-                    <button id="prev-month" class="btn-mini"><i class="fas fa-chevron-left"></i></button>
-                    
-                    <div class="calendar-date-display">
-                        <div id="calendar-year" class="calendar-year-text">----</div>
-                        <div id="calendar-month" class="calendar-month-text">Carregando</div>
+        <main class="main-container planner-shell">
+
+            <div class="planner-main">
+
+                <div class="pl-toolbar">
+                    <div class="pl-toolbar-left">
+                        <div class="pl-viewtabs" role="group" aria-label="Modo de visualização">
+                            <button type="button" id="tab-semana" class="pl-tab is-active" aria-pressed="true">
+                                <i class="fas fa-calendar-week"></i> Semanal
+                            </button>
+                            <button type="button" id="tab-mes" class="pl-tab" aria-pressed="false">
+                                <i class="fas fa-calendar-days"></i> Mensal
+                            </button>
+                        </div>
+
+                        <div class="pl-nav">
+                            <button type="button" id="prev-period" class="pl-navbtn" aria-label="Período anterior"><i class="fas fa-chevron-left"></i></button>
+                            <button type="button" id="today-btn" class="pl-navbtn pl-navbtn-text">Hoje</button>
+                            <button type="button" id="next-period" class="pl-navbtn" aria-label="Próximo período"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+
+                        <div class="pl-period">
+                            <span id="period-title" class="pl-period-title">—</span>
+                            <span id="period-sub" class="pl-period-sub">—</span>
+                        </div>
                     </div>
 
-                    <div style="display:flex; gap:10px;">
-                        <button id="today-btn" class="btn-mini today-btn">Hoje</button>
-                        <button id="next-month" class="btn-mini"><i class="fas fa-chevron-right"></i></button>
+                    <div class="pl-toolbar-right">
+                        <div class="pl-legend">
+                            <span class="pl-legend-item"><span class="pl-dot necropsia"></span> Necropsia</span>
+                            <span class="pl-legend-item"><span class="pl-dot biopsia"></span> Biópsia</span>
+                            <span class="pl-legend-item"><span class="pl-dot aula"></span> Aula</span>
+                            <span class="pl-legend-item"><span class="pl-dot outro"></span> Outros</span>
+                        </div>
+                        <span class="pl-sep"></span>
+                        <span class="pl-count"><strong id="period-count">0</strong> agendamentos no período</span>
                     </div>
                 </div>
-                
-                <div class="calendar-legend-container">
-                    <div class="legend-item"><div class="legend-dot blue"></div> Necropsia</div>
-                    <div class="legend-item"><div class="legend-dot pink"></div> Biópsia</div>
-                    <div class="legend-item"><div class="legend-dot gray"></div> Outros</div>
-                </div>
-                <div class="calendar-grid-header">
-                    <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
-                </div>
-                <div id="calendar-grid" class="calendar-grid"></div>
-            </section>
 
-        </div>
+                <div id="placement-banner" class="pl-placement hidden">
+                    <span class="pl-placement-text">
+                        <i class="fas fa-calendar-plus"></i>
+                        Clique numa faixa de <strong>manhã</strong> ou <strong>tarde</strong> para agendar
+                        <strong id="placement-task-name"></strong>
+                    </span>
+                    <button type="button" id="cancel-placement" class="pl-placement-close" aria-label="Cancelar"><i class="fas fa-times"></i></button>
+                </div>
+
+                <section id="week-view" class="pl-week">
+                    <div id="week-head" class="pl-week-head">
+                        <div class="pl-gutter-spacer"></div>
+                    </div>
+                    <div class="pl-week-body">
+                        <div id="band-manha" class="pl-band">
+                            <div class="pl-gutter">
+                                <i class="fas fa-sun" style="color:#fbbf24;"></i>
+                                <span class="pl-gutter-label">Manhã</span>
+                                <span class="pl-gutter-hours">08–12h</span>
+                            </div>
+                        </div>
+                        <div id="band-tarde" class="pl-band">
+                            <div class="pl-gutter">
+                                <i class="fas fa-moon" style="color:#818cf8;"></i>
+                                <span class="pl-gutter-label">Tarde</span>
+                                <span class="pl-gutter-hours">13–18h</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="month-view" class="pl-month hidden">
+                    <div class="pl-month-head">
+                        <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+                    </div>
+                    <div id="month-grid" class="pl-month-grid"></div>
+                </section>
+            </div>
+
+            <aside id="planner-rail" class="pl-rail">
+                <div class="pl-rail-card">
+
+                    <div id="rail-detalhe" class="pl-rail-pane hidden">
+                        <div class="pl-rail-head">
+                            <span class="pl-rail-title">Detalhe</span>
+                            <button type="button" id="close-detalhe" class="pl-rail-close" aria-label="Fechar"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div id="detalhe-body" class="pl-detail-body"></div>
+                    </div>
+
+                    <div id="rail-pendentes" class="pl-rail-pane">
+                        <div class="pl-rail-head">
+                            <span class="pl-rail-title">Pendentes · <span id="pendentes-count">0</span></span>
+                            <button type="button" id="close-pendentes" class="pl-rail-close" aria-label="Fechar"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div class="pl-rail-hint">
+                            Arraste um cartão para uma faixa da semana, ou clique em
+                            <i class="fas fa-clock"></i> e escolha onde encaixar.
+                        </div>
+                        <div id="pendentes-list" class="pl-pend-list"></div>
+                    </div>
+
+                </div>
+            </aside>
         </main>
 
     </div>
 
-    <div id="day-view-modal" class="day-view-overlay hidden">
-        <div class="day-view-content">
-            <div class="day-view-header">
-                <div>
-                    <span style="font-size:0.75rem; color:var(--text-light); font-weight:600; letter-spacing:1px; text-transform:uppercase;">Agenda de</span>
-                    <h2 id="selected-date-title" style="margin-top:2px;">Data</h2>
+    <div id="create-modal" class="pl-modal hidden">
+        <div class="pl-modal-card">
+            <div class="pl-modal-head">
+                <div class="pl-modal-head-text">
+                    <span class="pl-modal-title">Novo agendamento</span>
+                    <span id="create-target" class="pl-modal-sub"></span>
                 </div>
-                <button id="close-day-view" class="btn-mini"><i class="fas fa-times"></i></button>
+                <button type="button" id="close-create" class="pl-modal-close" aria-label="Fechar"><i class="fas fa-times"></i></button>
             </div>
 
-            <div class="day-view-tabs">
-                <button class="day-view-tab active" data-tab="timeline"><i class="fas fa-clock"></i> Agenda</button>
-                <button class="day-view-tab" data-tab="pendings"><i class="fas fa-inbox"></i> Pendentes <span class="tab-badge" id="pendings-count"></span></button>
+            <div class="pl-form-group">
+                <label class="pl-label" for="novo-titulo">Título</label>
+                <input type="text" id="novo-titulo" class="pl-input" placeholder="Ex.: N-0412-26 · Bovino">
             </div>
-            
-            <div class="day-view-body">
-                <div id="placement-banner" class="placement-banner hidden">
-                    <div class="placement-banner-content">
-                        <i class="fas fa-calendar-plus"></i>
-                        <span>Toque num horário para agendar <strong id="placement-task-name"></strong></span>
-                    </div>
-                    <button id="cancel-placement" class="placement-cancel"><i class="fas fa-times"></i></button>
+
+            <div class="pl-form-group">
+                <label class="pl-label" for="novo-sub">Descrição</label>
+                <input type="text" id="novo-sub" class="pl-input" placeholder="Opcional — proprietário, espécie, docente">
+            </div>
+
+            <div class="pl-form-group" style="gap:6px;">
+                <label class="pl-label">Tipo</label>
+                <div id="novo-tipos" class="pl-type-row"></div>
+            </div>
+
+            <div class="pl-when-row">
+                <div class="pl-form-group">
+                    <label class="pl-label" for="novo-data">Data</label>
+                    <input type="date" id="novo-data" class="pl-input compact">
                 </div>
-                <div class="timeline-column">
-                    <div class="column-hint">
-                        <i class="fas fa-info-circle"></i>
-                        Toque num horário vazio para criar uma tarefa rápida
-                    </div>
-                    <div class="day-timeline" id="day-timeline"></div>
+                <div class="pl-form-group pl-when-hora">
+                    <label class="pl-label" for="novo-hora">Início</label>
+                    <input type="time" id="novo-hora" class="pl-input compact">
                 </div>
-                <div class="pendings-column" id="modal-pendings-area">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h4 style="margin:0; font-size:0.9rem; font-weight:700; color:var(--text-secondary);">Tarefas Pendentes</h4>
-                    </div>
-                    <div class="column-hint">
-                        <i class="fas fa-info-circle"></i>
-                        <span class="hint-desktop">Arraste um card para a agenda, ou clique <i class="fas fa-clock"></i> para escolher o horário</span>
-                        <span class="hint-mobile">Toque <i class="fas fa-clock"></i> no card para escolher o horário na agenda</span>
-                    </div>
-                    <div id="pendings-empty" class="empty-state-small hidden">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Todas as tarefas foram agendadas!</span>
-                    </div>
-                    <div id="modal-pending-list" class="tasks-container" style="margin-top:15px;"></div>
+                <div class="pl-form-group pl-when-dur">
+                    <label class="pl-label" for="novo-duracao">Duração</label>
+                    <select id="novo-duracao" class="pl-input compact">
+                        <option value="30">30 min</option>
+                        <option value="60" selected>1 h</option>
+                        <option value="90">1 h 30</option>
+                        <option value="120">2 h</option>
+                        <option value="180">3 h</option>
+                    </select>
                 </div>
+            </div>
+
+            <div class="pl-modal-foot">
+                <button type="button" id="cancel-create" class="pl-btn-cancel">Cancelar</button>
+                <button type="button" id="save-create" class="pl-btn-save">Agendar</button>
             </div>
         </div>
     </div>
-
-    <div id="quick-task-modal" class="modal-overlay hidden">
-        <div class="modal-glass">
-            <h3 style="margin-bottom:20px; font-weight:800; color:var(--text-primary);">Nova Tarefa</h3>
-            
-            <div class="form-group">
-                <label style="font-weight:600; color:var(--text-secondary);">Título</label>
-                <input type="text" id="quick-task-title" class="input-field" placeholder="Ex: Biópsia...">
-            </div>
-            
-            <div class="form-group" style="margin-top:20px;">
-                <label style="font-weight:600; color:var(--text-secondary); margin-bottom:10px; display:block;">Etiqueta de Cor</label>
-                <div class="color-selector">
-                    <label class="color-option"><input type="radio" name="taskColor" value="task-blue" checked><span class="swatch blue"></span></label>
-                    <label class="color-option"><input type="radio" name="taskColor" value="task-pink"><span class="swatch pink"></span></label>
-                    <label class="color-option"><input type="radio" name="taskColor" value="task-green"><span class="swatch green"></span></label>
-                    <label class="color-option"><input type="radio" name="taskColor" value="task-orange"><span class="swatch orange"></span></label>
-                    <label class="color-option"><input type="radio" name="taskColor" value="task-other"><span class="swatch gray" style="background:#94a3b8;"></span></label>
-                </div>
-            </div>
-
-            <div class="form-group" style="margin-top:20px;">
-                <label style="font-weight:600; color:var(--text-secondary);">Detalhes</label>
-                <input type="text" id="quick-task-desc" class="input-field" placeholder="Opcional">
-            </div>
-
-            <div class="modal-footer" style="margin-top:30px; display:flex; justify-content:flex-end; gap:10px;">
-                <button class="btn-mini" style="width:auto; padding:0 20px; border-radius:8px;" id="cancel-quick-task">Cancelar</button>
-                <button class="btn-mini" style="width:auto; padding:0 25px; border-radius:8px; background:var(--color-necro); color:white; border:none;" id="save-quick-task">Criar</button>
-            </div>
-        </div>
-    </div>
-
-    
 
     <nav class="bottom-nav">
         <a href="hub.html" class="nav-item"><i class="fas fa-home"></i><span>Início</span></a>
