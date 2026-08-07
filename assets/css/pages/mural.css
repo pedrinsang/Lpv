@@ -1,202 +1,400 @@
 /* ================================================================
-   LPV — MURAL CSS
-   Atualizado: colunas centralizadas no desktop, 4 colunas (fluxo simplificado)
+   LPV — MURAL
+   Dois painéis lado a lado (Necropsias | Biópsias) com a fila de
+   laudos pendentes. No mobile vira carrossel: um painel por vez.
    ================================================================ */
 
-/* --- ESTILO GERAL DO MURAL --- */
+/* A página inteira cabe na tela: quem rola é a lista dentro do painel.
+   No mobile a altura é contada na mão (cabeçalho + faixa da bottom-nav) porque
+   o wrapper não é um flex de altura fixa fora do desktop. */
+.mural-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: calc(100dvh - 180px);
+    max-width: 100%;
+    padding-top: 1rem;
+    overflow: hidden;
+}
 
-.kanban-board {
+/* --- BARRA DE CONTROLE --- */
+.mural-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 0 12px 12px;
+}
+
+.mural-toolbar-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.mural-toolbar-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+}
+
+.mural-toolbar-sub {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+/* Switch Todos/Minhas — mesma linguagem do filtro da fila no Hub. */
+.mural-switch {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.mural-switch-btn {
+    height: 32px;
+    padding: 0 16px;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.mural-switch-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--color-primary);
+}
+
+.mural-switch-btn.is-active {
+    font-weight: 700;
+    color: #fff;
+    background: var(--gradient-main);
+    border-color: transparent;
+}
+
+/* ================================================================
+   PAINÉIS
+   ================================================================ */
+.mural-board {
     display: flex;
     gap: 15px;
+    flex: 1;
+    min-height: 0;
+
+    /* Mobile: um painel por vez, com snap e sem barra de rolagem. */
     overflow-x: auto;
-    height: calc(100vh - 290px);
-    
-    /* Mobile Default: Snap e Esconde Scrollbar */
-    padding: 0 7.5vw 20px 7.5vw; 
-    scroll-snap-type: x mandatory; 
+    padding: 0 7.5vw 20px;
+    scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x;
     scrollbar-width: none;
 }
-.kanban-board::-webkit-scrollbar { display: none; }
 
-/* Hack de espaçamento mobile */
-.kanban-board::after { content: ''; min-width: 1px; flex-shrink: 0; }
+.mural-board::-webkit-scrollbar { display: none; }
 
-.kanban-column {
-    min-width: 85vw; width: 85vw;
+.mural-panel {
+    --panel-accent: var(--color-other);
+    min-width: 85vw;
+    width: 85vw;
+    height: 100%;
+    flex-shrink: 0;
     scroll-snap-align: center;
     scroll-snap-stop: always;
-    height: 100%;
-    
+
+    display: flex;
+    flex-direction: column;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border-glass);
     border-radius: 16px;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    
-    transition: all 0.3s ease;
-    opacity: 0.5; transform: scale(0.95);
+
+    opacity: 0.5;
+    transform: scale(0.95);
+    transition: opacity 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
 }
 
-.kanban-column.active-col { 
-    opacity: 1; transform: scale(1); 
-    border-color: var(--color-primary); 
+.mural-panel.type-necro { --panel-accent: var(--color-necro); }
+.mural-panel.type-bio { --panel-accent: var(--color-bio); }
+
+.mural-panel.active-panel {
+    opacity: 1;
+    transform: scale(1);
     background: var(--bg-card);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    border-color: var(--panel-accent);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
-.kanban-header {
-    padding: 15px;
-    font-weight: 800; color: var(--text-secondary); text-transform: uppercase; font-size: 0.9rem;
+.mural-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 16px;
     border-bottom: 1px solid var(--border-glass);
-    display: flex; justify-content: space-between; align-items: center;
-    background: rgba(0,0,0,0.05);
+    border-top: 3px solid var(--panel-accent);
     border-radius: 16px 16px 0 0;
+    background: rgba(0, 0, 0, 0.05);
     user-select: none;
 }
 
-.kanban-body {
-    padding: 10px;
-    overflow-y: auto;
+.mural-panel-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+}
+
+.mural-panel-title i {
+    margin-right: 8px;
+    color: var(--panel-accent);
+}
+
+.mural-panel-count {
+    min-width: 28px;
+    padding: 2px 9px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-align: center;
+    color: var(--panel-accent);
+    background: color-mix(in srgb, var(--panel-accent) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--panel-accent) 32%, transparent);
+    border-radius: 20px;
+}
+
+.mural-panel-body {
     flex: 1;
-    display: flex; 
-    flex-direction: column; 
+    display: flex;
+    flex-direction: column;
     gap: 10px;
-    overscroll-behavior-y: contain; 
-    overscroll-behavior-x: contain;
+    padding: 12px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
 }
 
-/* Scrollbar interna das colunas (Desktop) */
-.kanban-body::-webkit-scrollbar { width: 4px; display: block; }
-.kanban-body::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+.mural-panel-body.is-empty { justify-content: center; }
+
+.mural-panel-body::-webkit-scrollbar { width: 5px; }
+.mural-panel-body::-webkit-scrollbar-track { background: transparent; }
+.mural-panel-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
     border-radius: 10px;
 }
 
-/* Dots Mobile */
-.carousel-indicators { display: flex; justify-content: center; gap: 8px; margin-top: 5px; margin-bottom: 10px; min-height: 10px; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); opacity: 0.3; transition: 0.3s; border: 0; padding: 0; }
-.dot.active { background: var(--color-primary); opacity: 1; width: 24px; border-radius: 4px; }
+/* Dots do carrossel (só mobile) */
+.carousel-indicators {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    min-height: 10px;
+}
 
-/* ================================================================
-   DESKTOP — Colunas centralizadas (4 colunas no fluxo novo)
-   ================================================================ */
-@media (min-width: 1024px) {
+.dot {
+    width: 8px; height: 8px;
+    padding: 0; border: 0;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    opacity: 0.3;
+    transition: 0.3s;
+}
 
-    .kanban-board { 
-        height: calc(100vh - 160px);
-        scroll-snap-type: none;
-        scroll-behavior: auto;
-        gap: 20px;
-
-        /* Evita corte da 1a coluna quando o total de colunas ultrapassa a largura */
-        justify-content: flex-start;
-        align-items: flex-start;
-        overflow-x: auto;
-        padding: 0 24px 20px 24px;
-        scroll-padding-left: 24px;
-
-        /* Scrollbar visível mas discreta */
-        scrollbar-width: thin;
-        scrollbar-color: var(--text-tertiary) transparent;
-    }
-
-    .kanban-board::-webkit-scrollbar { display: block; height: 8px; }
-    .kanban-board::-webkit-scrollbar-track { background: transparent; }
-    .kanban-board::-webkit-scrollbar-thumb {
-        background: rgba(0,0,0,0.2); 
-        border-radius: 10px;
-    }
-    .kanban-board::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
-
-    .kanban-column { 
-        /* Largura proporcional: 4 colunas cabem bem em 1200px+ */
-        min-width: 240px;
-        width: clamp(220px, 22vw, 320px);
-        scroll-snap-align: none;
-        opacity: 1 !important;
-        transform: none !important;
-        background: var(--bg-card);
-        border-color: var(--border-glass);
-
-        /* Animação de entrada escalonada */
-        animation: columnSlideUp 0.5s var(--ease-spring) both;
-    }
-
-    .kanban-column:nth-child(1) { animation-delay: 0ms; }
-    .kanban-column:nth-child(2) { animation-delay: 80ms; }
-    .kanban-column:nth-child(3) { animation-delay: 160ms; }
-    .kanban-column:nth-child(4) { animation-delay: 240ms; }
-    .kanban-column:nth-child(5) { animation-delay: 320ms; }
-
-    .kanban-column.active-col {
-        box-shadow: none;
-        border-color: var(--border-glass);
-    }
-
-    /* Hover na coluna inteira no desktop */
-    .kanban-column:hover {
-        border-color: rgba(2, 132, 199, 0.3);
-        transition: border-color 0.3s ease;
-    }
-
-    .carousel-indicators { display: none; }
-    .mural-stats-row { margin-bottom: 15px; }
+.dot.active {
+    width: 24px;
+    border-radius: 4px;
+    background: var(--color-primary);
+    opacity: 1;
 }
 
 /* ================================================================
-   CARDS E DETALHES
+   CARTÃO DA AMOSTRA
    ================================================================ */
 .mural-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 14px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-left: 4px solid var(--panel-accent);
+    border-radius: 12px;
+    cursor: pointer;
     touch-action: manipulation;
-    background: var(--bg-glass); padding: 14px; border-radius: 12px;
-    border: 1px solid var(--border-glass); cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-    transition: transform 0.35s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
-                box-shadow 0.35s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
-                border-color 0.3s ease;
-    position: relative;
-}
-.mural-card:hover {
-    transform: translateY(-4px) scale(1.01);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-    border-color: var(--color-primary);
-}
-.mural-card:active {
-    transform: translateY(-1px) scale(0.98);
-    transition-duration: 0.1s;
+    transition: transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease,
+                border-color var(--duration-fast) ease;
+    animation: muralCardIn 0.35s var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)) both;
+    animation-delay: calc(var(--card-index, 0) * 25ms);
 }
 
-.mural-tag { font-size: 0.7rem; padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,0.05); font-weight: 600; }
-.k7-azul { border-left: 4px solid #3b82f6; }
-.k7-rosa { border-left: 4px solid #ec4899; }
-.k7-branco { border-left: 4px solid #cbd5e1; }
-
-/* Stats row */
-.mural-stats-row { 
-    display: flex; gap: 10px; margin-bottom: 10px; 
-    overflow-x: auto; padding: 5px; 
-    scrollbar-width: none; justify-content: center; 
-    animation: fadeInDown 0.4s var(--ease-spring) both;
-}
-.mini-stat-card { 
-    background: var(--bg-glass); border: 1px solid var(--border-glass); 
-    border-radius: 12px; padding: 10px 15px; min-width: 140px; 
-    display: flex; flex-direction: column; position: relative; overflow: hidden;
-    transition: transform 0.3s var(--ease-spring), border-color 0.3s ease;
-}
-.mini-stat-card:hover {
+.mural-card:hover,
+.mural-card:focus-visible {
     transform: translateY(-2px);
-    border-color: rgba(2,132,199,0.4);
+    box-shadow: var(--shadow-md);
+    border-color: var(--panel-accent);
+    outline: none;
 }
-.mini-stat-val { font-size: 1.4rem; font-weight: 800; color: var(--text-primary); line-height: 1; }
-.mini-stat-label { font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; }
-.mini-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; }
+
+/* Urgente grita em vermelho; o tipo já está dito pelo painel. */
+.mural-card.is-urgent {
+    border-left-color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.02) 45%, transparent 75%),
+                var(--bg-glass);
+}
+
+.mural-card.is-urgent:hover {
+    border-color: rgba(239, 68, 68, 0.6);
+    box-shadow: 0 6px 18px rgba(239, 68, 68, 0.18);
+}
+
+.mural-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.m-prot {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.m-flag {
+    margin-right: 6px;
+    font-size: 0.8rem;
+    color: #ef4444;
+    animation: urgentPulse 1.8s ease-in-out infinite;
+}
+
+.m-prazo {
+    font-size: 0.75rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.m-prazo i { margin-right: 5px; font-size: 0.7rem; opacity: 0.85; }
+.m-prazo.is-ok { color: #34d399; }
+.m-prazo.is-late { color: #f87171; }
+.m-prazo.is-unknown { font-weight: 700; color: var(--text-tertiary); opacity: 0.6; }
+
+.m-animal {
+    min-width: 0;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.m-species {
+    margin-left: 6px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.mural-card-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+}
+
+.mural-card-meta i { margin-right: 5px; opacity: 0.65; }
+
+.m-resp {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.m-k7 {
+    padding: 2px 7px;
+    font-weight: 700;
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: 6px;
+}
+
+.m-fin {
+    margin-left: auto;
+    padding: 2px 8px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    border: 1px solid;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+.m-fin i { margin-right: 5px; opacity: 1; }
+.m-fin.is-pago { color: #10b981; border-color: rgba(16, 185, 129, 0.35); }
+.m-fin.is-didatico { color: #8b5cf6; border-color: rgba(139, 92, 246, 0.35); }
+.m-fin.is-pendente { color: #f59e0b; border-color: rgba(245, 158, 11, 0.35); }
+
+.mural-empty {
+    padding: 2.5rem 1rem;
+    text-align: center;
+    color: var(--text-tertiary);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 14px;
+}
+
+.mural-empty i { display: block; margin-bottom: 10px; opacity: 0.5; }
+.mural-empty p { margin: 0; font-size: 0.85rem; }
+
+/* ================================================================
+   DESKTOP — os dois painéis lado a lado, sem carrossel
+   ================================================================ */
+@media (min-width: 1024px) {
+    /* Aqui o .layout-wrapper já tem 100vh e o main é filho flex dele. */
+    .mural-main { height: auto; }
+
+    .mural-toolbar { padding: 0 24px 16px; }
+
+    .mural-board {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+        overflow: visible;
+        padding: 0 24px 20px;
+        scroll-snap-type: none;
+    }
+
+    .mural-panel {
+        min-width: 0;
+        width: auto;
+        opacity: 1;
+        transform: none;
+        background: var(--bg-card);
+        border-color: var(--border-glass);
+        box-shadow: none;
+        animation: panelSlideUp 0.5s var(--ease-spring) both;
+    }
+
+    .mural-panel:nth-child(2) { animation-delay: 80ms; }
+
+    .mural-panel:hover { border-color: color-mix(in srgb, var(--panel-accent) 40%, transparent); }
+
+    .carousel-indicators { display: none; }
+}
 
 /* ================================================================
    MODAL DO TASK MANAGER NO MURAL
@@ -213,15 +411,28 @@
     }
     .mural-task-modal .mural-modal-topbar { padding: 8px 10px; }
     .mural-task-modal .mural-modal-footer { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
-    .mural-task-modal .mural-modal-actions { width: 100%; display: grid !important; grid-template-columns: 1fr; }
-    .mural-task-modal #btn-delete-task,
-    .mural-task-modal .mural-modal-actions button { width: 100%; }
+    .mural-task-modal #btn-delete-task { width: 100%; }
 }
 
 /* ================================================================
-   KEYFRAME EXCLUSIVO DO MURAL
+   KEYFRAMES DO MURAL
    ================================================================ */
-@keyframes columnSlideUp {
+@keyframes panelSlideUp {
     from { opacity: 0; transform: translateY(30px); }
     to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes muralCardIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes urgentPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .m-flag { animation: none; }
+    .mural-card, .mural-panel { animation: none; }
 }

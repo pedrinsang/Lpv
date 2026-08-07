@@ -58,10 +58,6 @@
                 <div class="header-text-column">
                     <span class="brand-title">LPV<span class="brand-subtitle">Mural</span></span>
                     <span id="user-role-badge" class="user-badge">...</span>
-                    <div id="filter-container" style="display: none; gap: 8px; margin-top: 2px;">
-                        <button class="btn btn-sm btn-primary" id="filter-all" style="padding: 2px 10px; font-size: 0.7rem;">Todos</button>
-                        <button class="btn btn-sm btn-secondary" id="filter-mine" style="padding: 2px 10px; font-size: 0.7rem;">Minhas</button>
-                    </div>
                 </div>
                 <span class="page-title">Mural de Amostras</span>
             </div>
@@ -70,44 +66,41 @@
             </div>
         </header>
 
-        <main class="main-container" style="max-width: 100%; overflow: hidden; padding-top: 1rem; display: flex; flex-direction: column;">
+        <main class="main-container mural-main">
             
-            <div class="mural-stats-row">
-                <div class="mini-stat-card">
-                    <div class="mini-stat-val" id="total-necropsias">0</div>
-                    <div class="mini-stat-label">Necropsias</div>
-                    <div class="mini-bar" style="background: #3b82f6;"></div>
+            <div class="mural-toolbar">
+                <div class="mural-toolbar-info">
+                    <span class="mural-toolbar-title">Laudos pendentes</span>
+                    <span class="mural-toolbar-sub">Casos liberados saem daqui e vão para o Livro de Registros.</span>
                 </div>
-                <div class="mini-stat-card">
-                    <div class="mini-stat-val" id="total-biopsias">0</div>
-                    <div class="mini-stat-label">Biópsias</div>
-                    <div class="mini-bar" style="background: #ec4899;"></div>
+                <div class="mural-switch" role="group" aria-label="Filtro de amostras">
+                    <button type="button" id="filter-all" class="mural-switch-btn is-active" aria-pressed="true">Todos</button>
+                    <button type="button" id="filter-mine" class="mural-switch-btn" aria-pressed="false">Minhas</button>
                 </div>
             </div>
 
             <div class="carousel-indicators" id="carousel-dots"></div>
 
-            <div class="kanban-board" id="kanban-board">
-                <div class="kanban-column active-col" id="col-wrap-clivagem">
-                    <div class="kanban-header">Clivagem <span id="count-clivagem">0</span></div>
-                    <div class="kanban-body" id="col-clivagem"></div>
-                </div>
-                <div class="kanban-column" id="col-wrap-processamento">
-                    <div class="kanban-header">Processamento <span id="count-processamento">0</span></div>
-                    <div class="kanban-body" id="col-processamento"></div>
-                </div>
-                <div class="kanban-column" id="col-wrap-laminas">
-                    <div class="kanban-header">Lâminas Prontas <span id="count-laminas">0</span></div>
-                    <div class="kanban-body" id="col-laminas"></div>
-                </div>
-                <div class="kanban-column" id="col-wrap-analise">
-                    <div class="kanban-header">Análise <span id="count-analise">0</span></div>
-                    <div class="kanban-body" id="col-analise"></div>
-                </div>
-                <div class="kanban-column" id="col-wrap-liberar">
-                    <div class="kanban-header">Liberar Laudo <span id="count-liberar">0</span></div>
-                    <div class="kanban-body" id="col-liberar"></div>
-                </div>
+            <div class="mural-board" id="mural-board">
+                <section class="mural-panel type-necro active-panel" id="panel-necropsias" aria-labelledby="title-necropsias">
+                    <header class="mural-panel-header">
+                        <h2 class="mural-panel-title" id="title-necropsias">
+                            <i class="fas fa-paw"></i> Necropsias
+                        </h2>
+                        <span class="mural-panel-count" id="count-necropsias">0</span>
+                    </header>
+                    <div class="mural-panel-body" id="list-necropsias"></div>
+                </section>
+
+                <section class="mural-panel type-bio" id="panel-biopsias" aria-labelledby="title-biopsias">
+                    <header class="mural-panel-header">
+                        <h2 class="mural-panel-title" id="title-biopsias">
+                            <i class="fas fa-microscope"></i> Biópsias
+                        </h2>
+                        <span class="mural-panel-count" id="count-biopsias">0</span>
+                    </header>
+                    <div class="mural-panel-body" id="list-biopsias"></div>
+                </section>
             </div>
         </main>
     </div>

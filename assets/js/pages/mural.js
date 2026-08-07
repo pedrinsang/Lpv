@@ -1,233 +1,313 @@
-import { db, auth } from '../core.js';
-import { collection, query, where, onSnapshot, orderBy, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+/**
+ * MURAL — dois painéis de laudo pendente (necropsias e biópsias).
+ *
+ * O Mural é a fila de trabalho: só entra caso que ainda não teve laudo liberado.
+ * Assim que o laudo sai, o caso vira acervo e passa a ser assunto do Livro de
+ * Registros — por isso `releasedAt`/`status: concluido` derruba o caso daqui.
+ *
+ * O switch Todos/Minhas troca entre a fila do laboratório inteiro e a fila de
+ * quem está logado (as entradas que a pessoa cadastrou, `createdBy`).
+ */
+import { auth, db } from '../core.js';
+import { collection, query, where, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { pesoProtocolo } from '../lib/protocolo.js';
 
-// Elementos
-const columns = {
-    clivagem: document.getElementById('col-clivagem'),
-    processamento: document.getElementById('col-processamento'),
-    laminas_prontas: document.getElementById('col-laminas'),
-    analise: document.getElementById('col-analise'),
-    liberar: document.getElementById('col-liberar'),
-    em_correcao: document.getElementById('col-liberar'),
-    revisar_correcoes: document.getElementById('col-liberar')
-};
- 
-
-// Wrappers (para aplicar estilo active-col no mobile)
-const columnWrappers = [
-    document.getElementById('col-wrap-clivagem'),
-    document.getElementById('col-wrap-processamento'),
-    document.getElementById('col-wrap-laminas'),
-    document.getElementById('col-wrap-analise'),
-    document.getElementById('col-wrap-liberar')
-];
-
-const counters = {
-    clivagem: document.getElementById('count-clivagem'),
-    processamento: document.getElementById('count-processamento'),
-    laminas_prontas: document.getElementById('count-laminas'),
-    analise: document.getElementById('count-analise'),
-    liberar: document.getElementById('count-liberar'),
-    em_correcao: document.getElementById('count-liberar'),
-    revisar_correcoes: document.getElementById('count-liberar')
+const els = {
+    board: document.getElementById('mural-board'),
+    dots: document.getElementById('carousel-dots'),
+    switchAll: document.getElementById('filter-all'),
+    switchMine: document.getElementById('filter-mine')
 };
 
-const totalNecro = document.getElementById('total-necropsias');
-const totalBio = document.getElementById('total-biopsias');
-const filterContainer = document.getElementById('filter-container');
-const btnAll = document.getElementById('filter-all');
-const btnMine = document.getElementById('filter-mine');
+// Um painel por tipo de amostra. O `wrap` é o alvo do carrossel no mobile.
+const panels = {
+    necropsia: {
+        wrap: document.getElementById('panel-necropsias'),
+        list: document.getElementById('list-necropsias'),
+        count: document.getElementById('count-necropsias'),
+        empty: 'Nenhuma necropsia com laudo pendente.'
+    },
+    biopsia: {
+        wrap: document.getElementById('panel-biopsias'),
+        list: document.getElementById('list-biopsias'),
+        count: document.getElementById('count-biopsias'),
+        empty: 'Nenhuma biópsia com laudo pendente.'
+    }
+};
 
-// Elementos UI Mobile
-const kanbanBoard = document.getElementById('kanban-board');
-const dotsContainer = document.getElementById('carousel-dots');
+const panelOrder = [panels.necropsia, panels.biopsia];
 
-let currentFilter = 'all'; 
-let allTasks = []; 
-let currentUserRole = null;
-let currentUserName = null;
+// Prazo de entrega em dias corridos a partir da data de entrada (igual ao Hub).
+const DEADLINE_DAYS = { necropsia: 40, biopsia: 15 };
+
+let allTasks = [];
+let currentFilter = 'all';       // 'all' | 'mine'
+let currentUid = null;
 
 // --- INICIALIZAÇÃO ---
 onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-            const data = userDoc.data();
-            currentUserRole = (data.role || '').toString().toLowerCase();
-            currentUserName = data.name;
-
-            const roles = Array.isArray(data.role) ? data.role.map(r => r.toLowerCase()) : [currentUserRole];
-            if (roles.some(r => r.includes('graduando'))) {
-                filterContainer.style.display = 'flex';
-            } else {
-                filterContainer.style.display = 'none';
-            }
-        }
-        initBoard();
-        initMobileCarousel();
-        initDesktopScroll(); // Ativa scroll horizontal com roda do mouse
-    } else {
-        window.location.href = '../auth.html'; 
+    if (!user) {
+        window.location.href = '../auth.html';
+        return;
     }
+
+    currentUid = user.uid;
+
+    try {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) updateUserBadge(userDoc.data().role);
+    } catch (erro) {
+        console.warn('Não foi possível ler o perfil do usuário.', erro);
+    }
+
+    initSwitch();
+    initBoard();
+    initMobileCarousel();
 });
 
+function updateUserBadge(role) {
+    const badge = document.getElementById('user-role-badge');
+    if (!badge) return;
+    const roles = Array.isArray(role) ? role : [role];
+    badge.textContent = roles
+        .filter(Boolean)
+        .map((r) => r.charAt(0).toUpperCase() + r.slice(1).replace('-', ' '))
+        .join(' / ');
+}
+
+/**
+ * Só a janela recente do acervo é lida.
+ *
+ * O Firestore não sabe consultar "documento sem o campo X", e é justamente a
+ * ausência de `releasedAt` que marca o laudo pendente. Ler a coleção inteira
+ * para descobrir isso significaria puxar todo o acervo de laudos liberados a
+ * cada abertura do Mural — leitura é o recurso que acaba. O ano do protocolo é
+ * indexado, então a consulta traz o ano corrente e o anterior (prazo máximo de
+ * um caso é de 40 dias) e o pendente é separado aqui. O ano 0 entra porque é o
+ * que `camposDerivados` grava quando o protocolo não é legível.
+ */
+function anosAtivos() {
+    const ano = new Date().getFullYear();
+    return [ano, ano - 1, 0];
+}
+
 function initBoard() {
-    const q = query(
-        collection(db, "tasks"), 
-        where("status", "!=", "concluido"),
-        orderBy("status"), 
-        orderBy("createdAt", "desc")
-    );
-    
+    const q = query(collection(db, "tasks"), where("protocoloAno", "in", anosAtivos()));
+
     onSnapshot(q, (snapshot) => {
         allTasks = [];
-        snapshot.forEach(doc => {
-            allTasks.push({ id: doc.id, ...doc.data() });
+        snapshot.forEach((docSnap) => {
+            const task = { id: docSnap.id, ...docSnap.data() };
+            if (isPendente(task)) allTasks.push(task);
         });
         renderBoard();
-    });
+    }, (erro) => console.warn('Não foi possível carregar o mural.', erro));
+}
+
+// Laudo liberado sai do Mural; agendamento do Planner nunca entrou.
+function isPendente(task) {
+    if (task.releasedAt) return false;
+    if (task.status === 'concluido' || task.status === 'arquivado') return false;
+    if (task.type === 'agendamento_rapido') return false;
+    return true;
+}
+
+function isNecropsiaTask(task) {
+    return (task.type === 'necropsia') || (!task.type && task.k7Color === 'azul');
 }
 
 function renderBoard() {
-    Object.values(columns).forEach(col => col.innerHTML = '');
-    Object.values(counters).forEach(span => span.textContent = '0');
-    
-    let countNecro = 0;
-    let countBio = 0;
-    const counts = { clivagem: 0, processamento: 0, laminas_prontas: 0, analise: 0, liberar: 0, em_correcao: 0, revisar_correcoes: 0 };
+    const visiveis = currentFilter === 'mine'
+        ? allTasks.filter((task) => task.createdBy && task.createdBy === currentUid)
+        : allTasks;
 
-    allTasks.forEach(task => {
-        if (task.status === 'concluido' || task.status === 'arquivado') return;
+    const grupos = { necropsia: [], biopsia: [] };
+    visiveis.forEach((task) => {
+        grupos[isNecropsiaTask(task) ? 'necropsia' : 'biopsia'].push(task);
+    });
 
-        // Só conta tarefas que pertencem ao fluxo do mural (possuem coluna válida e tipo definido)
-        const status = task.status;
-        const col = columns[status];
-        if (!col) return; // Ignora tarefas com status desconhecido (ex: planner-only)
+    Object.entries(panels).forEach(([tipo, painel]) => {
+        renderPanel(painel, ordenarPorPrazo(grupos[tipo]));
+    });
+}
 
-        const isNecropsia = (task.type === 'necropsia') || (!task.type && task.k7Color === 'azul');
-        if (task.type) {
-            if (isNecropsia) countNecro++; else countBio++;
+// O caso mais perto de estourar o prazo (ou mais atrasado) vem primeiro; sem
+// data de entrada não há prazo a cobrar, então esses ficam no fim.
+function ordenarPorPrazo(tasks) {
+    return [...tasks].sort((a, b) => {
+        const infoA = getDeadlineInfo(a);
+        const infoB = getDeadlineInfo(b);
+        if (!infoA !== !infoB) return infoA ? -1 : 1;
+        if (infoA && infoB && infoA.remaining !== infoB.remaining) {
+            return infoA.remaining - infoB.remaining;
         }
+        return pesoProtocolo(a.protocolo) - pesoProtocolo(b.protocolo);
+    });
+}
 
-        if (currentFilter === 'mine') {
-            const isMine = (task.docente === currentUserName) || (task.posGraduando === currentUserName);
-            if (!isMine) return; 
-        }
+function renderPanel(painel, tasks) {
+    if (!painel.list) return;
 
-        {
-            const card = document.createElement('div');
-            const k7Class = task.k7Color ? `k7-${task.k7Color}` : '';
-            card.className = `mural-card ${k7Class}`;
-            card.style.setProperty('--card-index', col.children.length);
-            const openDetails = () => openTaskManagerWithRetry(task.id);
-            card.addEventListener('click', openDetails);
-            card.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    openDetails();
-                }
-            });
-            card.setAttribute('role', 'button');
-            card.setAttribute('tabindex', '0');
-            
-            const displayProtocol = task.protocolo || "---";
-            const shortPos = getShortName(task.posGraduando || "Sem Pós");
-            const typeLabel = isNecropsia ? 'NECROPSIA' : 'BIÓPSIA';
-            const typeColor = isNecropsia ? '#3b82f6' : '#ec4899';
-            const inCorrectionBadge = task.status === 'em_correcao'
-                ? `<span class="mural-tag" style="font-size:0.62rem; font-weight:800; color:#92400e; border:1px solid #f59e0b55; background:#fef3c7;"><i class="fas fa-tools"></i> EM CORREÇÃO</span>`
-                : '';
-            const correctedBadge = task.status === 'revisar_correcoes'
-                ? `<span class="mural-tag" style="font-size:0.62rem; font-weight:800; color:#92400e; border:1px solid #f59e0b55; background:#fef3c7;"><i class="fas fa-wrench"></i> CORRIGIDO</span>`
-                : '';
+    if (painel.count) painel.count.textContent = tasks.length;
 
-            card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:start;">
-                    <span style="font-weight:800; font-size:0.95rem; color:var(--color-primary);">
-                        ${displayProtocol}
-                    </span>
-                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
-                        <div style="display:flex; gap:5px; align-items:center;">
-                            <span class="mural-tag" style="color: ${typeColor}; border: 1px solid ${typeColor}40; font-weight:800; font-size:0.65rem;">
-                                ${typeLabel}
-                            </span>
-                            ${task.k7Quantity ? `<span class="mural-tag" style="font-weight:600;">${task.k7Quantity} K7</span>` : ''}
-                        </div>
-                    </div>
-                </div>
-                <div style="font-size:0.9rem; margin-top:8px; font-weight:700; color:var(--text-primary); line-height:1.2;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                        <span>${task.animalNome || 'Sem Nome'}</span>
-                        ${inCorrectionBadge || correctedBadge}
-                    </div>
-                </div>
-                <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px; text-transform:uppercase; font-weight:600;">
-                    ${task.especie || ''}
-                </div>
-                <div style="margin-top:10px; display:flex; gap:6px; align-items:center; font-size:0.75rem; color:var(--text-tertiary);">
-                    <i class="fas fa-user-graduate"></i> ${shortPos}
-                </div>
-                <div style="margin-top:8px; display:flex; gap:6px; align-items:center; justify-content:space-between;">
-                    <span class="mural-tag" style="font-size:0.65rem; font-weight:700; ${task.financialStatus === 'pago' || task.situacao === 'pago' ? 'color:#10b981; border:1px solid #10b98140;' : task.situacao === 'didatico' ? 'color:#8b5cf6; border:1px solid #8b5cf640;' : 'color:#f59e0b; border:1px solid #f59e0b40;'}">
-                        <i class="fas ${task.financialStatus === 'pago' || task.situacao === 'pago' ? 'fa-check-circle' : task.situacao === 'didatico' ? 'fa-graduation-cap' : 'fa-clock'}"></i>
-                        ${task.financialStatus === 'pago' || task.situacao === 'pago' ? ' PAGO' : task.situacao === 'didatico' ? ' DIDÁTICO' : ' PENDENTE'}
-                    </span>
-                    ${task.valor ? `<span class="mural-valor-hidden" onclick="event.stopPropagation(); this.classList.toggle('revealed')" style="font-size:0.7rem; font-weight:700; color:var(--text-tertiary); cursor:pointer; user-select:none;" title="Clique para ver o valor"><i class="fas fa-eye"></i> <span class="valor-text">R$ ${task.valor}</span></span>` : ''}
-                </div>
-            `;
-            col.appendChild(card);
-            if (status === 'em_correcao') {
-                counts.em_correcao++;
-                counts.liberar++;
-            } else if (status === 'revisar_correcoes') {
-                counts.revisar_correcoes++;
-                counts.liberar++;
-            } else if (counts[status] !== undefined) {
-                counts[status]++;
-            }
+    painel.list.innerHTML = '';
+    painel.list.classList.toggle('is-empty', tasks.length === 0);
+
+    if (tasks.length === 0) {
+        painel.list.innerHTML = `
+            <div class="mural-empty">
+                <i class="far fa-check-circle fa-2x"></i>
+                <p>${painel.empty}</p>
+            </div>`;
+        return;
+    }
+
+    tasks.forEach((task, index) => {
+        painel.list.appendChild(buildCard(task, index));
+    });
+}
+
+function buildCard(task, index) {
+    const card = document.createElement('article');
+    card.className = `mural-card${task.isUrgent ? ' is-urgent' : ''}`;
+    card.style.setProperty('--card-index', index);
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.title = `${task.protocolo || ''} — ${task.animalNome || ''}`;
+
+    const abrir = () => openTaskManagerWithRetry(task.id);
+    card.addEventListener('click', abrir);
+    card.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            abrir();
         }
     });
 
-    for (const key in counts) {
-        if (counters[key]) counters[key].textContent = counts[key];
-    }
-    if(totalNecro) totalNecro.textContent = countNecro;
-    if(totalBio) totalBio.textContent = countBio;
+    const dataEntrada = task.dataEntrada
+        ? new Date(`${task.dataEntrada}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+        : '—';
+
+    card.innerHTML = `
+        <div class="mural-card-top">
+            <span class="m-prot">
+                ${task.isUrgent ? '<i class="fas fa-triangle-exclamation m-flag" title="Amostra urgente"></i>' : ''}
+                ${escapeHtml(task.protocolo || '---')}
+            </span>
+            ${renderDeadline(getDeadlineInfo(task))}
+        </div>
+        <div class="m-animal">
+            <strong>${escapeHtml(task.animalNome || 'Sem Nome')}</strong>
+            <span class="m-species">${escapeHtml(task.especie || 'Espécie não informada')}</span>
+        </div>
+        <div class="mural-card-meta">
+            <span class="m-resp"><i class="fas fa-user-graduate"></i>${escapeHtml(getShortName(task.posGraduando))}</span>
+            <span class="m-date"><i class="far fa-calendar"></i>${dataEntrada}</span>
+            ${task.k7Quantity ? `<span class="m-k7">${Number(task.k7Quantity)} K7</span>` : ''}
+            ${renderFinanceiro(task)}
+        </div>`;
+
+    return card;
 }
 
-// --- LÓGICA DO CARROSSEL MOBILE ---
-function initMobileCarousel() {
-    if(!dotsContainer || !kanbanBoard) return;
+// Positivo = dias que faltam; negativo = dias de atraso. null sem data de entrada.
+function getDeadlineInfo(task) {
+    if (!task.dataEntrada) return null;
 
-    dotsContainer.innerHTML = '';
-    columnWrappers.forEach((_, index) => {
+    const entrada = new Date(`${task.dataEntrada}T12:00:00`);
+    if (Number.isNaN(entrada.getTime())) return null;
+
+    const limit = DEADLINE_DAYS[isNecropsiaTask(task) ? 'necropsia' : 'biopsia'];
+    const vencimento = new Date(entrada);
+    vencimento.setDate(vencimento.getDate() + limit);
+
+    const hoje = new Date();
+    hoje.setHours(12, 0, 0, 0);
+
+    return { remaining: Math.round((vencimento - hoje) / 86400000), limit };
+}
+
+function renderDeadline(info) {
+    if (!info) return '<span class="m-prazo is-unknown" title="Sem data de entrada">—</span>';
+
+    const { remaining, limit } = info;
+    const late = remaining < 0;
+    const days = Math.abs(remaining);
+
+    let title;
+    if (late) title = `${days} ${days === 1 ? 'dia' : 'dias'} em atraso (prazo de ${limit} dias)`;
+    else if (remaining === 0) title = `Vence hoje (prazo de ${limit} dias)`;
+    else title = `Faltam ${days} ${days === 1 ? 'dia' : 'dias'} (prazo de ${limit} dias)`;
+
+    const icon = late ? 'fa-triangle-exclamation' : 'fa-clock';
+    return `<span class="m-prazo ${late ? 'is-late' : 'is-ok'}" title="${title}">
+        <i class="fas ${icon}"></i>${days} d</span>`;
+}
+
+function renderFinanceiro(task) {
+    const situacao = task.financialStatus || task.situacao || 'pendente';
+
+    if (situacao === 'pago') {
+        return '<span class="m-fin is-pago"><i class="fas fa-check-circle"></i>PAGO</span>';
+    }
+    if (situacao === 'didatico') {
+        return '<span class="m-fin is-didatico"><i class="fas fa-graduation-cap"></i>DIDÁTICO</span>';
+    }
+    return '<span class="m-fin is-pendente"><i class="fas fa-clock"></i>PENDENTE</span>';
+}
+
+// --- SWITCH TODOS / MINHAS ---
+function initSwitch() {
+    els.switchAll?.addEventListener('click', () => setFilter('all'));
+    els.switchMine?.addEventListener('click', () => setFilter('mine'));
+    updateSwitch();
+}
+
+function setFilter(mode) {
+    if (currentFilter === mode) return;
+    currentFilter = mode;
+    updateSwitch();
+    renderBoard();
+}
+
+function updateSwitch() {
+    const allActive = currentFilter === 'all';
+    els.switchAll?.classList.toggle('is-active', allActive);
+    els.switchMine?.classList.toggle('is-active', !allActive);
+    els.switchAll?.setAttribute('aria-pressed', String(allActive));
+    els.switchMine?.setAttribute('aria-pressed', String(!allActive));
+}
+
+// --- CARROSSEL MOBILE (um painel por vez) ---
+function initMobileCarousel() {
+    if (!els.dots || !els.board) return;
+
+    els.dots.innerHTML = '';
+    panelOrder.forEach((painel, index) => {
         const dot = document.createElement('button');
         dot.type = 'button';
         dot.className = index === 0 ? 'dot active' : 'dot';
-        dot.dataset.index = String(index);
-        dot.setAttribute('aria-label', `Ir para coluna ${index + 1}`);
+        dot.setAttribute('aria-label', painel.wrap?.querySelector('.mural-panel-title')?.textContent.trim() || `Painel ${index + 1}`);
         dot.addEventListener('click', () => {
-            const colWidth = columnWrappers[0]?.offsetWidth || 1;
-            kanbanBoard.scrollTo({ left: (colWidth + 15) * index, behavior: 'smooth' });
+            const largura = (panelOrder[0].wrap?.offsetWidth || 1) + 15;
+            els.board.scrollTo({ left: largura * index, behavior: 'smooth' });
         });
-        dotsContainer.appendChild(dot);
+        els.dots.appendChild(dot);
     });
 
-    const syncCarouselState = () => {
+    const sync = () => {
         if (window.innerWidth >= 1024) return;
-        const scrollLeft = kanbanBoard.scrollLeft;
-        const colWidth = (columnWrappers[0]?.offsetWidth || 1) + 15;
-        const activeIndex = Math.max(0, Math.min(columnWrappers.length - 1, Math.round(scrollLeft / colWidth)));
+        const largura = (panelOrder[0].wrap?.offsetWidth || 1) + 15;
+        const ativo = Math.max(0, Math.min(panelOrder.length - 1, Math.round(els.board.scrollLeft / largura)));
 
-        const dots = document.querySelectorAll('.dot');
-        dots.forEach((d, i) => d.classList.toggle('active', i === activeIndex));
-        columnWrappers.forEach((col, i) => col.classList.toggle('active-col', i === activeIndex));
+        els.dots.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === ativo));
+        panelOrder.forEach((painel, i) => painel.wrap?.classList.toggle('active-panel', i === ativo));
     };
 
-    kanbanBoard.addEventListener('scroll', syncCarouselState, { passive: true });
-    window.addEventListener('resize', syncCarouselState);
-    syncCarouselState();
+    els.board.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('resize', sync);
+    sync();
 }
 
 async function openTaskManagerWithRetry(taskId) {
@@ -247,66 +327,19 @@ async function openTaskManagerWithRetry(taskId) {
     console.warn('Task manager indisponível no momento.');
 }
 
-function initDesktopScroll() {
-    if(!kanbanBoard) return;
-
-    const normalizeWheelDelta = (evt, rawDelta) => {
-        // Converte delta para pixels quando o dispositivo reporta por linha/página.
-        if (evt.deltaMode === 1) return rawDelta * 16;
-        if (evt.deltaMode === 2) return rawDelta * window.innerHeight;
-        return rawDelta;
-    };
-
-    const applyHorizontalScroll = (evt, rawDelta) => {
-        const deltaPx = normalizeWheelDelta(evt, rawDelta);
-        const speedMultiplier = 1.8;
-        kanbanBoard.scrollLeft += deltaPx * speedMultiplier;
-    };
-    
-    kanbanBoard.addEventListener("wheel", (evt) => {
-        if (window.innerWidth < 1024) return;
-
-        const scrollableBody = evt.target.closest('.kanban-body');
-        const absX = Math.abs(evt.deltaX);
-        const absY = Math.abs(evt.deltaY);
-
-        // Prioriza gesto horizontal real do trackpad (2 dedos esquerda/direita).
-        if (absX > 0 && absX >= absY) {
-            evt.preventDefault();
-            applyHorizontalScroll(evt, evt.deltaX);
-            return;
-        }
-
-        // Dentro da coluna, preserva o scroll vertical nativo quando o gesto é vertical.
-        if (scrollableBody) return;
-
-        // Fora da coluna, converte wheel vertical em navegação horizontal do mural.
-        if (absY > 0) {
-            evt.preventDefault();
-            applyHorizontalScroll(evt, evt.deltaY);
-        }
-    }, { passive: false });
-}
-
-// Filtros
-if(btnAll) btnAll.addEventListener('click', () => {
-    currentFilter = 'all';
-    btnAll.classList.replace('btn-secondary', 'btn-primary');
-    btnMine.classList.replace('btn-primary', 'btn-secondary');
-    renderBoard();
-});
-
-if(btnMine) btnMine.addEventListener('click', () => {
-    currentFilter = 'mine';
-    btnMine.classList.replace('btn-secondary', 'btn-primary');
-    btnAll.classList.replace('btn-primary', 'btn-secondary');
-    renderBoard();
-});
-
+// --- AUXILIARES ---
 function getShortName(fullName) {
-    if (!fullName) return '-';
-    const parts = fullName.split(' ');
+    if (!fullName) return 'Sem Pós';
+    const parts = fullName.trim().split(/\s+/);
     if (parts.length === 1) return parts[0];
     return `${parts[0]} ${parts[1][0]}.`;
 }
 
+function escapeHtml(value) {
+    return (value ?? '')
+        .toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
