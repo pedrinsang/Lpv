@@ -68,13 +68,6 @@ function normalizeRoles(role) {
     return arr.map(canonicalizeRole).filter(Boolean);
 }
 
-/** Verifica se o usuário possui uma role específica */
-function hasRole(role, target) {
-    const [targetRole] = normalizeRoles(target);
-    if (!targetRole) return false;
-    return normalizeRoles(role).includes(targetRole);
-}
-
 /** Verifica se o usuário possui qualquer uma das roles listadas */
 function hasAnyRole(role, targets) {
     const roles = normalizeRoles(role);
@@ -292,30 +285,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // EXPORTS
-export { app, auth, db, initThemeSystem, onAuthStateChanged, signOut, logout, normalizeRoles, hasRole, hasAnyRole, hasFullControl, primaryRole, FULL_CONTROL_ROLES };
-
-// Função global para copiar texto e dar feedback visual
-window.copyToClipboard = async function(text, btnElement) {
-    if (!text || text === '---') return;
-
-    try {
-        await navigator.clipboard.writeText(text);
-        
-        // Feedback visual (Muda ícone para Check verde)
-        const icon = btnElement.querySelector('i');
-        const originalClass = icon.className;
-        
-        icon.className = 'fas fa-check';
-        icon.style.color = 'var(--color-success)'; // ou '#10b981'
-        
-        // Restaura após 2 segundos
-        setTimeout(() => {
-            icon.className = originalClass;
-            icon.style.color = '';
-        }, 2000);
-        
-    } catch (err) {
-        console.error('Erro ao copiar', err);
-        alert('Erro ao copiar código.');
-    }
-};
+export { app, auth, db, initThemeSystem, onAuthStateChanged, signOut, logout, normalizeRoles, hasAnyRole, hasFullControl, primaryRole, FULL_CONTROL_ROLES };

@@ -4,89 +4,13 @@
    ================================================================ */
 
 /* Card Base */
-.card,
-.tool-card,
-.sample-ticket {
+.card {
   background: var(--bg-glass);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-glass);
-}
-
-
-/* ================================================================
-   TOOL CARDS (Hub Grid)
-   ================================================================ */
-
-.tool-card {
-  padding: 1.25rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  color: var(--text-primary);
-  transition: transform var(--duration-normal) var(--ease-spring),
-              box-shadow var(--duration-normal) var(--ease-spring),
-              border-color var(--duration-normal) ease;
-  cursor: pointer;
-}
-
-.tool-card:hover {
-  transform: translateY(-5px) scale(1.01);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--color-primary);
-}
-
-.tool-card:active {
-  transform: translateY(-1px) scale(0.98);
-  transition-duration: var(--duration-fast);
-}
-
-.tool-icon {
-  width: 50px;
-  height: 50px;
-  flex-shrink: 0;
-  background: var(--gradient-main);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 1.2rem;
-  transition: transform var(--duration-normal) var(--ease-spring);
-}
-
-.tool-card:hover .tool-icon {
-  transform: scale(1.1) rotate(-3deg);
-}
-
-
-/* ================================================================
-   SAMPLE TICKETS
-   ================================================================ */
-
-.sample-ticket {
-  padding: 14px;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  transition: transform var(--duration-normal) var(--ease-spring),
-              box-shadow var(--duration-normal) var(--ease-spring),
-              border-color var(--duration-fast) ease;
-}
-
-.sample-ticket:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--color-primary);
-}
-
-.sample-ticket:active {
-  transform: scale(0.98);
-  transition-duration: var(--duration-fast);
 }
 
 
@@ -137,27 +61,3 @@
   color: var(--color-primary);
   margin-bottom: 5px;
 }
-
-
-/* ================================================================
-   K7 COLORS
-   ================================================================ */
-
-.k7-rosa {
-  background: linear-gradient(135deg, rgba(252, 231, 243, 0.9), rgba(255, 255, 255, 0.4)) !important;
-  border-left: 4px solid #ec4899 !important;
-}
-
-.k7-azul {
-  background: linear-gradient(135deg, rgba(219, 234, 254, 0.9), rgba(255, 255, 255, 0.4)) !important;
-  border-left: 4px solid #3b82f6 !important;
-}
-
-.k7-branco {
-  background: linear-gradient(135deg, rgb(255, 255, 255), rgb(255, 255, 255)) !important;
-  border-left: 4px solid #ffffff !important;
-}
-
-[data-theme="dark"] .k7-rosa { background: rgba(236, 72, 153, 0.2) !important; }
-[data-theme="dark"] .k7-azul { background: rgba(59, 130, 246, 0.2) !important; }
-[data-theme="dark"] .k7-branco { background: rgba(255, 255, 255, 0.2) !important; }

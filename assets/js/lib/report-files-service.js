@@ -41,9 +41,7 @@ function normalizeReportFiles(raw) {
         activeWordVersionId: base.activeWordVersionId || null,
         activePdfVersionId: base.activePdfVersionId || null,
         wordVersions: Array.isArray(base.wordVersions) ? base.wordVersions : [],
-        pdfVersions: Array.isArray(base.pdfVersions) ? base.pdfVersions : [],
-        lastConversionError: base.lastConversionError || null,
-        lastConversionAt: base.lastConversionAt || null
+        pdfVersions: Array.isArray(base.pdfVersions) ? base.pdfVersions : []
     };
 }
 
@@ -182,19 +180,9 @@ export function getReportFilesState(task) {
     return normalizeReportFiles(task?.reportFiles);
 }
 
-export function listReportVersions(task, fileType) {
-    const state = getReportFilesState(task);
-    return fileType === 'word' ? state.wordVersions : state.pdfVersions;
-}
-
 export function hasActiveUploadedWord(task) {
     const state = getReportFilesState(task);
     return state.activeSource === 'uploaded_word' && !!state.activeWordVersionId;
-}
-
-export function hasActiveUploadedPdf(task) {
-    const state = getReportFilesState(task);
-    return !!state.activePdfVersionId;
 }
 
 function detectWordMime(fileName, fallbackMime = '') {
@@ -259,8 +247,7 @@ export async function uploadReportFileFromBlob({ taskId, blob, fileType, fileNam
 
     return {
         ok: true,
-        version: versionMeta,
-        convertedPdf: null
+        version: versionMeta
     };
 }
 

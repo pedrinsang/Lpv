@@ -258,11 +258,6 @@ window.toggleSelfSignPermission = async (uid, checkbox) => {
     }
 };
 
-window.updateRole = async (uid, newRole) => {
-    try { await updateDoc(doc(db, "users", uid), { role: Array.isArray(newRole) ? newRole : [newRole] }); } 
-    catch (e) { alert("Erro ao mudar cargo."); }
-};
-
 window.deleteUser = async (uid, name) => {
     if (!confirm(`Remover ${name} do sistema?\nEssa ação é irreversível.`)) return;
     try { await deleteDoc(doc(db, "users", uid)); } 

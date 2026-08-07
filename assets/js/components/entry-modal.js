@@ -6,7 +6,6 @@ import {
     doc,
     getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-import { uploadInternalPhotos } from '../lib/internal-photos-service.js';
 import { camposDerivados, formatarProtocolo } from '../lib/protocolo.js';
 
 console.log("Entry Modal Module Loaded - formulário único (tipo pelo protocolo)");
@@ -204,28 +203,11 @@ async function saveEntry(e) {
     try {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
-        delete data.internalPhotos;
 
         syncPosResponsavelUid();
         data.posResponsavelUid = hiddenPosUid?.value || '';
         // O checkbox só entra no FormData quando marcado — lemos direto do input.
         data.isUrgent = !!urgentInput?.checked;
-
-        const selectedPhotoFiles = Array.from(form.querySelector('input[name="internalPhotos"]')?.files || []);
-
-        const uploadPhotosIfSelected = async (taskId) => {
-            if (selectedPhotoFiles.length === 0) {
-                return { uploaded: 0, error: null };
-            }
-
-            try {
-                await uploadInternalPhotos(taskId, selectedPhotoFiles);
-                return { uploaded: selectedPhotoFiles.length, error: null };
-            } catch (uploadError) {
-                console.error('Erro ao enviar fotos internas:', uploadError);
-                return { uploaded: 0, error: uploadError };
-            }
-        };
 
         if (editingTaskId) {
             // --- MODO EDIÇÃO ---
@@ -241,15 +223,7 @@ async function saveEntry(e) {
                 lastEditor: auth.currentUser ? auth.currentUser.uid : 'anon'
             });
 
-            const photoUploadResult = await uploadPhotosIfSelected(editingTaskId);
-            const uploadedMessage = photoUploadResult.uploaded > 0
-                ? `\n\n${photoUploadResult.uploaded} foto(s) interna(s) enviada(s) para o Cloudinary.`
-                : '';
-            const uploadWarning = photoUploadResult.error
-                ? `\n\nA entrada foi atualizada, mas houve falha no upload das fotos: ${photoUploadResult.error.message}`
-                : '';
-
-            alert(`Entrada atualizada com sucesso!${uploadedMessage}${uploadWarning}`);
+            alert('Entrada atualizada com sucesso!');
 
             const updatedId = editingTaskId;
             closeModal();
@@ -272,18 +246,11 @@ async function saveEntry(e) {
             createdAt: new Date().toISOString()
         };
 
-        const createdRef = await addDoc(collection(db, "tasks"), taskData);
+        await addDoc(collection(db, "tasks"), taskData);
 
-        const photoUploadResult = await uploadPhotosIfSelected(createdRef.id);
-        const uploadedMessage = photoUploadResult.uploaded > 0
-            ? `\n\n${photoUploadResult.uploaded} foto(s) interna(s) enviada(s) para o Cloudinary.`
-            : '';
-        const uploadWarning = photoUploadResult.error
-            ? `\n\nA entrada foi criada, mas houve falha no upload das fotos: ${photoUploadResult.error.message}`
-            : '';
         const urgentMessage = taskData.isUrgent ? '\n\nMarcada como URGENTE.' : '';
 
-        alert(`Entrada de ${taskType.toUpperCase()} registrada!${urgentMessage}${uploadedMessage}${uploadWarning}`);
+        alert(`Entrada de ${taskType.toUpperCase()} registrada!${urgentMessage}`);
         closeModal();
 
     } catch (error) {

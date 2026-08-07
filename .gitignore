@@ -1,6 +1,2 @@
-functions/node_modules/
-functions/.env
-functions/.runtimeconfig.json
 .env
 .env.*
-!.env.example

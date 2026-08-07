@@ -13,10 +13,6 @@ import {
 } from '../lib/report-files-service.js';
 import { camposDerivados } from '../lib/protocolo.js';
 import { registrarLiberacao } from '../lib/livro-indice.js';
-import {
-    uploadInternalPhotos,
-    removeInternalPhoto
-} from '../lib/internal-photos-service.js';
 
 console.log("Task Manager Loaded - Mobile Layout Fix");
 const ENABLE_EXTERNAL_STORAGE_INTEGRATION = true;
@@ -86,17 +82,7 @@ const formK7 = document.getElementById('form-k7');
 const btnDelete = document.getElementById('btn-delete-task');
 
 let currentTask = null;
-let currentUserData = null; 
-let jsZipModulePromise = null;
-
-async function loadJsZipModule() {
-    if (!jsZipModulePromise) {
-        jsZipModulePromise = import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm');
-    }
-
-    return jsZipModulePromise;
-}
-
+let currentUserData = null;
 
 function formatFileSize(bytes) {
     const value = Number(bytes || 0);
@@ -110,163 +96,6 @@ function formatFileSize(bytes) {
         unit += 1;
     }
     return `${size.toFixed(size >= 10 || unit === 0 ? 0 : 1)} ${units[unit]}`;
-}
-
-function sanitizeFileNamePart(value, fallback = 'arquivo') {
-    const safe = (value || fallback)
-        .toString()
-        .trim()
-        .replace(/[^a-zA-Z0-9._-]/g, '_')
-        .replace(/_+/g, '_');
-
-    return safe || fallback;
-}
-
-function inferPhotoExtension(photo = {}, fallback = 'webp') {
-    const fromOriginalName = (photo.originalFileName || '').toString().toLowerCase();
-    const fromName = (photo.fileName || '').toString().toLowerCase();
-    const fromFormat = (photo.format || '').toString().toLowerCase();
-    const fromUrl = (photo.url || photo.thumbUrl || '').toString().toLowerCase();
-    const fromMime = (photo.mimeType || '').toString().toLowerCase();
-
-    if (fromOriginalName.includes('.')) {
-        const ext = fromOriginalName.split('.').pop();
-        if (ext && /^[a-z0-9]{2,5}$/.test(ext)) return ext;
-    }
-
-    if (fromFormat && /^[a-z0-9]{2,10}$/.test(fromFormat)) {
-        return fromFormat;
-    }
-
-    if (fromName.includes('.')) {
-        const ext = fromName.split('.').pop();
-        if (ext && /^[a-z0-9]{2,5}$/.test(ext)) return ext;
-    }
-
-    const extMatch = fromUrl.match(/\.([a-z0-9]{2,5})(?:$|\?|#)/i);
-    if (extMatch && extMatch[1]) {
-        return extMatch[1].toLowerCase();
-    }
-
-    if (fromMime.includes('/')) {
-        const ext = fromMime.split('/').pop();
-        if (ext && /^[a-z0-9]{2,10}$/.test(ext)) return ext;
-    }
-
-    return fallback;
-}
-
-function buildZipPhotoFileName(photo, index) {
-    const baseNameRaw = (photo?.originalFileName || photo?.fileName || '').toString().trim();
-    const hasDot = baseNameRaw.includes('.');
-    const defaultName = `foto_${String(index + 1).padStart(2, '0')}`;
-
-    if (hasDot) {
-        return sanitizeFileNamePart(baseNameRaw, `${defaultName}.webp`);
-    }
-
-    const ext = inferPhotoExtension(photo, 'webp');
-    const base = sanitizeFileNamePart(baseNameRaw || defaultName, defaultName);
-    return `${base}.${ext}`;
-}
-
-function buildPhotosZipName(task) {
-    const protocol = sanitizeFileNamePart(task?.protocolo || task?.id || 'caso', 'caso');
-    return `Fotos_Internas_${protocol}.zip`;
-}
-
-function triggerBlobDownload(blob, fileName) {
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = fileName;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-}
-
-async function buildInternalPhotosZip(task, options = {}) {
-    const photos = Array.isArray(task?.internalPhotos) ? task.internalPhotos : [];
-    if (photos.length === 0) {
-        throw new Error('Nenhuma foto interna cadastrada para exportar.');
-    }
-
-    const { onProgress } = options;
-    const jszipModule = await loadJsZipModule();
-    const JSZip = jszipModule?.default || jszipModule?.JSZip || jszipModule;
-    const zip = new JSZip();
-
-    const folderName = sanitizeFileNamePart(task?.protocolo || task?.id || 'caso', 'caso');
-    const zipFolder = zip.folder(folderName) || zip;
-
-    let added = 0;
-    const failures = [];
-
-    for (let index = 0; index < photos.length; index += 1) {
-        const photo = photos[index] || {};
-        const sourceUrl = photo.url || photo.thumbUrl || '';
-        const fileName = buildZipPhotoFileName(photo, index);
-
-        try {
-            if (!sourceUrl) {
-                throw new Error('URL da foto indisponivel.');
-            }
-
-            const response = await fetch(sourceUrl);
-            if (!response.ok) {
-                throw new Error(`Falha HTTP ${response.status}`);
-            }
-
-            const blob = await response.blob();
-            zipFolder.file(fileName, blob);
-            added += 1;
-        } catch (error) {
-            failures.push({
-                fileName,
-                reason: error?.message || 'falha desconhecida'
-            });
-        }
-
-        if (typeof onProgress === 'function') {
-            onProgress({
-                done: index + 1,
-                total: photos.length,
-                added,
-                failed: failures.length
-            });
-        }
-    }
-
-    if (failures.length > 0) {
-        const reportLines = [
-            `Total de fotos: ${photos.length}`,
-            `Incluidas no ZIP: ${added}`,
-            `Falhas: ${failures.length}`,
-            '',
-            ...failures.map((item, index) => `${index + 1}. ${item.fileName} - ${item.reason}`)
-        ];
-
-        zip.file('falhas_download_fotos.txt', reportLines.join('\n'));
-    }
-
-    if (added === 0) {
-        const firstFailure = failures[0]?.reason || 'Nao foi possivel baixar as fotos.';
-        throw new Error(firstFailure);
-    }
-
-    const blob = await zip.generateAsync({
-        type: 'blob',
-        compression: 'DEFLATE',
-        compressionOptions: { level: 6 }
-    });
-
-    return {
-        blob,
-        added,
-        failed: failures.length,
-        total: photos.length
-    };
 }
 
 function getActiveReportVersion(task, fileType) {
@@ -333,8 +162,7 @@ function renderReportFilesPanel(task, permission) {
             <div class="info-icon"><i class="fas fa-folder-open"></i></div>
             <div class="info-label">Arquivos do Laudo</div>
             <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:4px;">
-                Fonte oficial: <strong>${hasWordPrimary ? 'Word enviado' : (state.activeSource === 'uploaded_pdf' ? 'PDF enviado' : 'Laudo online')}</strong>
-                ${state.lastConversionError ? `<div style="margin-top:6px; color:#b91c1c;"><i class="fas fa-exclamation-triangle"></i> Conversão Word→PDF: ${state.lastConversionError}</div>` : ''}
+                Fonte oficial: <strong>${hasWordPrimary ? 'Word enviado' : (state.activeSource === 'uploaded_pdf' ? 'PDF enviado' : 'Nenhum arquivo enviado')}</strong>
             </div>
 
             <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">
@@ -362,46 +190,6 @@ function renderReportFilesPanel(task, permission) {
         </div>
     `;
 }
-
-function renderInternalPhotosPanel(task, permission) {
-    const photos = Array.isArray(task.internalPhotos) ? task.internalPhotos : [];
-    const canManagePhotos = permission.canFillReport || permission.canCorrectReport || permission.canReleaseInitial;
-    const canDownloadPhotos = permission.canDownloadReport || canManagePhotos;
-
-    const photosHtml = photos.length === 0
-        ? '<div style="font-size:0.75rem; color:var(--text-tertiary);">Nenhuma foto interna cadastrada.</div>'
-        : photos.map((photo) => `
-            <div style="position:relative; border:1px solid rgba(148,163,184,0.25); border-radius:10px; overflow:hidden;">
-                <a href="${photo.url}" target="_blank" rel="noopener noreferrer" style="display:block;">
-                    <img src="${photo.thumbUrl || photo.url}" alt="Foto interna" style="width:100%; height:110px; object-fit:cover; display:block;">
-                </a>
-                <div style="padding:6px; background:rgba(15,23,42,0.75); color:#fff; font-size:0.68rem;">
-                    <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${photo.fileName || 'foto.webp'}</div>
-                    <div>${formatFileSize(photo.bytes)} • ${photo.uploadedAt ? new Date(photo.uploadedAt).toLocaleDateString('pt-BR') : '-'}</div>
-                </div>
-                ${canManagePhotos ? `<button data-photo-remove="${photo.photoId}" style="position:absolute; top:6px; right:6px; border:none; width:28px; height:28px; border-radius:50%; background:rgba(185,28,28,0.9); color:#fff; cursor:pointer;"><i class="fas fa-trash"></i></button>` : ''}
-            </div>
-        `).join('');
-
-    return `
-        <div class="info-card" style="grid-column:1 / -1; border:1px solid rgba(14,165,233,0.3);">
-            <div class="info-icon"><i class="fas fa-images"></i></div>
-            <div class="info-label">Fotos Internas do Laboratório</div>
-            <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">Uso interno. Não entra no laudo PDF/Word.</div>
-
-            <div style="display:flex; gap:8px; margin-top:10px;">
-                ${canManagePhotos ? '<button id="tm-btn-upload-photos" class="btn btn-secondary btn-sm" type="button"><i class="fas fa-upload"></i> Enviar fotos</button>' : ''}
-                ${canDownloadPhotos && photos.length > 0 ? '<button id="tm-btn-download-photos-zip" class="btn btn-secondary btn-sm" type="button"><i class="fas fa-file-archive"></i> Baixar ZIP</button>' : ''}
-            </div>
-            <input id="tm-input-upload-photos" type="file" accept="image/*" multiple class="hidden">
-
-            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-top:10px;">
-                ${photosHtml}
-            </div>
-        </div>
-    `;
-}
-
 
 function normalizeName(value) {
     return (value || '')
@@ -511,7 +299,7 @@ function renderDetails(task) {
     // O laudo entra no sistema como Word/PDF enviado; download e histórico de
     // versões ficam no painel de arquivos.
     const storagePanelsHtml = ENABLE_EXTERNAL_STORAGE_INTEGRATION
-        ? `${renderReportFilesPanel(task, permission)}${renderInternalPhotosPanel(task, permission)}`
+        ? renderReportFilesPanel(task, permission)
         : '';
 
     const typeClass = task.type === 'necropsia' ? 'necropsia' : 'biopsia';
@@ -646,12 +434,12 @@ function renderDetails(task) {
 
     infoGrid.innerHTML = html;
     if (ENABLE_EXTERNAL_STORAGE_INTEGRATION) {
-        bindTaskFileAndPhotoActions(task, permission);
+        bindTaskFileActions(task, permission);
     }
 }
 
 
-function bindTaskFileAndPhotoActions(task, permission) {
+function bindTaskFileActions(task, permission) {
     if (!ENABLE_EXTERNAL_STORAGE_INTEGRATION) return;
 
     const inputWord = document.getElementById('tm-input-upload-word');
@@ -816,108 +604,6 @@ function bindTaskFileAndPhotoActions(task, permission) {
         });
     });
 
-    const btnUploadPhotos = document.getElementById('tm-btn-upload-photos');
-    const inputUploadPhotos = document.getElementById('tm-input-upload-photos');
-    if (btnUploadPhotos && inputUploadPhotos && !btnUploadPhotos.dataset.bound) {
-        btnUploadPhotos.dataset.bound = '1';
-        btnUploadPhotos.addEventListener('click', () => inputUploadPhotos.click());
-
-        inputUploadPhotos.addEventListener('change', async () => {
-            const files = Array.from(inputUploadPhotos.files || []);
-            if (files.length === 0) return;
-
-            const original = btnUploadPhotos.innerHTML;
-            btnUploadPhotos.disabled = true;
-            btnUploadPhotos.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-
-            try {
-                await uploadInternalPhotos(task.id, files, {
-                    onProgress: ({ done, total }) => {
-                        btnUploadPhotos.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${done}/${total}`;
-                    }
-                });
-                alert('Fotos internas enviadas com sucesso.');
-                await refreshCurrentTask();
-            } catch (error) {
-                console.error(error);
-                alert(`Erro ao enviar fotos: ${error.message}`);
-            } finally {
-                btnUploadPhotos.disabled = false;
-                btnUploadPhotos.innerHTML = original;
-                inputUploadPhotos.value = '';
-            }
-        });
-    }
-
-    const btnDownloadPhotosZip = document.getElementById('tm-btn-download-photos-zip');
-    if (btnDownloadPhotosZip && !btnDownloadPhotosZip.dataset.bound) {
-        btnDownloadPhotosZip.dataset.bound = '1';
-        btnDownloadPhotosZip.addEventListener('click', async () => {
-            const photos = Array.isArray(task.internalPhotos) ? task.internalPhotos : [];
-            if (photos.length === 0) {
-                alert('Nenhuma foto interna cadastrada para exportar.');
-                return;
-            }
-
-            const original = btnDownloadPhotosZip.innerHTML;
-            btnDownloadPhotosZip.disabled = true;
-            btnDownloadPhotosZip.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparando...';
-
-            try {
-                const result = await buildInternalPhotosZip(task, {
-                    onProgress: ({ done, total }) => {
-                        btnDownloadPhotosZip.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${done}/${total}`;
-                    }
-                });
-
-                const fileName = buildPhotosZipName(task);
-                triggerBlobDownload(result.blob, fileName);
-
-                if (result.failed > 0) {
-                    alert(`ZIP gerado com ${result.added} foto(s). ${result.failed} foto(s) falharam e foram listadas em falhas_download_fotos.txt.`);
-                }
-            } catch (error) {
-                console.error(error);
-                alert(`Erro ao gerar ZIP de fotos: ${error.message}`);
-            } finally {
-                btnDownloadPhotosZip.disabled = false;
-                btnDownloadPhotosZip.innerHTML = original;
-            }
-        });
-    }
-
-    document.querySelectorAll('[data-photo-remove]').forEach((button) => {
-        if (button.dataset.bound === '1') return;
-        button.dataset.bound = '1';
-
-        button.addEventListener('click', async () => {
-            const photoId = button.getAttribute('data-photo-remove');
-            if (!photoId) return;
-            if (!confirm('Remover esta foto interna?')) return;
-
-            try {
-                await removeInternalPhoto(task.id, photoId);
-                await refreshCurrentTask();
-            } catch (error) {
-                console.error(error);
-                alert(`Erro ao remover foto: ${error.message}`);
-            }
-        });
-    });
-}
-
-window.copyToClipboard = async function(text, btn) {
-    if(!text) return;
-    try {
-        await navigator.clipboard.writeText(text);
-        const icon = btn.querySelector('i');
-        icon.className = 'fas fa-check';
-        icon.style.color = '#10b981'; 
-        setTimeout(() => {
-            icon.className = 'far fa-copy';
-            icon.style.color = '';
-        }, 2000);
-    } catch(e) { console.error(e); }
 }
 
 async function toggleFinancialStatus() {

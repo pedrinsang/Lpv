@@ -6,7 +6,7 @@
 
 ## Preferencia tecnica
 - Priorizar implementacoes sem backend pago.
-- Usar integracao direta cliente -> Supabase/Cloudinary/Firestore quando viavel.
+- Usar integracao direta cliente -> Supabase/Firestore quando viavel.
 - Ao precisar de exclusao de arquivos, garantir tentativa de exclusao no storage antes de remover metadados do Firestore.
 
 ## Excecao

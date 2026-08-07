@@ -205,11 +205,6 @@ body {
     to { transform: scaleX(1); transform-origin: left; }
 }
 
-@keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-}
-
 @keyframes modalIn {
     0% { opacity: 0; transform: scale(0.9) translateY(30px); }
     60% { opacity: 1; transform: scale(1.02) translateY(-5px); }
@@ -257,22 +252,6 @@ body {
 }
 
 /* ---- Planner Tip (under calendar) ---- */
-.planner-tip {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    padding: 10px 16px; margin-top: 8px;
-    font-size: 0.78rem; color: var(--text-tertiary);
-    font-weight: 500;
-    animation: fadeIn 0.6s ease 0.8s both;
-}
-.planner-tip i {
-    color: var(--color-necro); font-size: 0.85rem;
-    animation: tipBounce 2s ease-in-out 2s infinite;
-}
-@keyframes tipBounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
-}
-
 /* ---- Empty States ---- */
 .empty-state {
     display: flex; flex-direction: column; align-items: center;
@@ -629,8 +608,6 @@ body {
 .hint-mobile { display: none; }
 
 /* Pendings hints */
-.pendings-hint-mobile { display: none; }
-
 /* MODAL RÁPIDO & INPUTS */
 #quick-task-modal {
     animation: overlayIn 0.3s ease forwards;
@@ -739,7 +716,6 @@ body {
     .calendar-legend-container { gap: 12px; padding: 0 4px 4px; }
     .legend-item { font-size: 0.6rem; gap: 3px; }
     .legend-dot { width: 6px; height: 6px; border-radius: 2px; }
-    .planner-tip { display: none; }
 
     /* ---- Day View (Bottom Sheet) ---- */
     .day-view-overlay {
@@ -814,8 +790,6 @@ body {
     .btn-schedule-task { opacity: 0.7; }
 
     /* ---- Hints ---- */
-    .pendings-hint-desktop { display: none !important; }
-    .pendings-hint-mobile { display: inline !important; }
     .hint-desktop { display: none !important; }
     .hint-mobile { display: inline !important; }
 

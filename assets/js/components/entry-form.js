@@ -136,11 +136,6 @@ class LpvEntryForm extends HTMLElement {
                             <input type="text" name="idade" class="input-field">
                         </div>
 
-                        <div class="form-group span-3">
-                            <label>Fotos Internas (uso exclusivo do laboratório)</label>
-                            <input type="file" name="internalPhotos" class="input-field" accept="image/*" multiple>
-                            <small class="field-hint">As imagens selecionadas sao enviadas para o Cloudinary.</small>
-                        </div>
                     </div>
 
                     <div class="modal-footer">

@@ -191,18 +191,6 @@
   animation: slideInLeft var(--duration-normal) var(--ease-spring) both;
 }
 
-.finance-alert.pending {
-  background: #fff7ed;
-  border-color: #f59e0b;
-  color: #b45309;
-}
-
-.finance-alert.paid {
-  background: #f0fdf4;
-  border-color: #10b981;
-  color: #166534;
-}
-
 /* Actions Footer */
 .tm-actions-footer {
   display: flex;

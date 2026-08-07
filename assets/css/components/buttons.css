@@ -133,29 +133,6 @@
   transition-duration: var(--duration-fast);
 }
 
-.btn-edit {
-  background: var(--bg-glass);
-  color: var(--text-primary);
-  border: 1px solid var(--border-glass);
-}
-
-.btn-edit:hover {
-  background: var(--bg-body);
-  border-color: var(--color-primary);
-  transform: translateY(-2px);
-}
-
-.btn-word {
-  background: #3b82f6;
-  color: white;
-}
-
-.btn-word:hover {
-  background: #2563eb;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
 .btn-release {
   background: #10b981;
   color: white;
@@ -167,18 +144,3 @@
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
-.btn-main-action {
-  background: var(--color-primary);
-  color: white;
-}
-
-.btn-main-action:hover {
-  opacity: 0.9;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
-}
-
-#btn-next-stage:active {
-  transform: scale(0.95);
-  background-color: var(--color-success);
-}
