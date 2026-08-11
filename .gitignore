@@ -1,2 +1,8 @@
 .env
 .env.*
+
+# Chave de serviço do Firebase (acesso administrativo total ao projeto).
+*service-account*.json
+*serviceAccountKey*.json
+*-firebase-adminsdk-*.json
+node_modules/

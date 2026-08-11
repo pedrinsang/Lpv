@@ -64,6 +64,39 @@ async function loadSupabaseModule() {
     return supabaseModulePromise;
 }
 
+/**
+ * Token do usuário logado no Firebase, entregue ao Supabase a cada requisição.
+ *
+ * O bucket guarda laudo com dado clínico identificado, então o acesso não pode
+ * depender só da chave anônima — ela viaja no código do navegador e vale para
+ * qualquer pessoa. Com o Firebase cadastrado como Third-Party Auth no Supabase,
+ * este token faz a requisição chegar como `authenticated`, e as políticas em
+ * supabase/reports-storage-setup.sql exigem exatamente isso.
+ *
+ * `getIdToken()` renova sozinho quando o token está perto de expirar.
+ */
+let tokenRenovadoNesteCarregamento = false;
+
+async function getFirebaseAccessToken() {
+    const user = auth.currentUser;
+    if (!user) return null;
+
+    try {
+        // A claim `role: authenticated` é gravada fora do navegador (ver
+        // scripts/set-supabase-claims.mjs) e só entra no token na renovação
+        // seguinte. Forçar uma renovação por carregamento faz com que recarregar
+        // a página baste para o acesso passar a valer — sem isso, quem estava
+        // logado ficaria até uma hora sem conseguir baixar laudo.
+        const forcarRenovacao = !tokenRenovadoNesteCarregamento;
+        const token = await user.getIdToken(forcarRenovacao);
+        tokenRenovadoNesteCarregamento = true;
+        return token;
+    } catch (error) {
+        console.warn('Não foi possível obter o token do Firebase para o storage.', error);
+        return null;
+    }
+}
+
 async function getSupabaseStorageContext() {
     const config = getStorageProviderConfig();
     const { supabaseUrl, supabaseAnonKey, supabaseReportsBucket } = config;
@@ -77,8 +110,10 @@ async function getSupabaseStorageContext() {
 
     if (!supabaseClient || supabaseClientCacheKey !== cacheKey) {
         const { createClient } = await loadSupabaseModule();
+        // `accessToken` é resolvido a cada chamada, então o cliente pode ser
+        // reaproveitado entre usuários sem carregar o token de quem saiu.
         supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-            auth: { persistSession: false }
+            accessToken: getFirebaseAccessToken
         });
         supabaseClientCacheKey = cacheKey;
     }

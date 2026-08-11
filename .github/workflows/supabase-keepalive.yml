@@ -1,0 +1,64 @@
+# Mantém o projeto Supabase acordado.
+#
+# O plano gratuito pausa o projeto depois de 7 dias sem nenhuma requisição, e é
+# nas férias e no recesso que esse intervalo aparece — justamente quando ninguém
+# está por perto para reativar no painel. Este job bate no projeto a cada 3 dias
+# para que o contador de inatividade nunca chegue lá.
+#
+# A URL e a chave saem de assets/js/lib/storage-provider-config.js, que já é a
+# única fonte dessa configuração no projeto (a chave anônima é pública por
+# definição — quem protege o bucket são as políticas em supabase/).
+#
+# ATENÇÃO: o GitHub desativa workflows agendados em repositórios que passam 60
+# dias sem nenhum commit. Se o projeto ficar parado esse tempo, reative o
+# workflow na aba Actions — ou o Supabase volta a pausar.
+
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: '0 12 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ping no projeto Supabase
+        run: |
+          node --input-type=module -e "
+            const { getStorageProviderConfig } = await import('./assets/js/lib/storage-provider-config.js');
+            const { supabaseUrl, supabaseAnonKey, supabaseReportsBucket } = getStorageProviderConfig();
+
+            if (!supabaseUrl || !supabaseAnonKey) {
+              console.error('Configuração do Supabase ausente.');
+              process.exit(1);
+            }
+
+            const headers = { apikey: supabaseAnonKey, Authorization: 'Bearer ' + supabaseAnonKey };
+
+            // Storage e REST são serviços distintos; acordamos os dois. Um 401 aqui
+            // é esperado e suficiente: o que conta é a requisição ter chegado.
+            const alvos = [
+              [ 'storage', supabaseUrl + '/storage/v1/bucket/' + supabaseReportsBucket ],
+              [ 'rest',    supabaseUrl + '/rest/v1/' ]
+            ];
+
+            let alcancou = false;
+            for (const [nome, url] of alvos) {
+              try {
+                const resposta = await fetch(url, { headers });
+                console.log(nome + ': HTTP ' + resposta.status);
+                alcancou = true;
+              } catch (erro) {
+                console.error(nome + ': falhou — ' + erro.message);
+              }
+            }
+
+            if (!alcancou) {
+              console.error('Nenhum endpoint respondeu; o projeto pode já estar pausado.');
+              process.exit(1);
+            }
+          "

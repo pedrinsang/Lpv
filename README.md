@@ -56,7 +56,31 @@ window.setStorageProviderConfig({
 });
 ```
 
-O setup do bucket está em [supabase/reports-storage-setup.sql](supabase/reports-storage-setup.sql). Use a chave `anon` e políticas RLS adequadas no bucket — o upload é feito direto do navegador.
+### Acesso ao bucket
+
+O bucket guarda laudo com dado clínico identificado, então o acesso exige usuário autenticado. Como o login é do Firebase e o storage é do Supabase, são dois passos, nesta ordem:
+
+1. **Supabase → Authentication → Sign In / Providers → Third-Party Auth**: adicione o Firebase com o project ID `labpatvet-9e06a`. É o que faz o Supabase validar a assinatura do token.
+2. **SQL Editor**: rode [supabase/reports-storage-setup.sql](supabase/reports-storage-setup.sql), que cria o bucket e aplica as políticas.
+
+Inverter a ordem derruba o upload: as políticas passam a exigir uma autenticação que ainda não existe.
+
+As políticas identificam o usuário pelo emissor do token (`iss`), não pelo papel `authenticated`. É de propósito: o papel dependeria de uma claim gravada por fora do navegador, e como o cadastro é self-service, toda pessoa nova ficaria sem acesso até alguém lembrar de rodar um script. Pelo emissor, usuário novo funciona sozinho.
+
+**Plano B** — se algum dia um usuário autenticado não conseguir abrir laudo, o caminho da claim continua disponível:
+
+```powershell
+npm install firebase-admin
+node scripts/set-supabase-claims.mjs "C:\caminho\para\a-chave-de-servico.json"
+```
+
+A chave de serviço sai do Console do Firebase (Configurações do projeto → Contas de serviço) e dá acesso administrativo total ao projeto — guarde fora do repositório e nunca a compartilhe.
+
+### Pausa do projeto gratuito
+
+O plano gratuito do Supabase pausa o projeto após 7 dias sem requisição — e o intervalo aparece justamente em férias e recesso. O workflow [supabase-keepalive.yml](.github/workflows/supabase-keepalive.yml) acessa o projeto a cada 3 dias para evitar isso.
+
+Atenção: o GitHub desativa workflows agendados em repositórios que passam 60 dias sem commit. Se o projeto ficar parado esse tempo, reative na aba Actions.
 
 ## Segurança
 
