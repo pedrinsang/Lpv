@@ -10,6 +10,7 @@
 import { db, auth, logout } from '../core.js';
 import { collection, query, where, getDocs, getDoc, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { anoProtocolo, pesoProtocolo } from '../lib/protocolo.js';
+import { ANO_DESCONHECIDO, zerarIndice } from '../lib/livro-indice.js';
 import '../components/task-manager.js';
 
 // ================================================================
@@ -70,6 +71,12 @@ function isoLocal(value) {
     const dia = String(d.getDate()).padStart(2, '0');
     return `${d.getFullYear()}-${mes}-${dia}`;
 }
+
+/** Um ano do índice ainda tem laudo? `{ biopsia: 0, necropsia: 0 }` já não. */
+const temLaudo = (contagens) => Object.values(contagens || {}).some((n) => Number(n) > 0);
+
+/** Nome do ano no filtro. '0' é o balde dos protocolos que não têm ano legível. */
+const rotuloAno = (a) => (a === ANO_DESCONHECIDO ? 'Sem ano (protocolo inválido)' : a);
 
 /** "Ana Maria Klein" -> "Ana" — a coluna mostra só o primeiro nome, inteiro. */
 function curto(nome) {
@@ -148,10 +155,13 @@ let rafScroll = null;
 function normalizarCaso(id, t) {
     const necropsia = t.type === 'necropsia' || (!t.type && t.k7Color === 'azul');
     const dataEntrada = t.dataEntrada || isoLocal(t.createdAt);
-    const dataLaudo = isoLocal(t.releasedAt) || isoLocal(t.updatedAt);
+    // `dataLaudo` é a data informada na liberação e pode ser retroativa;
+    // `releasedAt` (o instante do clique) é o que sobra nos casos liberados
+    // antes de o formulário de liberação existir.
+    const dataLaudo = t.dataLaudo || isoLocal(t.releasedAt) || isoLocal(t.updatedAt);
     const situacaoKey = SITUACAO[t.financialStatus] ? t.financialStatus
         : (SITUACAO[t.situacao] ? t.situacao : 'pendente');
-    const diagnostico = (t.report && t.report.diagnostico) || t.diagnostico || '';
+    const diagnostico = t.diagnostico || (t.report && t.report.diagnostico) || '';
 
     const caso = {
         id,
@@ -174,7 +184,9 @@ function normalizarCaso(id, t) {
         dataLaudo,
         // O ano do caso é o da série do protocolo, não o da emissão do laudo:
         // um V279-25 laudado em fevereiro de 2026 continua sendo de 2025.
-        ano: String(t.protocoloAno || anoProtocolo(t.protocolo) || ''),
+        // Protocolo ilegível cai em ANO_DESCONHECIDO ('0') em vez de ficar sem
+        // ano nenhum — assim o caso ainda tem onde aparecer no livro.
+        ano: String(t.protocoloAno || anoProtocolo(t.protocolo) || ANO_DESCONHECIDO),
         diagnostico
     };
 
@@ -191,6 +203,89 @@ function normalizarCaso(id, t) {
 
     return caso;
 }
+
+// ================================================================
+// SINCRONIA COM A FICHA
+//
+// Esta página não usa `onSnapshot`: ela lê um ano por vez e guarda em cache,
+// porque leitura é o recurso que acaba. O preço é que o Firestore não avisa
+// quando um caso muda — e um caso excluído na ficha continuaria na lista até
+// alguém recarregar a página, que é exatamente a leitura que o cache evitou.
+// Por isso o Task Manager dispara eventos e a lista se corrige em memória.
+// ================================================================
+
+/** Tira o caso da lista e de todos os caches de ano. Não mexe em contador. */
+function tirarDaLista(id) {
+    state.casos = state.casos.filter((c) => c.id !== id);
+    state.porAno.forEach((lista, ano) => {
+        state.porAno.set(ano, lista.filter((c) => c.id !== id));
+    });
+
+    if (state.aberto === id) state.aberto = null;
+    memoSig = null;
+}
+
+/** O caso foi excluído de verdade: sai da lista e desconta dos contadores. */
+function removerCasoLocal(id) {
+    const caso = state.casos.find((c) => c.id === id);
+
+    tirarDaLista(id);
+
+    // O índice é espelhado aqui: sem descontar, os totais do topo continuariam
+    // contando o caso até a próxima leitura do documento `meta/livroRegistros`.
+    const anos = state.meta && state.meta.anos;
+    if (caso && anos && anos[caso.ano]) {
+        if (anos[caso.ano][caso.tipo] > 0) anos[caso.ano][caso.tipo] -= 1;
+        // Excluído o último laudo do ano, o ano deixa de existir para o livro e
+        // não pode continuar no filtro.
+        if (!temLaudo(anos[caso.ano])) delete anos[caso.ano];
+    }
+
+    // O ano em tela pode ter acabado de sumir: cai para "Todos os anos" em vez
+    // de ficar com um filtro apontando para um ano que não existe mais.
+    const anoSumiu = caso && state.f.ano === caso.ano && !anosDoAcervo().includes(caso.ano);
+    if (anoSumiu) {
+        state.f.ano = '';
+        montarSelectAnos();
+        renderTotais();
+        carregarCasos('');
+        return;
+    }
+
+    montarSelectAnos();
+    renderTotais();
+    render();
+}
+
+/** Redesenha a linha de um caso editado na ficha (data, diagnóstico, dados). */
+function atualizarCasoLocal(id, bruto) {
+    const indice = state.casos.findIndex((c) => c.id === id);
+    if (indice === -1) return;   // caso de outro ano, não carregado aqui
+
+    const atualizado = normalizarCaso(id, bruto);
+
+    // Corrigir o protocolo pode mudar o ano da série, e aí o caso deixou de
+    // pertencer ao ano que está na tela: sai da lista em vez de virar uma linha
+    // fora de lugar. O cache do ano novo ainda não existe, então nada a inserir.
+    if (state.f.ano && atualizado.ano !== state.f.ano) {
+        tirarDaLista(id);                      // o caso existe, só não é deste ano
+        state.porAno.delete(atualizado.ano);   // força reler o ano de destino
+        render();
+        return;
+    }
+
+    state.casos[indice] = atualizado;
+    state.porAno.forEach((lista, ano) => {
+        const i = lista.findIndex((c) => c.id === id);
+        if (i !== -1) lista[i] = atualizado;
+    });
+
+    memoSig = null;
+    render();
+}
+
+document.addEventListener('lpv:caso-excluido', (e) => removerCasoLocal(e.detail.id));
+document.addEventListener('lpv:caso-atualizado', (e) => atualizarCasoLocal(e.detail.id, e.detail.task));
 
 // ================================================================
 // FILTRO + ORDENAÇÃO (memoizado por assinatura)
@@ -267,9 +362,10 @@ function preencher(select, itens, valorAtual) {
 function montarSelectAnos() {
     const anos = anosDoAcervo();
     if (!campos.ano) return;
-    campos.ano.innerHTML = anos
-        .map((a) => `<option value="${esc(a)}">${esc(a)}</option>`)
-        .join('') + '<option value="">Todos os anos</option>';
+    // "Todos os anos" abre a lista por ser o padrão da tela.
+    campos.ano.innerHTML = '<option value="">Todos os anos</option>' + anos
+        .map((a) => `<option value="${esc(a)}">${esc(rotuloAno(a))}</option>`)
+        .join('');
     campos.ano.value = state.f.ano;
 }
 
@@ -417,8 +513,12 @@ function renderTotais() {
     let necro, bio;
 
     if (porAno) {
-        necro = Object.values(porAno).reduce((s, a) => s + (a.necropsia || 0), 0);
-        bio = Object.values(porAno).reduce((s, a) => s + (a.biopsia || 0), 0);
+        // Piso em 0 por ano: índice gravado antes do desconto ficar transacional
+        // pode ter contagem negativa, e isso viraria um total menor que a lista.
+        const soma = (chave) => Object.values(porAno)
+            .reduce((s, a) => s + Math.max(0, Number(a[chave]) || 0), 0);
+        necro = soma('necropsia');
+        bio = soma('biopsia');
     } else {
         necro = state.casos.filter((c) => c.tipo === 'necropsia').length;
         bio = state.casos.length - necro;
@@ -426,7 +526,7 @@ function renderTotais() {
 
     el('total-necropsias').textContent = nf(necro);
     el('total-biopsias').textContent = nf(bio);
-    el('foot-desde').textContent = anosDoAcervo().slice(-1)[0] || '—';
+    el('foot-desde').textContent = anosReais().slice(-1)[0] || '—';
 }
 
 // ================================================================
@@ -435,6 +535,7 @@ function renderTotais() {
 function rotuloValor(chave, valor) {
     if (chave === 'tipo') return valor === 'necropsia' ? 'Necropsias' : 'Biópsias';
     if (chave === 'situacao') return (SITUACAO[valor] || {}).label || valor;
+    if (chave === 'ano') return rotuloAno(valor);
     return valor;
 }
 
@@ -775,6 +876,11 @@ async function apagarHistorico() {
             todos.slice(i, i + 450).forEach((c) => lote.delete(doc(db, 'tasks', c.id)));
             await lote.commit();
         }
+
+        // O índice é uma contagem denormalizada: sem zerar junto, ele continua
+        // anunciando anos e totais de um acervo que não existe mais.
+        await zerarIndice();
+
         alert('Histórico limpo com sucesso!');
         window.location.reload();
     } catch (e) {
@@ -798,13 +904,32 @@ botoesApagar.forEach((btn) => btn.addEventListener('click', apagarHistorico));
 // ================================================================
 const REF_META = doc(db, 'meta', 'livroRegistros');
 
-/** Anos do acervo, do mais recente para o mais antigo. */
+/**
+ * Anos do acervo, do mais recente para o mais antigo. O balde "Sem ano" fica
+ * sempre por último: ele não é um ano, é uma pendência de protocolo.
+ */
 function anosDoAcervo() {
-    if (state.meta && state.meta.anos) {
-        return Object.keys(state.meta.anos).sort((a, b) => b.localeCompare(a));
-    }
-    return [...new Set(state.casos.map((c) => c.ano).filter(Boolean))]
-        .sort((a, b) => b.localeCompare(a));
+    // Índice + o que já está carregado: um caso que ficou de fora do índice
+    // (falha de gravação, protocolo corrigido depois) some do filtro se a lista
+    // sair só do índice.
+    //
+    // Ano com contagem zerada não entra: o índice guarda a chave do ano até
+    // alguém regravar o documento, e sem esse corte um ano que teve o último
+    // laudo excluído continuaria sendo oferecido no filtro.
+    const anosIndice = (state.meta && state.meta.anos) || {};
+    const doIndice = Object.keys(anosIndice).filter((a) => temLaudo(anosIndice[a]));
+    const chaves = [...new Set([...doIndice, ...state.casos.map((c) => c.ano).filter(Boolean)])];
+
+    return chaves.sort((a, b) => {
+        if (a === ANO_DESCONHECIDO) return 1;
+        if (b === ANO_DESCONHECIDO) return -1;
+        return b.localeCompare(a);
+    });
+}
+
+/** Anos de verdade — o que alimenta o "desde" do rodapé. */
+function anosReais() {
+    return anosDoAcervo().filter((a) => a !== ANO_DESCONHECIDO);
 }
 
 async function carregarMeta() {
@@ -855,14 +980,12 @@ function mostrarCarregando(ligado, texto) {
 async function carregarCasos(ano) {
     mostrarCarregando(true, ano ? `Carregando ${ano}…` : 'Carregando o acervo…');
     try {
-        if (!state.meta) {
-            state.casos = await buscarTudo();          // sem índice: tudo de uma vez
-        } else if (ano) {
+        if (ano) {
             state.casos = await buscarAno(ano);
         } else {
-            const anos = anosDoAcervo();
-            const lotes = await Promise.all(anos.map(buscarAno));
-            state.casos = lotes.flat();
+            // "Todos os anos" lê o acervo inteiro em vez de percorrer os anos do
+            // índice: é o que garante que um caso fora do índice ainda apareça.
+            state.casos = await buscarTudo();
         }
     } catch (erro) {
         console.error('Erro ao carregar o livro de registros:', erro);
@@ -873,6 +996,8 @@ async function carregarCasos(ano) {
     state.carregado = true;
     mostrarCarregando(false);
     memoSig = null;
+    // Refaz o select: a carga pode ter revelado anos que não estavam no índice.
+    montarSelectAnos();
     atualizarOpcoes();
     renderTotais();
     render();
@@ -881,10 +1006,12 @@ async function carregarCasos(ano) {
 async function iniciar() {
     await carregarMeta();
 
-    // Abre no ano mais recente: é o que se consulta no dia a dia, e é o único
-    // que precisa sair do Firestore.
-    const anos = anosDoAcervo();
-    state.f.ano = state.meta && anos.length ? anos[0] : '';
+    // Abre em "Todos os anos": o livro é consultado como um registro único, e
+    // abrir num ano só escondia casos de série futura ou de protocolo sem ano.
+    // O custo é ler o acervo inteiro na abertura, em vez de um ano — quando o
+    // acervo crescer a ponto de pesar, dá para voltar a abrir no ano corrente
+    // trocando esta linha por `anosReais()[0]`.
+    state.f.ano = '';
 
     montarSelectAnos();
     renderTotais();

@@ -83,26 +83,45 @@ function updateUserBadge(role) {
  * ausência de `releasedAt` que marca o laudo pendente. Ler a coleção inteira
  * para descobrir isso significaria puxar todo o acervo de laudos liberados a
  * cada abertura do Mural — leitura é o recurso que acaba. O ano do protocolo é
- * indexado, então a consulta traz o ano corrente e o anterior (prazo máximo de
- * um caso é de 40 dias) e o pendente é separado aqui. O ano 0 entra porque é o
- * que `camposDerivados` grava quando o protocolo não é legível.
+ * indexado, então a consulta corta por ele.
+ *
+ * O corte é `>=` e não uma lista de anos: com uma lista fixa (ano corrente e
+ * anterior), um caso de série futura — VN001-28 aberto em 2026, ou a virada do
+ * ano — não voltava na consulta e simplesmente não aparecia no Mural, mesmo
+ * tendo sido cadastrado. Como `>=` não tem teto, qualquer ano novo entra sozinho
+ * e nada precisa ser configurado.
  */
-function anosAtivos() {
-    const ano = new Date().getFullYear();
-    return [ano, ano - 1, 0];
-}
+const PRIMEIRO_ANO_ATIVO = () => new Date().getFullYear() - 1;
+
+/**
+ * Casos com protocolo ilegível (`protocoloAno: 0`) ficam abaixo do corte, então
+ * vêm de uma segunda consulta. A entrada hoje exige protocolo com ano, mas casos
+ * cadastrados antes disso continuam existindo — e não podem sumir da fila.
+ */
+const fontes = { recentes: [], semAno: [] };
 
 function initBoard() {
-    const q = query(collection(db, "tasks"), where("protocoloAno", "in", anosAtivos()));
+    const consultas = {
+        recentes: query(collection(db, "tasks"), where("protocoloAno", ">=", PRIMEIRO_ANO_ATIVO())),
+        semAno: query(collection(db, "tasks"), where("protocoloAno", "==", 0))
+    };
 
-    onSnapshot(q, (snapshot) => {
-        allTasks = [];
-        snapshot.forEach((docSnap) => {
-            const task = { id: docSnap.id, ...docSnap.data() };
-            if (isPendente(task)) allTasks.push(task);
-        });
-        renderBoard();
-    }, (erro) => console.warn('Não foi possível carregar o mural.', erro));
+    Object.entries(consultas).forEach(([fonte, q]) => {
+        onSnapshot(q, (snapshot) => {
+            fontes[fonte] = snapshot.docs
+                .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+                .filter(isPendente);
+            juntarFontes();
+        }, (erro) => console.warn('Não foi possível carregar o mural.', erro));
+    });
+}
+
+/** As duas consultas não se sobrepõem, mas o id manda — nunca duplica card. */
+function juntarFontes() {
+    const porId = new Map();
+    [...fontes.recentes, ...fontes.semAno].forEach((task) => porId.set(task.id, task));
+    allTasks = [...porId.values()];
+    renderBoard();
 }
 
 // Laudo liberado sai do Mural; agendamento do Planner nunca entrou.
@@ -132,10 +151,15 @@ function renderBoard() {
     });
 }
 
-// O caso mais perto de estourar o prazo (ou mais atrasado) vem primeiro; sem
-// data de entrada não há prazo a cobrar, então esses ficam no fim.
+// Urgente primeiro, sempre: é o motivo de a amostra ter sido marcada assim na
+// entrada, e o prazo de uma urgente não conta a mesma história que o de uma
+// comum. Dentro de cada grupo vale o prazo — o caso mais perto de estourar (ou
+// mais atrasado) vem primeiro; sem data de entrada não há prazo a cobrar, então
+// esses ficam no fim.
 function ordenarPorPrazo(tasks) {
     return [...tasks].sort((a, b) => {
+        if (!a.isUrgent !== !b.isUrgent) return a.isUrgent ? -1 : 1;
+
         const infoA = getDeadlineInfo(a);
         const infoB = getDeadlineInfo(b);
         if (!infoA !== !infoB) return infoA ? -1 : 1;

@@ -778,27 +778,67 @@ function aplicarPermissoes() {
    DADOS
    ========================================================================== */
 
+/**
+ * O corte de leitura é o ano do protocolo, não o `status`.
+ *
+ * A consulta antiga era `status not-in ['arquivado','concluido']`, e no Firestore
+ * `not-in` só devolve documento que TEM o campo. Amostra cadastrada pelo
+ * formulário de entrada nunca grava `status` — só o Planner (`agendado`) e a
+ * liberação (`concluido`) gravam —, então nenhuma amostra chegava aqui: a lista
+ * de pendências só via os agendamentos criados pelo próprio Planner.
+ *
+ * `protocoloAno` todo caso tem, e o `>=` não tem teto: série de ano futuro
+ * (VN001-28) entra sozinha. O `status` passa a ser filtrado em memória, onde
+ * campo ausente simplesmente não casa com 'arquivado'/'concluido'.
+ */
+const PRIMEIRO_ANO_ATIVO = () => new Date().getFullYear() - 1;
+
+const FORA_DO_PLANNER = ['arquivado', 'concluido'];
+
+/**
+ * Três fontes porque nem todo documento tem `protocoloAno`:
+ * - `recentes`: as amostras da série corrente em diante;
+ * - `semAno`: protocolo ilegível, que fica abaixo do corte;
+ * - `agendamentos`: os agendamentos rápidos criados aqui, que não têm protocolo
+ *   nenhum e sumiriam de qualquer consulta baseada em ano.
+ */
+const fontesTasks = { recentes: [], semAno: [], agendamentos: [] };
+
 function subscribeToTasks() {
-    // Laudo liberado (concluido) não entra no calendário nem na lista de
-    // pendências, então é descartado já na consulta — senão o acervo inteiro
-    // seria lido a cada abertura do Planner.
-    const q = query(collection(db, 'tasks'),
-        where('status', 'not-in', ['arquivado', 'concluido']));
+    const consultas = {
+        recentes: query(collection(db, 'tasks'), where('protocoloAno', '>=', PRIMEIRO_ANO_ATIVO())),
+        semAno: query(collection(db, 'tasks'), where('protocoloAno', '==', 0)),
+        agendamentos: query(collection(db, 'tasks'), where('type', '==', 'agendamento_rapido'))
+    };
 
-    onSnapshot(q, (snapshot) => {
-        tasksCache = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        // A tarefa em colocação (ou aberta no detalhe) pode ter sumido.
-        if (state.colocacao && !tasksCache.some(t => t.id === state.colocacao.id)) state.colocacao = null;
-        if (state.detalheId && !tasksCache.some(t => t.id === state.detalheId)) {
-            state.detalheId = null;
-            if (state.rail === 'detalhe') state.rail = 'pendentes';
-        }
-
-        renderAll();
-    }, (err) => {
-        console.error('Planner: falha ao ler as tarefas:', err);
+    Object.entries(consultas).forEach(([fonte, q]) => {
+        onSnapshot(q, (snapshot) => {
+            fontesTasks[fonte] = snapshot.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .filter(t => !FORA_DO_PLANNER.includes(t.status));
+            aplicarTasks();
+        }, (err) => {
+            console.error('Planner: falha ao ler as tarefas:', err);
+        });
     });
+}
+
+function aplicarTasks() {
+    // As fontes podem se sobrepor (um agendamento com protocoloAno, por
+    // exemplo); o id manda e o caso entra uma vez só.
+    const porId = new Map();
+    [...fontesTasks.recentes, ...fontesTasks.semAno, ...fontesTasks.agendamentos]
+        .forEach(t => porId.set(t.id, t));
+    tasksCache = [...porId.values()];
+
+    // A tarefa em colocação (ou aberta no detalhe) pode ter sumido.
+    if (state.colocacao && !tasksCache.some(t => t.id === state.colocacao.id)) state.colocacao = null;
+    if (state.detalheId && !tasksCache.some(t => t.id === state.detalheId)) {
+        state.detalheId = null;
+        if (state.rail === 'detalhe') state.rail = 'pendentes';
+    }
+
+    renderAll();
 }
 
 /* ==========================================================================

@@ -6,7 +6,7 @@ import {
     doc,
     getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-import { camposDerivados, formatarProtocolo } from '../lib/protocolo.js';
+import { camposDerivados, formatarProtocolo, parseProtocolo } from '../lib/protocolo.js';
 
 console.log("Entry Modal Module Loaded - formulário único (tipo pelo protocolo)");
 
@@ -28,6 +28,10 @@ const hiddenPosUid = document.getElementById('select-pos-uid');
 
 // --- ESTADO LOCAL ---
 let editingTaskId = null; // null = Modo Criação | ID = Modo Edição
+// Documento completo do caso em edição. O formulário só conhece os campos da
+// entrada, mas o Livro de Registros precisa do caso inteiro (data do laudo,
+// diagnóstico, releasedAt) para redesenhar a linha sem reler o Firestore.
+let editingTaskData = null;
 
 // ==========================================================================
 // 1. TIPO DERIVADO DO PROTOCOLO
@@ -78,6 +82,7 @@ function openModal() {
     if (!modal || !form) return;
 
     editingTaskId = null;
+    editingTaskData = null;
     modal.classList.remove('hidden');
 
     if (modalTitle) modalTitle.textContent = 'Nova Entrada';
@@ -97,6 +102,7 @@ function closeModal() {
     if (!modal) return;
     modal.classList.add('hidden');
     editingTaskId = null;
+    editingTaskData = null;
     if (form) form.reset();
     updateTypePill();
 }
@@ -108,6 +114,7 @@ window.openEditEntry = function(task) {
     if (!modal || !form) return;
 
     editingTaskId = task.id;
+    editingTaskData = { ...task };
     modal.classList.remove('hidden');
 
     if (modalTitle) modalTitle.textContent = 'Editar Entrada';
@@ -187,12 +194,16 @@ async function saveEntry(e) {
     e.preventDefault();
     if (!form) return;
 
-    const taskType = detectTypeFromProtocolo(protocoloInput?.value);
-    if (!taskType) {
-        alert('O protocolo define o tipo do caso. Use "V" para biópsia (ex: V-123/26) ou "VN" para necropsia (ex: VN-123/26).');
+    // O protocolo tem que ser legível por inteiro, não só ter o prefixo certo: o
+    // número e o ano da série são o que põe o caso num ano do Livro de Registros.
+    // Sem eles o caso é liberado mas não aparece em ano nenhum do livro.
+    const protocoloLido = parseProtocolo(protocoloInput?.value);
+    if (!protocoloLido) {
+        alert('Protocolo inválido.\n\nUse "V" para biópsia e "VN" para necropsia, seguidos do número e do ano da série:\nV-123/26, V123-26, VN-7/2026.');
         protocoloInput?.focus();
         return;
     }
+    const taskType = protocoloLido.tipo;
 
     const btn = form.querySelector('button[type="submit"]');
     const originalText = btn.innerHTML;
@@ -213,7 +224,7 @@ async function saveEntry(e) {
             // --- MODO EDIÇÃO ---
             // A cor do cassete é gerenciada no Mural/Task Manager, então não é
             // sobrescrita aqui mesmo quando o protocolo muda de tipo.
-            await updateDoc(doc(db, "tasks", editingTaskId), {
+            const alteracoes = {
                 ...data,
                 protocolo: formatarProtocolo(data.protocolo),
                 ...camposDerivados(data.protocolo),
@@ -221,11 +232,22 @@ async function saveEntry(e) {
                 financialStatus: data.situacao || undefined,
                 lastEditedAt: new Date().toISOString(),
                 lastEditor: auth.currentUser ? auth.currentUser.uid : 'anon'
-            });
+            };
+
+            const updatedId = editingTaskId;
+            const casoCompleto = { ...(editingTaskData || {}), ...alteracoes, id: updatedId };
+
+            await updateDoc(doc(db, "tasks", updatedId), alteracoes);
+
+            // Mural e Hub se corrigem pelo onSnapshot; o Livro de Registros lê
+            // por ano e guarda em cache, então precisa do aviso para não deixar
+            // a linha antiga na tela.
+            document.dispatchEvent(new CustomEvent('lpv:caso-atualizado', {
+                detail: { id: updatedId, task: casoCompleto }
+            }));
 
             alert('Entrada atualizada com sucesso!');
 
-            const updatedId = editingTaskId;
             closeModal();
             if (window.openTaskManager) window.openTaskManager(updatedId);
             return;

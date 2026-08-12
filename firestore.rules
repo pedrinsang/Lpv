@@ -48,6 +48,21 @@ service cloud.firestore {
       ]);
     }
 
+    // Quem responde pelo laudo: libera e exclui casos. Estagiário fica de fora
+    // (é o papel padrão de quem acaba de se cadastrar).
+    function isLaudoManager() {
+      return hasAnyRole([
+        'admin',
+        'professor',
+        'pos-graduando',
+        'pos graduando',
+        'pos_graduando',
+        'posgraduando',
+        'pós-graduando',
+        'pós graduando'
+      ]);
+    }
+
     function isApprovedUser() {
       return hasUserProfile() && currentUserData().status != 'pending';
     }
@@ -92,7 +107,10 @@ service cloud.firestore {
 
     match /tasks/{taskId} {
       allow read: if isApprovedUser();
-      allow create, update, delete: if isApprovedUser();
+      allow create, update: if isApprovedUser();
+      // Apagar um caso é irreversível e tira a linha do Livro de Registros:
+      // vale só para professor, pós e admin, como na ficha.
+      allow delete: if isLaudoManager();
     }
 
     // Índice do Livro de Registros: anos existentes e contagem por ano. Deixa a

@@ -11,8 +11,8 @@ import {
     getReportFilesState,
     hasActiveUploadedWord
 } from '../lib/report-files-service.js';
-import { camposDerivados } from '../lib/protocolo.js';
-import { registrarLiberacao } from '../lib/livro-indice.js';
+import { camposDerivados, parseProtocolo } from '../lib/protocolo.js';
+import { registrarLiberacao, registrarExclusao } from '../lib/livro-indice.js';
 
 console.log("Task Manager Loaded - Mobile Layout Fix");
 const ENABLE_EXTERNAL_STORAGE_INTEGRATION = true;
@@ -76,13 +76,64 @@ const modal = document.getElementById('task-manager-modal');
 const closeBtn = document.getElementById('close-tm-btn');
 const viewDetails = document.getElementById('view-details-content');
 const viewK7 = document.getElementById('view-k7-form');
-const infoGrid = document.getElementById('tm-info-grid'); 
+const viewRelease = document.getElementById('view-release-form');
+const infoGrid = document.getElementById('tm-info-grid');
 const formK7 = document.getElementById('form-k7');
+const formRelease = document.getElementById('form-release');
 
 const btnDelete = document.getElementById('btn-delete-task');
 
 let currentTask = null;
 let currentUserData = null;
+
+/** O diagnóstico é texto livre e vai para dentro de HTML — escapa sempre. */
+function esc(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (c) => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+}
+
+/** Data (ISO ou Date) -> 'YYYY-MM-DD' no fuso local, que é o formato do input. */
+function isoLocal(value) {
+    if (!value) return '';
+    const d = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mes}-${dia}`;
+}
+
+const brData = (s) => (s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : '—');
+
+/**
+ * Data que o Livro de Registros mostra na coluna "Laudo".
+ *
+ * `dataLaudo` é a data informada na liberação (pode ser retroativa, para casos
+ * laudados fora do sistema); `releasedAt` é o instante em que o laudo foi
+ * liberado aqui. Casos liberados antes do formulário existir só têm o segundo.
+ */
+function dataDoLaudo(task) {
+    return (task && task.dataLaudo) || isoLocal(task && task.releasedAt);
+}
+
+/**
+ * AVISOS PARA A TELA QUE ABRIU A FICHA
+ *
+ * Mural, Hub e Planner escutam o Firestore com `onSnapshot` e se corrigem
+ * sozinhos. O Livro de Registros não: ele lê uma vez por ano de protocolo e
+ * guarda em cache, de propósito, porque leitura é o recurso que acaba. Sem um
+ * aviso, o caso excluído aqui continua na lista de lá até alguém recarregar a
+ * página — e recarregar custa justamente a leitura que o cache evitou.
+ */
+function avisarCasoExcluido(id) {
+    document.dispatchEvent(new CustomEvent('lpv:caso-excluido', { detail: { id } }));
+}
+
+function avisarCasoAtualizado(task) {
+    document.dispatchEvent(new CustomEvent('lpv:caso-atualizado', {
+        detail: { id: task.id, task: { ...task } }
+    }));
+}
 
 function formatFileSize(bytes) {
     const value = Number(bytes || 0);
@@ -226,7 +277,11 @@ function getPermissionContext(task = currentTask) {
         canFillReport: isAdmin || isProfessor || isPosResponsavel,
         canDownloadReport: isAdmin || isProfessor || isPosResponsavel,
         canCorrectReport: isAdmin || isProfessor,
-        canReleaseInitial: isAdmin || isProfessor
+        // Liberar o laudo e excluir o caso valem para professor, admin e pós —
+        // em qualquer tela onde a ficha abra (Mural, Hub, Livro de Registros).
+        // Não depende de o pós ser o responsável pelo caso.
+        canReleaseInitial: isAdmin || isProfessor || isPostGrad,
+        canDelete: isAdmin || isProfessor || isPostGrad
     };
 }
 
@@ -249,6 +304,13 @@ async function fetchCurrentUserData() {
     return currentUserData;
 }
 
+/** O modal tem três telas mutuamente exclusivas: ficha, cassetes e liberação. */
+function mostrarView(nome) {
+    if (viewDetails) viewDetails.classList.toggle('hidden', nome !== 'details');
+    if (viewK7) viewK7.classList.toggle('hidden', nome !== 'k7');
+    if (viewRelease) viewRelease.classList.toggle('hidden', nome !== 'release');
+}
+
 async function openTaskManager(taskId) {
     try {
         await fetchCurrentUserData();
@@ -257,9 +319,8 @@ async function openTaskManager(taskId) {
 
         currentTask = { id: docSnap.id, ...docSnap.data() };
         renderDetails(currentTask);
-        
-        if(viewDetails) viewDetails.classList.remove('hidden');
-        if(viewK7) viewK7.classList.add('hidden');
+
+        mostrarView('details');
         if(modal) modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
 
@@ -276,6 +337,7 @@ async function refreshCurrentTask() {
 
 function closeTaskModal() {
     if(modal) modal.classList.add('hidden');
+    mostrarView('details');   // a próxima abertura começa sempre pela ficha
     document.body.style.overflow = '';
 }
 
@@ -308,9 +370,7 @@ function renderDetails(task) {
 
     // O laudo liberado é o que marca o caso como fechado — não existe mais etapa.
     const laudoLiberado = !!task.releasedAt;
-    const dataLaudo = laudoLiberado
-        ? new Date(task.releasedAt).toLocaleDateString('pt-BR')
-        : '';
+    const dataLaudo = laudoLiberado ? brData(dataDoLaudo(task)) : '';
 
     // --- SEÇÃO FINANCEIRA ---
     let financialHtml = '';
@@ -359,15 +419,43 @@ function renderDetails(task) {
             </div>
         </div>`;
 
+    // --- REGISTRO DO LIVRO ---
+    // Data do laudo e diagnóstico são as duas colunas do Livro de Registros que
+    // não vêm da entrada da amostra: entram na liberação e ficam visíveis aqui.
+    let livroHtml = '';
+    if (laudoLiberado) {
+        livroHtml = `
+            <div class="info-card" style="grid-column:1 / -1; border:1px solid rgba(34,197,94,0.3);">
+                <div class="info-icon"><i class="fas fa-book"></i></div>
+                <div class="info-label">Registro no Livro</div>
+                <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:4px;">
+                    Data do laudo: <strong>${dataLaudo || '—'}</strong>
+                </div>
+                <div style="font-size:0.85rem; color:var(--text-primary); margin-top:8px; white-space:pre-wrap; line-height:1.45;">${
+                    task.diagnostico
+                        ? esc(task.diagnostico)
+                        : '<span style="color:var(--text-tertiary); font-style:italic;">Sem diagnóstico registrado.</span>'
+                }</div>
+                ${canReleaseInitial ? `
+                    <button onclick="window.openReleaseForm()" class="btn btn-secondary btn-sm" type="button" style="margin-top:10px;">
+                        <i class="fas fa-pen"></i> Corrigir registro
+                    </button>` : ''}
+            </div>`;
+    }
+
     // --- BOTÕES DE AÇÃO ---
     // Liberar é a única ação de laudo aqui; o arquivo em si sobe e desce pelo
     // painel "Arquivos do Laudo".
     let actionsHtml = '';
     if (!laudoLiberado) {
         actionsHtml = canReleaseInitial
-            ? `<button onclick="window.finishReportWrapper()" class="action-btn btn-release"><i class="fas fa-check-double"></i> Liberar Laudo</button>`
-            : `<span style="font-size:0.8rem; color:#666; align-self:center;">Liberação: professor ou admin</span>`;
+            ? `<button onclick="window.openReleaseForm()" class="action-btn btn-release"><i class="fas fa-check-double"></i> Liberar Laudo</button>`
+            : `<span style="font-size:0.8rem; color:#666; align-self:center;">Liberação: professor, pós ou admin</span>`;
     }
+
+    // O botão de excluir mora no rodapé fixo do modal, fora deste HTML — some
+    // para quem não pode apagar o caso.
+    if (btnDelete) btnDelete.classList.toggle('hidden', !permission.canDelete);
 
     // --- HTML FINAL DO CARD ---
     const html = `
@@ -426,9 +514,11 @@ function renderDetails(task) {
                 </div>
             </div>
 
+            ${livroHtml}
+
             ${storagePanelsHtml}
         </div>
-        
+
         ${actionsHtml ? `<div class="tm-actions-footer">${actionsHtml}</div>` : ''}
     `;
 
@@ -623,55 +713,175 @@ async function toggleFinancialStatus() {
 }
 
 
-async function finishReportWrapper() {
-    if(!currentTask) return;
-
-    if (currentTask.releasedAt) {
-        alert('Este laudo já foi liberado.');
-        return;
-    }
+/**
+ * FORMULÁRIO DE LIBERAÇÃO
+ *
+ * A liberação é o ponto em que a amostra vira linha do Livro de Registros, e
+ * duas colunas do livro não existem em lugar nenhum antes dela: a data do laudo
+ * e o diagnóstico. Todo o resto (protocolo, animal, remetente, docente, pós,
+ * origem, situação, valor) já veio da entrada da amostra. Por isso a liberação
+ * pede esses dois campos em vez de só congelar a data do clique.
+ *
+ * O mesmo formulário serve para corrigir o registro de um laudo já liberado —
+ * aí ele não mexe em `releasedAt` nem soma de novo no índice do livro.
+ */
+function openReleaseForm() {
+    if (!currentTask || !formRelease) return;
 
     const permission = getPermissionContext(currentTask);
     if (!permission.canReleaseInitial) {
-        alert('Apenas professor ou admin podem liberar o laudo.');
+        alert('Apenas professor, pós-graduando ou admin podem liberar o laudo.');
         return;
     }
 
+    const jaLiberado = !!currentTask.releasedAt;
     const finStatus = currentTask.financialStatus || 'pendente';
-    if (finStatus !== 'pago' && finStatus !== 'didatico') {
-        if(!confirm("⚠️ AVISO FINANCEIRO: Status PENDENTE.\nDeseja liberar o laudo mesmo assim?")) return;
+    const financeiroPendente = !jaLiberado && finStatus !== 'pago' && finStatus !== 'didatico';
+
+    const hoje = isoLocal(new Date());
+    const dataAtual = dataDoLaudo(currentTask) || hoje;
+    // O ano do livro sai do protocolo. Se ele não for legível, o caso é liberado
+    // mas cai no balde "Sem ano" — a liberação é a última hora de avisar.
+    const protocoloIlegivel = !parseProtocolo(currentTask.protocolo);
+
+    formRelease.innerHTML = `
+        <h3 style="margin:0 0 4px; font-size:1.15rem;">
+            <i class="fas fa-book"></i> ${jaLiberado ? 'Corrigir registro do livro' : 'Liberar laudo'}
+        </h3>
+        <p style="margin:0 0 18px; font-size:0.82rem; color:var(--text-tertiary);">
+            ${esc(currentTask.protocolo || 'Sem protocolo')} &bull; ${esc(currentTask.animalNome || 'Sem nome')}
+            &bull; entrada ${brData(currentTask.dataEntrada)}
+        </p>
+
+        ${protocoloIlegivel ? `
+            <div style="background:#fef2f2; border:1px solid #fca5a5; color:#7f1d1d; padding:10px 12px; border-radius:8px; margin-bottom:16px; font-size:0.82rem;">
+                <i class="fas fa-triangle-exclamation"></i>
+                <strong>Protocolo sem ano de série.</strong> O livro organiza os casos pelo ano do protocolo
+                (V001-26, Vn007-2026). Como “${esc(currentTask.protocolo || '')}” não tem ano legível,
+                o caso vai aparecer em <em>Sem ano</em>. Corrija em “Editar Dados” antes de liberar.
+            </div>` : ''}
+
+        ${financeiroPendente ? `
+            <div style="background:#fffbeb; border:1px solid #fcd34d; color:#78350f; padding:10px 12px; border-radius:8px; margin-bottom:16px; font-size:0.82rem;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Financeiro pendente.</strong> O laudo pode ser liberado assim mesmo, mas o caso vai para o livro como “Pendente”.
+            </div>` : ''}
+
+        <div class="form-group">
+            <label for="release-data" style="font-weight:700; margin-bottom:8px; display:block;">
+                Data do laudo <span style="color:var(--color-error);">*</span>
+            </label>
+            <input type="date" id="release-data" class="input-field" required
+                   value="${esc(dataAtual)}" max="${esc(hoje)}" style="max-width:220px;">
+            <div style="font-size:0.75rem; color:var(--text-tertiary); margin-top:6px;">
+                É a data que vai para a coluna “Laudo” do Livro de Registros. Pode ser retroativa.
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="release-diagnostico" style="font-weight:700; margin-bottom:8px; display:block;">
+                Diagnóstico <span style="color:var(--color-error);">*</span>
+            </label>
+            <textarea id="release-diagnostico" class="input-field" rows="5" required
+                      placeholder="Diagnóstico como deve constar no livro."
+                      style="resize:vertical; line-height:1.45;">${esc(currentTask.diagnostico || '')}</textarea>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" id="btn-cancel-release" class="btn btn-secondary">Voltar</button>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas ${jaLiberado ? 'fa-save' : 'fa-check-double'}"></i>
+                ${jaLiberado ? 'Salvar correção' : 'Liberar laudo'}
+            </button>
+        </div>
+    `;
+
+    document.getElementById('btn-cancel-release')
+        .addEventListener('click', () => mostrarView('details'));
+
+    formRelease.onsubmit = (e) => salvarLiberacao(e, jaLiberado);
+
+    mostrarView('release');
+    document.getElementById('release-diagnostico').focus();
+}
+
+async function salvarLiberacao(event, jaLiberado) {
+    event.preventDefault();
+    if (!currentTask) return;
+
+    const dataLaudo = document.getElementById('release-data').value;
+    const diagnostico = document.getElementById('release-diagnostico').value.trim();
+
+    if (!dataLaudo) return alert('Informe a data do laudo.');
+    if (!diagnostico) return alert('Informe o diagnóstico — é uma das colunas do livro.');
+
+    const hoje = isoLocal(new Date());
+    if (dataLaudo > hoje) return alert('A data do laudo não pode estar no futuro.');
+    if (currentTask.dataEntrada && dataLaudo < currentTask.dataEntrada) {
+        const entrada = brData(currentTask.dataEntrada);
+        if (!confirm(`A data do laudo é anterior à entrada da amostra (${entrada}).\nDeseja gravar assim mesmo?`)) return;
     }
 
-    if(!confirm("Tem certeza que deseja LIBERAR este laudo?\nA data será congelada e o caso vai para o Histórico.")) return;
+    if (!jaLiberado && !confirm('Liberar este laudo?\nO caso sai do Mural e passa a constar no Livro de Registros.')) return;
+
+    const btn = formRelease.querySelector('button[type="submit"]');
+    const textoOriginal = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gravando...';
 
     try {
-        const dataCongelada = new Date().toISOString();
-
         // Casos antigos podem não ter os campos derivados do protocolo; o
         // Histórico filtra por eles, então garante que existam na liberação.
         const derivados = camposDerivados(currentTask.protocolo);
+        const agora = new Date().toISOString();
 
-        await updateDoc(doc(db, "tasks", currentTask.id), {
-            releasedBy: auth.currentUser.uid,
-            releasedAt: dataCongelada,
-            // O caso sai do fluxo e vira histórico: é o que tira ele do Mural e
-            // do Planner, e o que impede o acervo de voltar a ser lido por eles.
-            status: 'concluido',
-            ...derivados
-        });
-        await registrarLiberacao({ ...currentTask, ...derivados });
-        alert("Laudo Liberado com Sucesso!");
+        const dados = jaLiberado
+            ? {
+                dataLaudo,
+                diagnostico,
+                livroEditadoEm: agora,
+                livroEditadoPor: auth.currentUser.uid,
+                ...derivados
+            }
+            : {
+                dataLaudo,
+                diagnostico,
+                releasedBy: auth.currentUser.uid,
+                releasedAt: agora,
+                // O caso sai do fluxo e vira histórico: é o que tira ele do Mural
+                // e do Planner, e o que impede o acervo de voltar a ser lido por
+                // eles.
+                status: 'concluido',
+                ...derivados
+            };
+
+        await updateDoc(doc(db, "tasks", currentTask.id), dados);
+
+        // O índice conta laudos liberados; correção não é liberação nova.
+        if (!jaLiberado) {
+            await registrarLiberacao({ ...currentTask, ...derivados });
+        }
+
+        Object.assign(currentTask, dados);
+        // Mural e Planner tiram o caso sozinhos (onSnapshot); o Livro precisa do
+        // aviso para redesenhar a linha sem reler o ano inteiro do Firestore.
+        avisarCasoAtualizado(currentTask);
+        alert(jaLiberado ? 'Registro do livro atualizado.' : 'Laudo liberado com sucesso!');
         closeTaskModal();
-        if(window.location.reload) window.location.reload();
-    } catch(e) { console.error(e); alert("Erro ao liberar: " + e.message); }
+    } catch (e) {
+        console.error(e);
+        alert('Erro ao gravar: ' + e.message);
+        btn.disabled = false;
+        btn.innerHTML = textoOriginal;
+    }
 }
 
 
 
 
 function openK7FormSmart(task) {
-    viewDetails.classList.add('hidden'); viewK7.classList.remove('hidden');
-    
+    mostrarView('k7');
+
     const currentColor = task.k7Color || (task.type === 'necropsia' ? 'azul' : 'rosa');
     const currentQty = task.k7Quantity || 1;
     const isNecro = task.type === 'necropsia';
@@ -739,7 +949,7 @@ function openK7FormSmart(task) {
             });
         });
         
-        document.getElementById('btn-cancel-k7-dyn').addEventListener('click', () => { viewK7.classList.add('hidden'); viewDetails.classList.remove('hidden'); });
+        document.getElementById('btn-cancel-k7-dyn').addEventListener('click', () => mostrarView('details'));
         formK7.onsubmit = async (e) => { 
             e.preventDefault(); 
             const qty = parseInt(document.getElementById('k7-quantity').value, 10) || 1; 
@@ -748,16 +958,42 @@ function openK7FormSmart(task) {
             try {
                 await updateDoc(doc(db, "tasks", currentTask.id), updateData); 
                 Object.assign(currentTask, updateData);
-                renderDetails(currentTask); 
-                viewK7.classList.add('hidden'); 
-                viewDetails.classList.remove('hidden'); 
-            } catch(err){ alert("Erro: " + err.message); } 
+                renderDetails(currentTask);
+                mostrarView('details');
+            } catch(err){ alert("Erro: " + err.message); }
         };
     }
 }
 
 if(btnDelete) {
-    btnDelete.addEventListener('click', async () => { if(confirm("Excluir?")) { try { await deleteDoc(doc(db, "tasks", currentTask.id)); closeTaskModal(); } catch(e){} } });
+    btnDelete.addEventListener('click', async () => {
+        if (!currentTask) return;
+
+        if (!getPermissionContext(currentTask).canDelete) {
+            alert('Apenas professor, pós-graduando ou admin podem excluir um caso.');
+            return;
+        }
+
+        const nome = [currentTask.protocolo, currentTask.animalNome].filter(Boolean).join(' — ') || 'este caso';
+        const aviso = currentTask.releasedAt
+            ? `Excluir ${nome}?\n\nO laudo já foi liberado: ele sai do Livro de Registros junto.`
+            : `Excluir ${nome}?`;
+        if (!confirm(aviso)) return;
+
+        const excluido = { ...currentTask };
+        btnDelete.disabled = true;
+        try {
+            await deleteDoc(doc(db, "tasks", excluido.id));
+            await registrarExclusao(excluido);
+            avisarCasoExcluido(excluido.id);
+            closeTaskModal();
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao excluir: ' + e.message);
+        } finally {
+            btnDelete.disabled = false;
+        }
+    });
 }
 
 window.triggerEditEntry = function() {
@@ -771,6 +1007,6 @@ window.triggerEditEntry = function() {
 }
 
 window.openTaskManager = openTaskManager;
-window.finishReportWrapper = finishReportWrapper;
+window.openReleaseForm = openReleaseForm;
 window.toggleFinancialStatus = toggleFinancialStatus;
 window.openK7Edit = function() { if(currentTask) openK7FormSmart(currentTask); };
