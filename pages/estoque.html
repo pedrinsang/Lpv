@@ -64,28 +64,27 @@
 
         <main class="main-container inventory-main">
             <div class="inventory-heading">
-                
+                <div>
+                    <h1>Previsão de reposição</h1>
+                    <p>Cadastre quanto se compra de cada produto e quanto tempo essa quantidade costuma durar. O sistema avisa no hub quando o prazo estiver perto do fim — é a hora de conferir o armário.</p>
+                </div>
                 <button id="btn-new-item" class="btn btn-primary hidden">
                     <i class="fas fa-plus"></i> Novo item
                 </button>
             </div>
 
             <section class="inventory-summary" aria-label="Resumo do estoque">
-                <button class="summary-card" data-summary-filter="low">
-                    <span class="summary-icon warning"><i class="fas fa-arrow-trend-down"></i></span>
-                    <span><strong id="summary-low">0</strong><small>Estoque baixo</small></span>
+                <button class="summary-card" data-summary-filter="due">
+                    <span class="summary-icon error"><i class="fas fa-triangle-exclamation"></i></span>
+                    <span><strong id="summary-due">0</strong><small>Prazo esgotado</small></span>
                 </button>
-                <button class="summary-card" data-summary-filter="zero">
-                    <span class="summary-icon error"><i class="fas fa-ban"></i></span>
-                    <span><strong id="summary-zero">0</strong><small>Zerados</small></span>
-                </button>
-                <button class="summary-card" data-summary-filter="expiring">
+                <button class="summary-card" data-summary-filter="soon">
                     <span class="summary-icon warning"><i class="fas fa-hourglass-half"></i></span>
-                    <span><strong id="summary-expiring">0</strong><small>Vencendo</small></span>
+                    <span><strong id="summary-soon">0</strong><small>Conferir em breve</small></span>
                 </button>
-                <button class="summary-card" data-summary-filter="expired">
-                    <span class="summary-icon error"><i class="fas fa-calendar-xmark"></i></span>
-                    <span><strong id="summary-expired">0</strong><small>Vencidos</small></span>
+                <button class="summary-card" data-summary-filter="pending">
+                    <span class="summary-icon neutral"><i class="fas fa-cart-plus"></i></span>
+                    <span><strong id="summary-pending">0</strong><small>Sem compra</small></span>
                 </button>
                 <button class="summary-card" data-summary-filter="all">
                     <span class="summary-icon primary"><i class="fas fa-boxes-stacked"></i></span>
@@ -96,19 +95,18 @@
             <section class="inventory-controls">
                 <label class="inventory-search">
                     <i class="fas fa-search"></i>
-                    <input id="inventory-search" type="search" placeholder="Buscar item, categoria, lote ou localização..." autocomplete="off">
+                    <input id="inventory-search" type="search" placeholder="Buscar item, categoria ou localização..." autocomplete="off">
                 </label>
                 <select id="category-filter" class="inventory-select" aria-label="Filtrar categoria">
                     <option value="">Todas as categorias</option>
                 </select>
                 <select id="status-filter" class="inventory-select" aria-label="Filtrar situação">
                     <option value="all">Itens ativos</option>
-                    <option value="normal">Normal</option>
-                    <option value="low">Estoque baixo</option>
-                    <option value="zero">Zerado</option>
-                    <option value="expiring">Vencendo</option>
-                    <option value="expired">Vencido</option>
-                    <option value="inactive">Inativos</option>
+                    <option value="due">Prazo esgotado</option>
+                    <option value="soon">Conferir em breve</option>
+                    <option value="ok">Em dia</option>
+                    <option value="snoozed">Conferidos</option>
+                    <option value="pending">Sem compra registrada</option>
                 </select>
             </section>
 
@@ -127,9 +125,9 @@
                         <thead>
                             <tr>
                                 <th>Item</th>
-                                <th>Quantidade</th>
-                                <th>Local / lote</th>
-                                <th>Validade</th>
+                                <th>Referência</th>
+                                <th>Última compra</th>
+                                <th>Previsão de término</th>
                                 <th>Situação</th>
                                 <th aria-label="Ações"></th>
                             </tr>
@@ -149,7 +147,7 @@
                 <span class="modal-icon"><i class="fas fa-box"></i></span>
                 <div>
                     <h2 id="item-modal-title">Novo item</h2>
-                    <p>Os campos de categoria e unidade são livres.</p>
+                    <p>Não é preciso lançar consumo. Basta dizer quanto costuma comprar e quanto tempo dura.</p>
                 </div>
             </div>
             <form id="item-form">
@@ -167,31 +165,48 @@
                         <label for="item-unit">Unidade *</label>
                         <input id="item-unit" name="unit" class="input-field" type="text" maxlength="30" required placeholder="Ex: L, mL, caixa, un.">
                     </div>
-                    <div class="form-group">
+                    <div class="form-group span-2">
                         <label for="item-location">Localização</label>
                         <input id="item-location" name="location" class="input-field" type="text" maxlength="100" placeholder="Ex: Armário A, prateleira 2">
                     </div>
+                </div>
+
+                <fieldset class="cycle-fieldset">
+                    <legend><i class="fas fa-stopwatch"></i> Referência de duração</legend>
+                    <p class="cycle-help">Quanto o laboratório compra de uma vez e quanto tempo essa quantidade dura na rotina. É a partir daqui que as próximas compras são calculadas por regra de três.</p>
+                    <div class="cycle-inline">
+                        <div class="form-group">
+                            <label for="item-reference-quantity">Quantidade *</label>
+                            <input id="item-reference-quantity" name="referenceQuantity" class="input-field" type="number" min="0.001" step="any" required placeholder="50">
+                        </div>
+                        <span class="cycle-connector">duram</span>
+                        <div class="form-group">
+                            <label for="item-duration-value">Tempo *</label>
+                            <input id="item-duration-value" name="durationValue" class="input-field" type="number" min="1" step="1" required placeholder="3">
+                        </div>
+                        <div class="form-group">
+                            <label for="item-duration-unit">Unidade de tempo *</label>
+                            <select id="item-duration-unit" name="durationUnit" class="input-field" required>
+                                <option value="meses">meses</option>
+                                <option value="semanas">semanas</option>
+                                <option value="dias">dias</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p id="cycle-preview" class="cycle-preview"></p>
+                </fieldset>
+
+                <div class="inventory-form-grid">
                     <div class="form-group">
-                        <label for="item-minimum">Estoque mínimo *</label>
-                        <input id="item-minimum" name="minQuantity" class="input-field" type="number" min="0" step="any" required value="0">
-                    </div>
-                    <div id="initial-quantity-group" class="form-group">
-                        <label for="item-initial">Quantidade inicial *</label>
-                        <input id="item-initial" name="initialQuantity" class="input-field" type="number" min="0" step="any" required value="0">
+                        <label for="item-alert-lead">Avisar com quantos dias de antecedência? *</label>
+                        <input id="item-alert-lead" name="alertLeadDays" class="input-field" type="number" min="0" max="365" step="1" required value="30">
                     </div>
                     <div class="form-group">
-                        <label for="item-lot">Lote atual</label>
-                        <input id="item-lot" name="lot" class="input-field" type="text" maxlength="80" placeholder="Opcional">
-                    </div>
-                    <div class="form-group">
-                        <label for="item-expiry">Validade atual</label>
-                        <input id="item-expiry" name="expiryDate" class="input-field" type="date">
-                    </div>
-                    <div class="form-group span-2">
                         <label for="item-notes">Observações</label>
-                        <textarea id="item-notes" name="notes" class="input-area" maxlength="500" placeholder="Informações úteis sobre armazenamento ou uso"></textarea>
+                        <input id="item-notes" name="notes" class="input-field" type="text" maxlength="300" placeholder="Fornecedor, cuidados de armazenamento...">
                     </div>
                 </div>
+
                 <div class="inventory-modal-actions">
                     <button type="button" class="btn btn-secondary" data-close-modal="item-modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar item</button>
@@ -200,56 +215,85 @@
         </div>
     </div>
 
-    <div id="movement-modal" class="modal-overlay hidden">
-        <div class="modal-glass inventory-modal movement-modal">
-            <button class="btn-close-modal" data-close-modal="movement-modal"><i class="fas fa-times"></i></button>
+    <div id="purchase-modal" class="modal-overlay hidden">
+        <div class="modal-glass inventory-modal purchase-modal">
+            <button class="btn-close-modal" data-close-modal="purchase-modal"><i class="fas fa-times"></i></button>
             <div class="inventory-modal-header">
-                <span class="modal-icon"><i class="fas fa-arrow-right-arrow-left"></i></span>
+                <span class="modal-icon"><i class="fas fa-cart-shopping"></i></span>
                 <div>
-                    <h2>Registrar movimentação</h2>
-                    <p id="movement-item-label">Item</p>
+                    <h2>Registrar compra</h2>
+                    <p id="purchase-item-label">Item</p>
                 </div>
             </div>
-            <form id="movement-form">
+            <form id="purchase-form">
                 <input type="hidden" name="itemId">
-                <div class="movement-types">
-                    <label class="movement-type" data-movement-option="entrada">
-                        <input type="radio" name="type" value="entrada">
-                        <span><i class="fas fa-arrow-down"></i> Entrada</span>
+                <div class="inventory-form-grid">
+                    <div class="form-group">
+                        <label id="purchase-quantity-label" for="purchase-quantity">Quantidade comprada *</label>
+                        <input id="purchase-quantity" name="quantity" class="input-field" type="number" min="0.001" step="any" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="purchase-date">Data da compra *</label>
+                        <input id="purchase-date" name="purchaseDate" class="input-field" type="date" required>
+                    </div>
+                    <div class="form-group span-2">
+                        <label for="purchase-notes">Observação</label>
+                        <input id="purchase-notes" name="notes" class="input-field" type="text" maxlength="200" placeholder="Opcional. Ex: nota fiscal, fornecedor">
+                    </div>
+                </div>
+                <p id="purchase-preview" class="cycle-preview"></p>
+                <div class="inventory-modal-actions">
+                    <button type="button" class="btn btn-secondary" data-close-modal="purchase-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Salvar compra</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="check-modal" class="modal-overlay hidden">
+        <div class="modal-glass inventory-modal check-modal">
+            <button class="btn-close-modal" data-close-modal="check-modal"><i class="fas fa-times"></i></button>
+            <div class="inventory-modal-header">
+                <span class="modal-icon"><i class="fas fa-clipboard-check"></i></span>
+                <div>
+                    <h2>Conferi no laboratório</h2>
+                    <p id="check-item-label">Item</p>
+                </div>
+            </div>
+            <form id="check-form">
+                <input type="hidden" name="itemId">
+                <p class="cycle-help">Ainda tem produto suficiente? Escolha quando o aviso deve voltar ao hub.</p>
+                <div class="check-options">
+                    <label class="check-option">
+                        <input type="radio" name="remindInDays" value="15" checked>
+                        <span>Em 15 dias</span>
                     </label>
-                    <label class="movement-type" data-movement-option="saida">
-                        <input type="radio" name="type" value="saida" checked>
-                        <span><i class="fas fa-arrow-up"></i> Saída</span>
+                    <label class="check-option">
+                        <input type="radio" name="remindInDays" value="30">
+                        <span>Em 30 dias</span>
                     </label>
-                    <label class="movement-type" data-movement-option="ajuste">
-                        <input type="radio" name="type" value="ajuste">
-                        <span><i class="fas fa-sliders"></i> Ajuste</span>
+                    <label class="check-option">
+                        <input type="radio" name="remindInDays" value="60">
+                        <span>Em 60 dias</span>
+                    </label>
+                    <label class="check-option">
+                        <input type="radio" name="remindInDays" value="custom">
+                        <span>Outro</span>
                     </label>
                 </div>
                 <div class="inventory-form-grid">
-                    <div class="form-group">
-                        <label id="movement-quantity-label" for="movement-quantity">Quantidade *</label>
-                        <input id="movement-quantity" name="quantity" class="input-field" type="number" min="0" step="any" required>
+                    <div id="check-custom-group" class="form-group hidden">
+                        <label for="check-custom-days">Voltar a avisar em quantos dias? *</label>
+                        <input id="check-custom-days" name="customDays" class="input-field" type="number" min="1" max="730" step="1" placeholder="Ex: 45">
                     </div>
-                    <div class="form-group">
-                        <label for="movement-reason">Motivo *</label>
-                        <input id="movement-reason" name="reason" class="input-field" type="text" maxlength="160" required placeholder="Ex: Uso na rotina">
+                    <div class="form-group span-2">
+                        <label for="check-notes">Observação</label>
+                        <input id="check-notes" name="notes" class="input-field" type="text" maxlength="200" placeholder="Opcional. Ex: sobrou meio galão">
                     </div>
-                    <div class="form-group entry-extra">
-                        <label for="movement-lot">Novo lote</label>
-                        <input id="movement-lot" name="lot" class="input-field" type="text" maxlength="80" placeholder="Opcional">
-                    </div>
-                    <div class="form-group entry-extra">
-                        <label for="movement-expiry">Nova validade</label>
-                        <input id="movement-expiry" name="expiryDate" class="input-field" type="date">
-                    </div>
-                </div>
-                <div class="movement-balance">
-                    Saldo atual: <strong id="movement-current-balance">0</strong>
                 </div>
                 <div class="inventory-modal-actions">
-                    <button type="button" class="btn btn-secondary" data-close-modal="movement-modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Confirmar</button>
+                    <button type="button" class="btn btn-secondary" data-open-purchase-from-check><i class="fas fa-cart-shopping"></i> Já comprei mais</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Salvar conferência</button>
                 </div>
             </form>
         </div>

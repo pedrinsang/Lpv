@@ -125,71 +125,38 @@ service cloud.firestore {
       allow read, write: if isApprovedUser();
     }
 
+    // O estoque nao controla saldo: cada item guarda quanto se compra de uma vez
+    // e quanto tempo essa quantidade costuma durar. Ninguem lanca consumo, entao
+    // so quem responde pelo laboratorio escreve aqui.
     match /inventory_items/{itemId} {
       allow read: if isApprovedUser();
 
-      allow create: if isInventoryManager()
-        && request.resource.data.currentQuantity is number
-        && request.resource.data.currentQuantity >= 0
-        && request.resource.data.minQuantity is number
-        && request.resource.data.minQuantity >= 0;
+      allow create, update: if isInventoryManager()
+        && request.resource.data.referenceQuantity is number
+        && request.resource.data.referenceQuantity > 0
+        && request.resource.data.referenceDays is number
+        && request.resource.data.referenceDays > 0
+        && request.resource.data.alertLeadDays is number
+        && request.resource.data.alertLeadDays >= 0;
 
-      allow update: if (
-        isInventoryManager()
-        && request.resource.data.currentQuantity is number
-        && request.resource.data.currentQuantity >= 0
-        && request.resource.data.minQuantity is number
-        && request.resource.data.minQuantity >= 0
-      ) || (
-          isApprovedUser()
-          && resource.data.active != false
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'currentQuantity',
-            'lastMovementId',
-            'updatedAt',
-            'updatedBy',
-            'updatedByName'
-          ])
-          && request.resource.data.currentQuantity is number
-          && request.resource.data.currentQuantity >= 0
-          && request.resource.data.currentQuantity < resource.data.currentQuantity
-          && request.resource.data.updatedBy == request.auth.uid
-          && request.resource.data.lastMovementId is string
-          && existsAfter(/databases/$(database)/documents/inventory_movements/$(request.resource.data.lastMovementId))
-          && getAfter(/databases/$(database)/documents/inventory_movements/$(request.resource.data.lastMovementId)).data.itemId == itemId
-          && getAfter(/databases/$(database)/documents/inventory_movements/$(request.resource.data.lastMovementId)).data.type == 'saida'
-          && getAfter(/databases/$(database)/documents/inventory_movements/$(request.resource.data.lastMovementId)).data.previousQuantity == resource.data.currentQuantity
-          && getAfter(/databases/$(database)/documents/inventory_movements/$(request.resource.data.lastMovementId)).data.resultingQuantity == request.resource.data.currentQuantity
-          && getAfter(/databases/$(database)/documents/inventory_movements/$(request.resource.data.lastMovementId)).data.createdBy == request.auth.uid
-        );
-
-      // Itens sao arquivados, nunca excluidos, para preservar o historico.
-      allow delete: if false;
+      // Produto que saiu do laboratorio sai do app: sem controle de saldo, nao
+      // ha o que preservar num item arquivado.
+      allow delete: if isInventoryManager();
     }
 
-    match /inventory_movements/{movementId} {
+    // Linha do tempo do item: compras registradas e conferencias no armario.
+    match /inventory_events/{eventId} {
       allow read: if isApprovedUser();
 
-      allow create: if isApprovedUser()
+      allow create: if isInventoryManager()
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.type in ['entrada', 'saida', 'ajuste']
-        && request.resource.data.quantity is number
-        && request.resource.data.quantity > 0
-        && request.resource.data.delta is number
-        && request.resource.data.previousQuantity is number
-        && request.resource.data.resultingQuantity is number
-        && request.resource.data.resultingQuantity >= 0
-        && (
-          isInventoryManager() ||
-          (
-            request.resource.data.type == 'saida'
-            && request.resource.data.delta < 0
-            && getAfter(/databases/$(database)/documents/inventory_items/$(request.resource.data.itemId)).data.lastMovementId == movementId
-          )
-        );
+        && request.resource.data.itemId is string
+        && request.resource.data.type in ['compra', 'conferencia'];
 
-      // Movimentacoes sao imutaveis; correcoes devem ser feitas por ajuste.
-      allow update, delete: if false;
+      // Registro gravado nao se reescreve; um erro se corrige com um novo
+      // registro. A exclusao existe so para acompanhar a do item.
+      allow update: if false;
+      allow delete: if isInventoryManager();
     }
 
     match /{document=**} {

@@ -2,6 +2,13 @@ import { auth, db, normalizeRoles, hasAnyRole } from '../core.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import { doc, getDoc, collection, query, onSnapshot, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { pesoProtocolo } from '../lib/protocolo.js';
+import {
+    describeDeadline,
+    formatDate,
+    getCycleInfo,
+    getItemStatus,
+    isAlertStatus
+} from '../lib/estoque-ciclo.js';
 
 // 1. MAPEAMENTO DOS ELEMENTOS
 const els = {
@@ -54,56 +61,68 @@ function updateUserBadge(role) {
     els.userBadge.textContent = display;
 }
 
-// RESUMO DO ESTOQUE
-function initInventorySummary() {
-    const fields = {
-        low: document.getElementById('hub-stock-low'),
-        zero: document.getElementById('hub-stock-zero'),
-        expiring: document.getElementById('hub-stock-expiring'),
-        expired: document.getElementById('hub-stock-expired')
-    };
+// ALERTAS DO ESTOQUE
+//
+// O estoque não é contado unidade a unidade: cada item guarda quanto se compra
+// e quanto tempo aquilo costuma durar. Aqui só aparece o que está chegando no
+// fim do prazo previsto — o aviso para conferir o armário antes de comprar.
+const HUB_STOCK_MAX_ROWS = 4;
 
-    if (!fields.low) return;
+function initInventorySummary() {
+    const list = document.getElementById('hub-stock-alerts');
+    const subtitle = document.getElementById('hub-stock-subtitle');
+    if (!list) return;
 
     onSnapshot(collection(db, 'inventory_items'), (snapshot) => {
-        const counts = { low: 0, zero: 0, expiring: 0, expired: 0 };
+        const alerts = [];
 
         snapshot.forEach((itemDoc) => {
-            const item = itemDoc.data();
-            if (item.active === false) return;
-
-            const quantity = Number(item.currentQuantity || 0);
-            const minimum = Number(item.minQuantity || 0);
-            const daysToExpiry = getInventoryDaysToExpiry(item.expiryDate);
-
-            if (daysToExpiry !== null && daysToExpiry < 0) counts.expired++;
-            else if (quantity <= 0) counts.zero++;
-            else if (minimum > 0 && quantity <= minimum) counts.low++;
-            else if (daysToExpiry !== null && daysToExpiry <= 30) counts.expiring++;
+            const item = { id: itemDoc.id, ...itemDoc.data() };
+            const cycle = getCycleInfo(item);
+            const status = getItemStatus(item, cycle);
+            if (isAlertStatus(status)) alerts.push({ item, cycle, status });
         });
 
-        Object.entries(fields).forEach(([key, element]) => {
-            if (!element) return;
-            element.textContent = counts[key];
-            element.closest('.inventory-hub-stat')?.classList.toggle('has-alert', counts[key] > 0);
-        });
-
-        document.querySelector('.inventory-hub-panel')?.classList.toggle(
-            'has-attention',
-            Object.values(counts).some((count) => count > 0)
-        );
+        alerts.sort((a, b) => a.cycle.daysLeft - b.cycle.daysLeft);
+        renderInventoryAlerts(list, subtitle, alerts);
     }, (error) => {
         console.warn('Resumo do estoque indisponível:', error.message);
     });
 }
 
-function getInventoryDaysToExpiry(dateString) {
-    if (!dateString) return null;
-    const target = new Date(`${dateString}T23:59:59`);
-    if (Number.isNaN(target.getTime())) return null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return Math.floor((target - today) / 86400000);
+function renderInventoryAlerts(list, subtitle, alerts) {
+    document.querySelector('.inventory-hub-panel')?.classList.toggle('has-attention', alerts.length > 0);
+
+    if (subtitle) {
+        subtitle.textContent = alerts.length === 0
+            ? 'Nenhum prazo perto do fim'
+            : `${alerts.length} ${alerts.length === 1 ? 'produto para conferir' : 'produtos para conferir'}`;
+    }
+
+    if (alerts.length === 0) {
+        list.innerHTML = `
+            <div class="inventory-hub-empty">
+                <i class="far fa-check-circle"></i>
+                <span>Estoque dentro do prazo previsto.</span>
+            </div>`;
+        return;
+    }
+
+    const rows = alerts.slice(0, HUB_STOCK_MAX_ROWS).map(({ item, cycle, status }) => `
+        <div class="inventory-hub-alert ${status === 'due' ? 'is-late' : 'is-near'}">
+            <span class="inventory-hub-alert-icon">
+                <i class="fas ${status === 'due' ? 'fa-triangle-exclamation' : 'fa-hourglass-half'}"></i>
+            </span>
+            <div class="inventory-hub-alert-text">
+                <strong>${escapeHtml(item.name)}</strong>
+                <small>${describeDeadline(cycle)} · previsão ${formatDate(cycle.expectedEndDate)}</small>
+            </div>
+        </div>`).join('');
+
+    const extra = alerts.length - HUB_STOCK_MAX_ROWS;
+    list.innerHTML = rows + (extra > 0
+        ? `<div class="inventory-hub-more">+${extra} ${extra === 1 ? 'outro item' : 'outros itens'}</div>`
+        : '');
 }
 
 // 4. DASHBOARD (LÓGICA CORRIGIDA COM FILTRO)

@@ -1,18 +1,33 @@
 import { auth, db, logout, hasFullControl } from '../core.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import {
+    addDoc,
     collection,
     doc,
     getDoc,
     getDocs,
     onSnapshot,
     query,
-    runTransaction,
     serverTimestamp,
     updateDoc,
     where,
     writeBatch
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import {
+    DEFAULT_ALERT_LEAD_DAYS,
+    STATUS_META,
+    addDays,
+    describeDeadline,
+    durationToDays,
+    formatDate,
+    formatDays,
+    formatDuration,
+    formatQuantity,
+    getCycleInfo,
+    getItemStatus,
+    toNumber,
+    todayString
+} from '../lib/estoque-ciclo.js';
 
 const els = {
     newItem: document.getElementById('btn-new-item'),
@@ -29,32 +44,26 @@ const els = {
     itemModal: document.getElementById('item-modal'),
     itemModalTitle: document.getElementById('item-modal-title'),
     itemForm: document.getElementById('item-form'),
-    initialQuantityGroup: document.getElementById('initial-quantity-group'),
-    movementModal: document.getElementById('movement-modal'),
-    movementForm: document.getElementById('movement-form'),
-    movementItemLabel: document.getElementById('movement-item-label'),
-    movementQuantityLabel: document.getElementById('movement-quantity-label'),
-    movementBalance: document.getElementById('movement-current-balance'),
+    cyclePreview: document.getElementById('cycle-preview'),
+    purchaseModal: document.getElementById('purchase-modal'),
+    purchaseForm: document.getElementById('purchase-form'),
+    purchaseItemLabel: document.getElementById('purchase-item-label'),
+    purchaseQuantityLabel: document.getElementById('purchase-quantity-label'),
+    purchasePreview: document.getElementById('purchase-preview'),
+    checkModal: document.getElementById('check-modal'),
+    checkForm: document.getElementById('check-form'),
+    checkItemLabel: document.getElementById('check-item-label'),
+    checkCustomGroup: document.getElementById('check-custom-group'),
     detailModal: document.getElementById('detail-modal'),
     detailContent: document.getElementById('detail-content'),
     toast: document.getElementById('inventory-toast')
 };
 
 const summaries = {
-    low: document.getElementById('summary-low'),
-    zero: document.getElementById('summary-zero'),
-    expiring: document.getElementById('summary-expiring'),
-    expired: document.getElementById('summary-expired'),
+    due: document.getElementById('summary-due'),
+    soon: document.getElementById('summary-soon'),
+    pending: document.getElementById('summary-pending'),
     total: document.getElementById('summary-total')
-};
-
-const STATUS_META = {
-    normal: { label: 'Normal', icon: 'fa-circle-check' },
-    low: { label: 'Estoque baixo', icon: 'fa-arrow-trend-down' },
-    zero: { label: 'Zerado', icon: 'fa-ban' },
-    expiring: { label: 'Vencendo', icon: 'fa-hourglass-half' },
-    expired: { label: 'Vencido', icon: 'fa-calendar-xmark' },
-    inactive: { label: 'Inativo', icon: 'fa-box-archive' }
 };
 
 let allItems = [];
@@ -77,7 +86,6 @@ onAuthStateChanged(auth, async (user) => {
     canManage = hasFullControl(currentUserData.role);
 
     els.newItem?.classList.toggle('hidden', !canManage);
-    configureMovementPermissions();
     subscribeInventory();
 });
 
@@ -88,7 +96,18 @@ els.search?.addEventListener('input', renderInventory);
 els.categoryFilter?.addEventListener('change', renderInventory);
 els.statusFilter?.addEventListener('change', renderInventory);
 els.itemForm?.addEventListener('submit', saveItem);
-els.movementForm?.addEventListener('submit', saveMovement);
+els.itemForm?.addEventListener('input', updateCyclePreview);
+els.itemForm?.addEventListener('change', updateCyclePreview);
+els.purchaseForm?.addEventListener('submit', savePurchase);
+els.purchaseForm?.addEventListener('input', updatePurchasePreview);
+els.purchaseForm?.addEventListener('change', updatePurchasePreview);
+els.checkForm?.addEventListener('submit', saveCheck);
+els.checkForm?.addEventListener('change', syncCheckFields);
+els.checkForm?.querySelector('[data-open-purchase-from-check]')?.addEventListener('click', () => {
+    const itemId = els.checkForm.elements.itemId.value;
+    closeModal('check-modal');
+    openPurchaseModal(itemId);
+});
 
 document.querySelectorAll('[data-close-modal]').forEach((button) => {
     button.addEventListener('click', () => closeModal(button.dataset.closeModal));
@@ -107,10 +126,6 @@ document.querySelectorAll('.summary-card').forEach((card) => {
     });
 });
 
-document.querySelectorAll('input[name="type"]').forEach((input) => {
-    input.addEventListener('change', syncMovementFields);
-});
-
 els.tableBody?.addEventListener('click', handleInventoryClick);
 els.cardList?.addEventListener('click', handleInventoryClick);
 els.detailContent?.addEventListener('click', handleDetailClick);
@@ -120,7 +135,7 @@ function subscribeInventory() {
     unsubscribeItems = onSnapshot(collection(db, 'inventory_items'), (snapshot) => {
         allItems = snapshot.docs
             .map((itemDoc) => ({ id: itemDoc.id, ...itemDoc.data() }))
-            .sort((a, b) => normalizeText(a.name).localeCompare(normalizeText(b.name)));
+            .sort(compareByUrgency);
 
         els.loading?.classList.add('hidden');
         updateCategoryFilter();
@@ -136,43 +151,32 @@ function subscribeInventory() {
     });
 }
 
-function getItemStatus(item) {
-    if (item.active === false) return 'inactive';
+// O que está para acabar vem primeiro; itens sem previsão no fim.
+function compareByUrgency(a, b) {
+    const rank = { due: 0, soon: 1, ok: 2, snoozed: 3, pending: 4 };
+    const statusA = getItemStatus(a);
+    const statusB = getItemStatus(b);
+    if (rank[statusA] !== rank[statusB]) return rank[statusA] - rank[statusB];
 
-    const quantity = toNumber(item.currentQuantity);
-    const minimum = toNumber(item.minQuantity);
-    const days = daysUntil(item.expiryDate);
+    const leftA = getCycleInfo(a).daysLeft;
+    const leftB = getCycleInfo(b).daysLeft;
+    if (leftA !== null && leftB !== null && leftA !== leftB) return leftA - leftB;
 
-    if (days !== null && days < 0) return 'expired';
-    if (quantity <= 0) return 'zero';
-    if (minimum > 0 && quantity <= minimum) return 'low';
-    if (days !== null && days <= 30) return 'expiring';
-    return 'normal';
-}
-
-function daysUntil(dateString) {
-    if (!dateString) return null;
-    const target = new Date(`${dateString}T23:59:59`);
-    if (Number.isNaN(target.getTime())) return null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return Math.floor((target - today) / 86400000);
+    return normalizeText(a.name).localeCompare(normalizeText(b.name));
 }
 
 function updateSummary() {
-    const activeItems = allItems.filter((item) => item.active !== false);
-    const counts = { low: 0, zero: 0, expiring: 0, expired: 0 };
+    const counts = { due: 0, soon: 0, pending: 0 };
 
-    activeItems.forEach((item) => {
+    allItems.forEach((item) => {
         const status = getItemStatus(item);
         if (Object.hasOwn(counts, status)) counts[status]++;
     });
 
-    summaries.low.textContent = counts.low;
-    summaries.zero.textContent = counts.zero;
-    summaries.expiring.textContent = counts.expiring;
-    summaries.expired.textContent = counts.expired;
-    summaries.total.textContent = activeItems.length;
+    summaries.due.textContent = counts.due;
+    summaries.soon.textContent = counts.soon;
+    summaries.pending.textContent = counts.pending;
+    summaries.total.textContent = allItems.length;
 }
 
 function updateCategoryFilter() {
@@ -197,13 +201,10 @@ function getFilteredItems() {
     const status = els.statusFilter.value;
 
     return allItems.filter((item) => {
-        const blob = normalizeText([item.name, item.category, item.location, item.lot, item.notes, item.unit].join(' '));
+        const blob = normalizeText([item.name, item.category, item.location, item.notes, item.unit].join(' '));
         return (!term || blob.includes(term))
             && (!category || item.category === category)
-            && (
-                (status === 'all' && item.active !== false)
-                || (status !== 'all' && getItemStatus(item) === status)
-            );
+            && (status === 'all' || getItemStatus(item) === status);
     });
 }
 
@@ -233,10 +234,53 @@ function renderInventory() {
     els.cardList.innerHTML = items.map(renderItemCard).join('');
 }
 
+function renderReference(item, cycle) {
+    if (!cycle.hasReference) return '<span class="item-meta">Referência não definida</span>';
+    return `
+        <span class="cycle-reference">${formatQuantity(cycle.referenceQuantity)} ${escapeHtml(item.unit)}</span>
+        <span class="item-meta">duram ~${formatDuration(cycle.referenceDays)}</span>`;
+}
+
+function renderLastPurchase(item, cycle) {
+    if (!cycle.hasPurchase) return '<span class="item-meta">Nenhuma compra registrada</span>';
+    return `
+        <div>${formatQuantity(cycle.quantity)} ${escapeHtml(item.unit)}</div>
+        <div class="item-meta">em ${formatDate(cycle.purchaseDate)}</div>`;
+}
+
+function renderForecast(cycle) {
+    if (!cycle.hasPurchase) return '<span class="item-meta">—</span>';
+
+    const tone = cycle.daysLeft < 0 ? 'is-late' : (cycle.daysLeft <= cycle.alertLeadDays ? 'is-near' : 'is-ok');
+    return `
+        <div class="forecast-date">${formatDate(cycle.expectedEndDate)}</div>
+        <div class="forecast-left ${tone}">${describeDeadline(cycle)}</div>
+        <div class="cycle-bar"><span class="cycle-bar-fill ${tone}" style="width:${Math.round(cycle.progress * 100)}%"></span></div>`;
+}
+
+function renderRowActions(item, { compact = false } = {}) {
+    if (!canManage) {
+        return compact
+            ? `<button data-open-item="${escapeAttr(item.id)}"><i class="fas fa-eye"></i> Detalhes</button>`
+            : `<button class="row-action" data-open-item="${escapeAttr(item.id)}" title="Ver detalhes"><i class="fas fa-eye"></i></button>`;
+    }
+
+    if (compact) {
+        return `
+            <button data-purchase-item="${escapeAttr(item.id)}"><i class="fas fa-cart-shopping"></i> Comprei</button>
+            <button data-check-item="${escapeAttr(item.id)}"><i class="fas fa-clipboard-check"></i> Conferi</button>
+            <button data-open-item="${escapeAttr(item.id)}"><i class="fas fa-eye"></i> Detalhes</button>`;
+    }
+
+    return `
+        <button class="row-action" data-purchase-item="${escapeAttr(item.id)}" title="Registrar compra"><i class="fas fa-cart-shopping"></i></button>
+        <button class="row-action" data-check-item="${escapeAttr(item.id)}" title="Conferi no laboratório"><i class="fas fa-clipboard-check"></i></button>
+        <button class="row-action" data-open-item="${escapeAttr(item.id)}" title="Ver detalhes"><i class="fas fa-eye"></i></button>`;
+}
+
 function renderTableRow(item) {
-    const status = getItemStatus(item);
-    const meta = STATUS_META[status];
-    const canMove = item.active !== false;
+    const cycle = getCycleInfo(item);
+    const status = getItemStatus(item, cycle);
 
     return `
         <tr data-open-item="${escapeAttr(item.id)}">
@@ -244,30 +288,17 @@ function renderTableRow(item) {
                 <div class="item-name">${escapeHtml(item.name)}</div>
                 <div class="item-meta">${escapeHtml(item.category || 'Sem categoria')}</div>
             </td>
-            <td>
-                <span class="quantity-value">${formatQuantity(item.currentQuantity)} ${escapeHtml(item.unit)}</span>
-                <span class="quantity-minimum">mínimo: ${formatQuantity(item.minQuantity)} ${escapeHtml(item.unit)}</span>
-            </td>
-            <td>
-                <div>${escapeHtml(item.location || 'Não informado')}</div>
-                <div class="item-meta">${item.lot ? `Lote ${escapeHtml(item.lot)}` : 'Sem lote'}</div>
-            </td>
-            <td>${formatDate(item.expiryDate)}</td>
-            <td>${renderStatusBadge(status, meta)}</td>
-            <td>
-                <div class="row-actions">
-                    ${canMove ? `<button class="row-action" data-move-item="${escapeAttr(item.id)}" data-move-type="saida" title="Registrar saída"><i class="fas fa-arrow-up"></i></button>` : ''}
-                    ${canMove && canManage ? `<button class="row-action" data-move-item="${escapeAttr(item.id)}" data-move-type="entrada" title="Registrar entrada"><i class="fas fa-arrow-down"></i></button>` : ''}
-                    <button class="row-action" data-open-item="${escapeAttr(item.id)}" title="Ver detalhes"><i class="fas fa-eye"></i></button>
-                </div>
-            </td>
+            <td>${renderReference(item, cycle)}</td>
+            <td>${renderLastPurchase(item, cycle)}</td>
+            <td>${renderForecast(cycle)}</td>
+            <td>${renderStatusBadge(status, cycle)}</td>
+            <td><div class="row-actions">${renderRowActions(item)}</div></td>
         </tr>`;
 }
 
 function renderItemCard(item) {
-    const status = getItemStatus(item);
-    const meta = STATUS_META[status];
-    const canMove = item.active !== false;
+    const cycle = getCycleInfo(item);
+    const status = getItemStatus(item, cycle);
 
     return `
         <article class="inventory-item-card" data-open-item="${escapeAttr(item.id)}">
@@ -276,35 +307,37 @@ function renderItemCard(item) {
                     <div class="item-name">${escapeHtml(item.name)}</div>
                     <div class="item-meta">${escapeHtml(item.category || 'Sem categoria')}</div>
                 </div>
-                ${renderStatusBadge(status, meta)}
+                ${renderStatusBadge(status, cycle)}
             </div>
-            <div class="inventory-card-balance">
-                <div>
-                    <span class="quantity-value">${formatQuantity(item.currentQuantity)} ${escapeHtml(item.unit)}</span>
-                    <span class="quantity-minimum">mínimo: ${formatQuantity(item.minQuantity)} ${escapeHtml(item.unit)}</span>
-                </div>
-                <div class="inventory-card-location">
-                    <div>${escapeHtml(item.location || 'Sem localização')}</div>
-                    <div>${item.lot ? `Lote ${escapeHtml(item.lot)}` : formatDate(item.expiryDate)}</div>
-                </div>
+            <div class="inventory-card-forecast">${renderForecast(cycle)}</div>
+            <div class="inventory-card-meta">
+                <div>${renderReference(item, cycle)}</div>
+                <div class="inventory-card-location">${renderLastPurchase(item, cycle)}</div>
             </div>
-            <div class="inventory-card-actions">
-                ${canMove ? `<button data-move-item="${escapeAttr(item.id)}" data-move-type="saida"><i class="fas fa-arrow-up"></i> Saída</button>` : ''}
-                ${canMove && canManage ? `<button data-move-item="${escapeAttr(item.id)}" data-move-type="entrada"><i class="fas fa-arrow-down"></i> Entrada</button>` : ''}
-                <button data-open-item="${escapeAttr(item.id)}"><i class="fas fa-eye"></i> Detalhes</button>
-            </div>
+            <div class="inventory-card-actions">${renderRowActions(item, { compact: true })}</div>
         </article>`;
 }
 
-function renderStatusBadge(status, meta = STATUS_META[status]) {
-    return `<span class="status-badge status-${status}"><i class="fas ${meta.icon}"></i> ${meta.label}</span>`;
+function renderStatusBadge(status, cycle) {
+    const meta = STATUS_META[status];
+    const title = status === 'snoozed' && cycle?.snoozedUntil
+        ? ` title="Volta a avisar em ${formatDate(cycle.snoozedUntil)}"`
+        : '';
+    return `<span class="status-badge status-${status}"${title}><i class="fas ${meta.icon}"></i> ${meta.label}</span>`;
 }
 
 function handleInventoryClick(event) {
-    const movementButton = event.target.closest('[data-move-item]');
-    if (movementButton) {
+    const purchaseButton = event.target.closest('[data-purchase-item]');
+    if (purchaseButton) {
         event.stopPropagation();
-        openMovementModal(movementButton.dataset.moveItem, movementButton.dataset.moveType);
+        openPurchaseModal(purchaseButton.dataset.purchaseItem);
+        return;
+    }
+
+    const checkButton = event.target.closest('[data-check-item]');
+    if (checkButton) {
+        event.stopPropagation();
+        openCheckModal(checkButton.dataset.checkItem);
         return;
     }
 
@@ -313,10 +346,15 @@ function handleInventoryClick(event) {
 }
 
 function handleDetailClick(event) {
-    const movementButton = event.target.closest('[data-detail-move]');
-    if (movementButton) {
+    if (event.target.closest('[data-detail-purchase]')) {
         closeModal('detail-modal');
-        openMovementModal(selectedItemId, movementButton.dataset.detailMove);
+        openPurchaseModal(selectedItemId);
+        return;
+    }
+
+    if (event.target.closest('[data-detail-check]')) {
+        closeModal('detail-modal');
+        openCheckModal(selectedItemId);
         return;
     }
 
@@ -327,8 +365,10 @@ function handleDetailClick(event) {
         return;
     }
 
-    if (event.target.closest('[data-toggle-item]')) toggleItemActive(selectedItemId);
+    if (event.target.closest('[data-delete-item]')) deleteItem(selectedItemId);
 }
+
+// ---------------------------------------------------------------- cadastro
 
 function openItemModal(item = null) {
     if (!canManage) return showToast('Você não tem permissão para cadastrar ou editar itens.', true);
@@ -336,20 +376,41 @@ function openItemModal(item = null) {
     els.itemForm.reset();
     els.itemForm.elements.itemId.value = item?.id || '';
     els.itemModalTitle.textContent = item ? 'Editar item' : 'Novo item';
-    els.initialQuantityGroup.classList.toggle('hidden', !!item);
-    els.itemForm.elements.initialQuantity.required = !item;
 
     if (item) {
-        ['name', 'category', 'unit', 'location', 'minQuantity', 'lot', 'expiryDate', 'notes'].forEach((field) => {
+        ['name', 'category', 'unit', 'location', 'notes'].forEach((field) => {
             els.itemForm.elements[field].value = item[field] ?? '';
         });
+        els.itemForm.elements.referenceQuantity.value = item.referenceQuantity ?? '';
+        els.itemForm.elements.durationValue.value = item.referenceDurationValue ?? '';
+        els.itemForm.elements.durationUnit.value = item.referenceDurationUnit || 'meses';
+        els.itemForm.elements.alertLeadDays.value = item.alertLeadDays ?? DEFAULT_ALERT_LEAD_DAYS;
     } else {
-        els.itemForm.elements.minQuantity.value = '0';
-        els.itemForm.elements.initialQuantity.value = '0';
+        els.itemForm.elements.durationUnit.value = 'meses';
+        els.itemForm.elements.alertLeadDays.value = DEFAULT_ALERT_LEAD_DAYS;
     }
 
+    updateCyclePreview();
     openModal('item-modal');
     setTimeout(() => els.itemForm.elements.name.focus(), 50);
+}
+
+function updateCyclePreview() {
+    if (!els.cyclePreview) return;
+
+    const quantity = toNumber(els.itemForm.elements.referenceQuantity.value);
+    const days = durationToDays(els.itemForm.elements.durationValue.value, els.itemForm.elements.durationUnit.value);
+    const unit = cleanText(els.itemForm.elements.unit.value) || 'un.';
+
+    if (quantity <= 0 || days <= 0) {
+        els.cyclePreview.textContent = 'Exemplo: 50 L de formol duram 3 meses. Se um dia a compra for de 100 L, o sistema já prevê 6 meses sozinho.';
+        els.cyclePreview.classList.remove('is-active');
+        return;
+    }
+
+    const double = formatDuration(days * 2);
+    els.cyclePreview.innerHTML = `Com essa referência, uma compra de <strong>${formatQuantity(quantity * 2)} ${escapeHtml(unit)}</strong> passa a durar <strong>${double}</strong>.`;
+    els.cyclePreview.classList.add('is-active');
 }
 
 async function saveItem(event) {
@@ -362,15 +423,20 @@ async function saveItem(event) {
 
     const formData = new FormData(els.itemForm);
     const itemId = formData.get('itemId');
+    const durationValue = toNumber(formData.get('durationValue'));
+    const durationUnit = formData.get('durationUnit') || 'meses';
+
     const payload = {
         name: cleanText(formData.get('name')),
         category: cleanText(formData.get('category')),
         unit: cleanText(formData.get('unit')),
         location: cleanText(formData.get('location')),
-        minQuantity: toNumber(formData.get('minQuantity')),
-        lot: cleanText(formData.get('lot')),
-        expiryDate: formData.get('expiryDate') || '',
         notes: cleanText(formData.get('notes')),
+        referenceQuantity: toNumber(formData.get('referenceQuantity')),
+        referenceDurationValue: durationValue,
+        referenceDurationUnit: durationUnit,
+        referenceDays: durationToDays(durationValue, durationUnit),
+        alertLeadDays: Math.round(toNumber(formData.get('alertLeadDays'))),
         updatedAt: serverTimestamp(),
         updatedBy: currentUser.uid,
         updatedByName: currentUserData.name || currentUser.email || ''
@@ -378,183 +444,232 @@ async function saveItem(event) {
 
     try {
         if (!payload.name || !payload.category || !payload.unit) throw new Error('Preencha nome, categoria e unidade.');
-        if (payload.minQuantity < 0) throw new Error('O estoque mínimo não pode ser negativo.');
+        if (payload.referenceQuantity <= 0) throw new Error('A quantidade de referência deve ser maior que zero.');
+        if (payload.referenceDays <= 0) throw new Error('Informe quanto tempo essa quantidade costuma durar.');
+        if (payload.alertLeadDays < 0) throw new Error('A antecedência do aviso não pode ser negativa.');
 
         if (itemId) {
             await updateDoc(doc(db, 'inventory_items', itemId), payload);
             showToast('Item atualizado com sucesso.');
         } else {
-            const initialQuantity = toNumber(formData.get('initialQuantity'));
-            if (initialQuantity < 0) throw new Error('A quantidade inicial não pode ser negativa.');
-            const itemRef = doc(collection(db, 'inventory_items'));
-            const batch = writeBatch(db);
-
-            batch.set(itemRef, {
+            await addDoc(collection(db, 'inventory_items'), {
                 ...payload,
-                currentQuantity: initialQuantity,
-                active: true,
+                lastPurchaseQuantity: 0,
+                lastPurchaseDate: '',
+                expectedEndDate: '',
+                expectedDurationDays: 0,
+                lastCheckDate: '',
+                snoozedUntil: '',
                 createdAt: serverTimestamp(),
                 createdBy: currentUser.uid,
                 createdByName: currentUserData.name || currentUser.email || ''
             });
-
-            if (initialQuantity > 0) {
-                const movementRef = doc(collection(db, 'inventory_movements'));
-                batch.set(movementRef, {
-                    itemId: itemRef.id,
-                    itemName: payload.name,
-                    unit: payload.unit,
-                    type: 'entrada',
-                    quantity: initialQuantity,
-                    delta: initialQuantity,
-                    previousQuantity: 0,
-                    resultingQuantity: initialQuantity,
-                    reason: 'Saldo inicial',
-                    lot: payload.lot,
-                    expiryDate: payload.expiryDate,
-                    createdAt: serverTimestamp(),
-                    createdBy: currentUser.uid,
-                    createdByName: currentUserData.name || currentUser.email || ''
-                });
-            }
-
-            await batch.commit();
-            showToast('Item cadastrado com sucesso.');
+            showToast('Item cadastrado. Registre a compra atual para começar a contagem.');
         }
 
         closeModal('item-modal');
     } catch (error) {
         console.error('Erro ao salvar item:', error);
-        showToast(error.message || 'Não foi possível salvar o item.', true);
+        showToast(describeError(error, 'Não foi possível salvar o item.'), true);
     } finally {
         setLoading(submit, false, original);
     }
 }
 
-function configureMovementPermissions() {
-    document.querySelectorAll('[data-movement-option]').forEach((option) => {
-        const type = option.dataset.movementOption;
-        option.classList.toggle('hidden', !canManage && type !== 'saida');
-    });
+// Item sem referência de duração não pode receber compra nem conferência: o
+// banco rejeita a gravação (a regra exige a referência) e a previsão não teria
+// como ser calculada. Acontece com item vindo do modelo antigo de saldo —
+// aqui a professora é levada direto ao cadastro para completar.
+function requireReference(item) {
+    if (getCycleInfo(item).hasReference) return true;
 
-    if (!canManage) {
-        const output = els.movementForm.querySelector('input[value="saida"]');
-        if (output) output.checked = true;
-    }
+    showToast('Este item ainda não tem referência de duração. Preencha quanto se compra e quanto tempo dura.', true);
+    openItemModal(item);
+    return false;
 }
 
-function openMovementModal(itemId, preferredType = 'saida') {
+// ----------------------------------------------------------------- compras
+
+function openPurchaseModal(itemId) {
     const item = allItems.find((candidate) => candidate.id === itemId);
-    if (!item || item.active === false) return showToast('Este item não está disponível para movimentação.', true);
+    if (!item) return;
+    if (!canManage) return showToast('Você não tem permissão para registrar compras.', true);
+    if (!requireReference(item)) return;
 
-    const type = canManage ? preferredType : 'saida';
-    els.movementForm.reset();
-    els.movementForm.elements.itemId.value = itemId;
-    const typeInput = els.movementForm.querySelector(`input[name="type"][value="${type}"]`);
-    if (typeInput) typeInput.checked = true;
+    els.purchaseForm.reset();
+    els.purchaseForm.elements.itemId.value = itemId;
+    els.purchaseForm.elements.purchaseDate.value = todayString();
+    els.purchaseForm.elements.quantity.value = item.referenceQuantity ?? '';
+    els.purchaseItemLabel.textContent = item.name;
+    els.purchaseQuantityLabel.textContent = `Quantidade comprada (${item.unit}) *`;
 
-    els.movementItemLabel.textContent = item.name;
-    els.movementBalance.textContent = `${formatQuantity(item.currentQuantity)} ${item.unit}`;
-    syncMovementFields();
-    openModal('movement-modal');
-    setTimeout(() => els.movementForm.elements.quantity.focus(), 50);
+    updatePurchasePreview();
+    openModal('purchase-modal');
+    setTimeout(() => els.purchaseForm.elements.quantity.select(), 50);
 }
 
-function syncMovementFields() {
-    const type = els.movementForm.elements.type.value || 'saida';
-    els.movementQuantityLabel.textContent = type === 'ajuste' ? 'Nova quantidade *' : 'Quantidade *';
-    els.movementForm.elements.quantity.min = type === 'ajuste' ? '0' : '0.000001';
-    document.querySelectorAll('.entry-extra').forEach((field) => field.classList.toggle('hidden', type !== 'entrada'));
+function updatePurchasePreview() {
+    const item = allItems.find((candidate) => candidate.id === els.purchaseForm.elements.itemId.value);
+    if (!item || !els.purchasePreview) return;
+
+    const quantity = toNumber(els.purchaseForm.elements.quantity.value);
+    const purchaseDate = els.purchaseForm.elements.purchaseDate.value;
+    const preview = getCycleInfo({ ...item, lastPurchaseQuantity: quantity, lastPurchaseDate: purchaseDate });
+
+    if (!preview.hasPurchase) {
+        els.purchasePreview.textContent = 'Informe a quantidade e a data para ver a previsão.';
+        els.purchasePreview.classList.remove('is-active');
+        return;
+    }
+
+    els.purchasePreview.innerHTML = `Pela referência de ${formatQuantity(preview.referenceQuantity)} ${escapeHtml(item.unit)} a cada ${formatDuration(preview.referenceDays)}, essa compra deve durar <strong>${formatDuration(preview.expectedDays)}</strong> — até <strong>${formatDate(preview.expectedEndDate)}</strong>. O aviso aparece no hub ${formatDays(preview.alertLeadDays)} antes.`;
+    els.purchasePreview.classList.add('is-active');
 }
 
-async function saveMovement(event) {
+async function savePurchase(event) {
     event.preventDefault();
+    if (!canManage) return;
 
-    const submit = els.movementForm.querySelector('button[type="submit"]');
+    const submit = els.purchaseForm.querySelector('button[type="submit"]');
     const original = submit.innerHTML;
-    const formData = new FormData(els.movementForm);
-    const itemId = formData.get('itemId');
-    const requestedType = formData.get('type');
-    const type = canManage ? requestedType : 'saida';
-    const quantityInput = toNumber(formData.get('quantity'));
-    const reason = cleanText(formData.get('reason'));
-    const lot = cleanText(formData.get('lot'));
-    const expiryDate = formData.get('expiryDate') || '';
-
     setLoading(submit, true);
 
+    const formData = new FormData(els.purchaseForm);
+    const itemId = formData.get('itemId');
+    const quantity = toNumber(formData.get('quantity'));
+    const purchaseDate = formData.get('purchaseDate') || '';
+    const notes = cleanText(formData.get('notes'));
+
     try {
-        if (!reason) throw new Error('Informe o motivo da movimentação.');
-        if (type !== 'ajuste' && quantityInput <= 0) throw new Error('A quantidade deve ser maior que zero.');
-        if (type === 'ajuste' && quantityInput < 0) throw new Error('A nova quantidade não pode ser negativa.');
+        const item = allItems.find((candidate) => candidate.id === itemId);
+        if (!item) throw new Error('Item não encontrado.');
+        if (quantity <= 0) throw new Error('A quantidade comprada deve ser maior que zero.');
+        if (!purchaseDate) throw new Error('Informe a data da compra.');
 
-        const itemRef = doc(db, 'inventory_items', itemId);
-        const movementRef = doc(collection(db, 'inventory_movements'));
+        const cycle = getCycleInfo({ ...item, lastPurchaseQuantity: quantity, lastPurchaseDate: purchaseDate });
+        if (!cycle.hasPurchase) throw new Error('Defina a referência de duração do item antes de registrar a compra.');
 
-        await runTransaction(db, async (transaction) => {
-            const itemSnapshot = await transaction.get(itemRef);
-            if (!itemSnapshot.exists()) throw new Error('Item não encontrado.');
-
-            const item = itemSnapshot.data();
-            if (item.active === false) throw new Error('Este item está inativo.');
-
-            const previousQuantity = toNumber(item.currentQuantity);
-            let resultingQuantity = previousQuantity;
-
-            if (type === 'entrada') resultingQuantity += quantityInput;
-            if (type === 'saida') resultingQuantity -= quantityInput;
-            if (type === 'ajuste') resultingQuantity = quantityInput;
-
-            if (resultingQuantity < 0) throw new Error('A saída é maior que o saldo disponível.');
-            if (resultingQuantity === previousQuantity) throw new Error('A movimentação não altera o saldo.');
-
-            const delta = resultingQuantity - previousQuantity;
-            const updatePayload = {
-                currentQuantity: resultingQuantity,
-                lastMovementId: movementRef.id,
-                updatedAt: serverTimestamp(),
-                updatedBy: currentUser.uid,
-                updatedByName: currentUserData.name || currentUser.email || ''
-            };
-
-            if (type === 'entrada' && lot) updatePayload.lot = lot;
-            if (type === 'entrada' && expiryDate) updatePayload.expiryDate = expiryDate;
-
-            transaction.update(itemRef, updatePayload);
-            transaction.set(movementRef, {
-                itemId,
-                itemName: item.name,
-                unit: item.unit,
-                type,
-                quantity: type === 'ajuste' ? Math.abs(delta) : quantityInput,
-                delta,
-                previousQuantity,
-                resultingQuantity,
-                reason,
-                lot: type === 'entrada' ? lot : '',
-                expiryDate: type === 'entrada' ? expiryDate : '',
-                createdAt: serverTimestamp(),
-                createdBy: currentUser.uid,
-                createdByName: currentUserData.name || currentUser.email || ''
-            });
+        await updateDoc(doc(db, 'inventory_items', itemId), {
+            lastPurchaseQuantity: quantity,
+            lastPurchaseDate: purchaseDate,
+            expectedDurationDays: cycle.expectedDays,
+            expectedEndDate: cycle.expectedEndDate,
+            // Compra nova reinicia a contagem: qualquer adiamento antigo perde o sentido.
+            snoozedUntil: '',
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser.uid,
+            updatedByName: currentUserData.name || currentUser.email || ''
         });
 
-        closeModal('movement-modal');
-        showToast('Movimentação registrada com sucesso.');
+        await logEvent(item, {
+            type: 'compra',
+            quantity,
+            purchaseDate,
+            expectedDurationDays: cycle.expectedDays,
+            expectedEndDate: cycle.expectedEndDate,
+            notes
+        });
+
+        closeModal('purchase-modal');
+        showToast(`Compra registrada. Previsão até ${formatDate(cycle.expectedEndDate)}.`);
     } catch (error) {
-        console.error('Erro ao movimentar estoque:', error);
-        showToast(error.message || 'Não foi possível registrar a movimentação.', true);
+        console.error('Erro ao registrar compra:', error);
+        showToast(describeError(error, 'Não foi possível registrar a compra.'), true);
     } finally {
         setLoading(submit, false, original);
     }
 }
+
+// ------------------------------------------------------------ conferências
+
+function openCheckModal(itemId) {
+    const item = allItems.find((candidate) => candidate.id === itemId);
+    if (!item) return;
+    if (!canManage) return showToast('Você não tem permissão para registrar conferências.', true);
+    if (!requireReference(item)) return;
+
+    els.checkForm.reset();
+    els.checkForm.elements.itemId.value = itemId;
+    els.checkItemLabel.textContent = item.name;
+    syncCheckFields();
+    openModal('check-modal');
+}
+
+function syncCheckFields() {
+    const isCustom = els.checkForm.elements.remindInDays.value === 'custom';
+    els.checkCustomGroup.classList.toggle('hidden', !isCustom);
+    els.checkForm.elements.customDays.required = isCustom;
+}
+
+async function saveCheck(event) {
+    event.preventDefault();
+    if (!canManage) return;
+
+    const submit = els.checkForm.querySelector('button[type="submit"]');
+    const original = submit.innerHTML;
+    setLoading(submit, true);
+
+    const formData = new FormData(els.checkForm);
+    const itemId = formData.get('itemId');
+    const choice = formData.get('remindInDays');
+    const days = Math.round(choice === 'custom' ? toNumber(formData.get('customDays')) : toNumber(choice));
+    const notes = cleanText(formData.get('notes'));
+
+    try {
+        const item = allItems.find((candidate) => candidate.id === itemId);
+        if (!item) throw new Error('Item não encontrado.');
+        if (days <= 0) throw new Error('Informe em quantos dias o aviso deve voltar.');
+
+        const today = todayString();
+        const snoozedUntil = addDays(today, days);
+
+        await updateDoc(doc(db, 'inventory_items', itemId), {
+            lastCheckDate: today,
+            snoozedUntil,
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser.uid,
+            updatedByName: currentUserData.name || currentUser.email || ''
+        });
+
+        await logEvent(item, {
+            type: 'conferencia',
+            checkDate: today,
+            remindInDays: days,
+            snoozedUntil,
+            notes
+        });
+
+        closeModal('check-modal');
+        showToast(`Conferência registrada. O aviso volta em ${formatDate(snoozedUntil)}.`);
+    } catch (error) {
+        console.error('Erro ao registrar conferência:', error);
+        showToast(describeError(error, 'Não foi possível registrar a conferência.'), true);
+    } finally {
+        setLoading(submit, false, original);
+    }
+}
+
+function logEvent(item, data) {
+    return addDoc(collection(db, 'inventory_events'), {
+        itemId: item.id,
+        itemName: item.name,
+        unit: item.unit || '',
+        createdAt: serverTimestamp(),
+        createdBy: currentUser.uid,
+        createdByName: currentUserData.name || currentUser.email || '',
+        ...data
+    });
+}
+
+// ---------------------------------------------------------------- detalhes
 
 async function openDetail(itemId) {
     const item = allItems.find((candidate) => candidate.id === itemId);
     if (!item) return;
 
     selectedItemId = itemId;
-    const status = getItemStatus(item);
+    const cycle = getCycleInfo(item);
+    const status = getItemStatus(item, cycle);
 
     els.detailContent.innerHTML = `
         <div class="inventory-modal-header">
@@ -563,108 +678,120 @@ async function openDetail(itemId) {
         </div>
         <div class="detail-hero">
             <div class="detail-hero-top">
-                ${renderStatusBadge(status)}
-                <span class="item-meta">${item.active === false ? 'Item arquivado' : 'Item ativo'}</span>
+                ${renderStatusBadge(status, cycle)}
+                <span class="item-meta">${escapeHtml(item.location || 'Sem localização')}</span>
             </div>
             <div class="detail-balance-row">
                 <div>
-                    <div class="item-meta">Saldo disponível</div>
-                    <div class="detail-balance">${formatQuantity(item.currentQuantity)} ${escapeHtml(item.unit)}</div>
-                    <div class="item-meta">Mínimo: ${formatQuantity(item.minQuantity)} ${escapeHtml(item.unit)}</div>
+                    <div class="item-meta">Previsão de término</div>
+                    <div class="detail-balance">${cycle.hasPurchase ? formatDate(cycle.expectedEndDate) : '—'}</div>
+                    <div class="item-meta">${describeDeadline(cycle)}${cycle.hasPurchase ? ` · ciclo de ${formatDuration(cycle.expectedDays)}` : ''}</div>
                 </div>
                 <div class="detail-actions">
-                    ${item.active !== false ? `<button class="btn btn-secondary" data-detail-move="saida"><i class="fas fa-arrow-up"></i> Saída</button>` : ''}
-                    ${item.active !== false && canManage ? `<button class="btn btn-secondary" data-detail-move="entrada"><i class="fas fa-arrow-down"></i> Entrada</button>` : ''}
-                    ${item.active !== false && canManage ? `<button class="btn btn-secondary" data-detail-move="ajuste"><i class="fas fa-sliders"></i> Ajuste</button>` : ''}
+                    ${canManage ? `<button class="btn btn-primary" data-detail-purchase><i class="fas fa-cart-shopping"></i> Registrar compra</button>` : ''}
+                    ${canManage ? `<button class="btn btn-secondary" data-detail-check><i class="fas fa-clipboard-check"></i> Conferi</button>` : ''}
                 </div>
             </div>
+            ${cycle.hasPurchase ? `<div class="cycle-bar detail-cycle-bar"><span class="cycle-bar-fill ${cycle.daysLeft < 0 ? 'is-late' : (cycle.daysLeft <= cycle.alertLeadDays ? 'is-near' : 'is-ok')}" style="width:${Math.round(cycle.progress * 100)}%"></span></div>` : ''}
         </div>
         <div class="detail-grid">
+            ${detailInfo('Referência', cycle.hasReference ? `${formatQuantity(cycle.referenceQuantity)} ${item.unit} ≈ ${formatDuration(cycle.referenceDays)}` : 'Não definida')}
+            ${detailInfo('Última compra', cycle.hasPurchase ? `${formatQuantity(cycle.quantity)} ${item.unit} em ${formatDate(cycle.purchaseDate)}` : 'Nenhuma')}
+            ${detailInfo('Aviso no hub', `${formatDays(cycle.alertLeadDays)} antes do fim`)}
+            ${detailInfo('Última conferência', item.lastCheckDate ? formatDate(item.lastCheckDate) : 'Nenhuma')}
             ${detailInfo('Localização', item.location || 'Não informada')}
-            ${detailInfo('Lote atual', item.lot || 'Não informado')}
-            ${detailInfo('Validade atual', formatDate(item.expiryDate))}
-            ${detailInfo('Categoria', item.category || 'Não informada')}
-            ${detailInfo('Unidade', item.unit || 'Não informada')}
             ${detailInfo('Observações', item.notes || 'Nenhuma')}
         </div>
         ${canManage ? `
             <div class="detail-actions" style="margin-bottom:18px;">
                 <button class="btn btn-secondary" data-edit-item><i class="fas fa-pen"></i> Editar cadastro</button>
-                <button class="btn btn-secondary" data-toggle-item style="color:${item.active === false ? 'var(--color-success)' : 'var(--color-error)'};">
-                    <i class="fas ${item.active === false ? 'fa-box-open' : 'fa-box-archive'}"></i>
-                    ${item.active === false ? 'Reativar item' : 'Arquivar item'}
+                <button class="btn btn-secondary" data-delete-item style="color:var(--color-error);">
+                    <i class="fas fa-trash"></i> Excluir item
                 </button>
             </div>` : ''}
-        <h3 class="history-title">Histórico de movimentações</h3>
-        <div id="movement-history" class="movement-history">
+        <h3 class="history-title">Histórico</h3>
+        <div id="event-history" class="history-list">
             <div class="inventory-empty" style="min-height:120px;padding:1rem;"><i class="fas fa-spinner fa-spin" style="font-size:1.2rem;"></i></div>
         </div>`;
 
     openModal('detail-modal');
-    await loadMovementHistory(itemId);
+    await loadEventHistory(itemId);
 }
 
-async function loadMovementHistory(itemId) {
-    const container = document.getElementById('movement-history');
+async function loadEventHistory(itemId) {
+    const container = document.getElementById('event-history');
     if (!container) return;
 
     try {
-        const snapshot = await getDocs(query(collection(db, 'inventory_movements'), where('itemId', '==', itemId)));
-        const movements = snapshot.docs
-            .map((movementDoc) => ({ id: movementDoc.id, ...movementDoc.data() }))
+        const snapshot = await getDocs(query(collection(db, 'inventory_events'), where('itemId', '==', itemId)));
+        const events = snapshot.docs
+            .map((eventDoc) => ({ id: eventDoc.id, ...eventDoc.data() }))
             .sort((a, b) => timestampMillis(b.createdAt) - timestampMillis(a.createdAt));
 
-        if (!movements.length) {
-            container.innerHTML = '<div class="item-meta" style="padding:12px 0;">Nenhuma movimentação registrada.</div>';
+        if (!events.length) {
+            container.innerHTML = '<div class="item-meta" style="padding:12px 0;">Nenhuma compra ou conferência registrada.</div>';
             return;
         }
 
-        container.innerHTML = movements.map((movement) => `
-            <div class="movement-row">
-                <div class="movement-kind ${escapeAttr(movement.type)}">${escapeHtml(movement.type)}</div>
-                <div class="movement-description">
-                    <strong>${escapeHtml(movement.reason || 'Sem motivo informado')}</strong>
-                    <small>${escapeHtml(movement.createdByName || 'Usuário')} · ${formatTimestamp(movement.createdAt)}</small>
-                </div>
-                <div class="movement-result">
-                    ${movement.delta > 0 ? '+' : ''}${formatQuantity(movement.delta)} ${escapeHtml(movement.unit || '')}
-                    <small>saldo ${formatQuantity(movement.resultingQuantity)}</small>
-                </div>
-            </div>`).join('');
+        container.innerHTML = events.map(renderEventRow).join('');
     } catch (error) {
-        console.error('Erro ao carregar movimentações:', error);
+        console.error('Erro ao carregar histórico:', error);
         container.innerHTML = '<div class="item-meta" style="padding:12px 0;">Não foi possível carregar o histórico.</div>';
     }
 }
 
-async function toggleItemActive(itemId) {
+function renderEventRow(event) {
+    const isPurchase = event.type === 'compra';
+    const title = isPurchase
+        ? `${formatQuantity(event.quantity)} ${escapeHtml(event.unit || '')} comprados`
+        : 'Conferido no laboratório';
+    const result = isPurchase
+        ? `<div>${formatDuration(event.expectedDurationDays)}<small>até ${formatDate(event.expectedEndDate)}</small></div>`
+        : `<div>+${formatDays(event.remindInDays)}<small>avisar em ${formatDate(event.snoozedUntil)}</small></div>`;
+
+    return `
+        <div class="history-row">
+            <div class="history-kind ${isPurchase ? 'compra' : 'conferencia'}">${isPurchase ? 'Compra' : 'Conferência'}</div>
+            <div class="history-description">
+                <strong>${title}</strong>
+                <small>${escapeHtml(event.createdByName || 'Usuário')} · ${formatTimestamp(event.createdAt)}${event.notes ? ` · ${escapeHtml(event.notes)}` : ''}</small>
+            </div>
+            <div class="history-result">${result}</div>
+        </div>`;
+}
+
+// O item sai de vez, junto com as compras e conferências dele: sem controle de
+// saldo, o histórico de um produto que não está mais no laboratório não serve
+// de nada — só sobraria como lixo no banco.
+async function deleteItem(itemId) {
     if (!canManage) return;
     const item = allItems.find((candidate) => candidate.id === itemId);
     if (!item) return;
 
-    const willActivate = item.active === false;
-    const question = willActivate
-        ? `Reativar “${item.name}”?`
-        : `Arquivar “${item.name}”? O histórico será preservado.`;
+    const question = `Excluir “${item.name}”?\n\nO item e todo o histórico de compras e conferências serão apagados. Não há como desfazer.`;
     if (!confirm(question)) return;
 
     try {
-        await updateDoc(doc(db, 'inventory_items', itemId), {
-            active: willActivate,
-            updatedAt: serverTimestamp(),
-            updatedBy: currentUser.uid,
-            updatedByName: currentUserData.name || currentUser.email || ''
-        });
-        showToast(willActivate ? 'Item reativado.' : 'Item arquivado.');
+        const snapshot = await getDocs(query(collection(db, 'inventory_events'), where('itemId', '==', itemId)));
+        const batch = writeBatch(db);
+        snapshot.forEach((eventDoc) => batch.delete(eventDoc.ref));
+        batch.delete(doc(db, 'inventory_items', itemId));
+        await batch.commit();
+
+        selectedItemId = null;
+        closeModal('detail-modal');
+        showToast('Item excluído.');
     } catch (error) {
-        console.error(error);
-        showToast('Não foi possível alterar o item.', true);
+        console.error('Erro ao excluir item:', error);
+        showToast(describeError(error, 'Não foi possível excluir o item.'), true);
     }
 }
 
 function detailInfo(label, value) {
     return `<div class="detail-info"><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong></div>`;
 }
+
+// -------------------------------------------------------------- auxiliares
 
 function openModal(id) {
     document.getElementById(id)?.classList.remove('hidden');
@@ -684,7 +811,16 @@ function showToast(message, isError = false) {
     els.toast.textContent = message;
     els.toast.classList.toggle('error', isError);
     els.toast.classList.add('show');
-    toastTimer = setTimeout(() => els.toast.classList.remove('show'), 3500);
+    toastTimer = setTimeout(() => els.toast.classList.remove('show'), 4000);
+}
+
+// "Missing or insufficient permissions" não diz nada para quem usa o app — e
+// no estoque a recusa quase sempre tem duas causas concretas.
+function describeError(error, fallback) {
+    if (error?.code === 'permission-denied') {
+        return 'O banco recusou a gravação. Verifique se as regras do Firestore foram publicadas e se o item tem a referência de duração preenchida.';
+    }
+    return error?.message || fallback;
 }
 
 function cleanText(value) {
@@ -696,21 +832,6 @@ function normalizeText(value) {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase();
-}
-
-function toNumber(value) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function formatQuantity(value) {
-    return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 }).format(toNumber(value));
-}
-
-function formatDate(value) {
-    if (!value) return 'Não informada';
-    const date = new Date(`${value}T12:00:00`);
-    return Number.isNaN(date.getTime()) ? 'Não informada' : date.toLocaleDateString('pt-BR');
 }
 
 function timestampMillis(value) {

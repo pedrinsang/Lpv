@@ -1,6 +1,6 @@
 // Trocar a versão descarta o cache anterior na ativação. Suba um número sempre
 // que um arquivo da lista abaixo mudar de conteúdo.
-const CACHE_NAME = 'lpv-ultra-fast-v14';
+const CACHE_NAME = 'lpv-ultra-fast-v16';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

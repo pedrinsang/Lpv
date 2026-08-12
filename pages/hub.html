@@ -96,32 +96,11 @@
                             <span class="inventory-hub-icon"><i class="fas fa-boxes-stacked"></i></span>
                             <div>
                                 <strong>Estoque</strong>
-                                <small>Materiais que precisam de atenção</small>
+                                <small id="hub-stock-subtitle">Carregando prazos...</small>
                             </div>
                             <i class="fas fa-chevron-right inventory-hub-arrow"></i>
                         </div>
-                        <div class="inventory-hub-stats">
-                            <div class="inventory-hub-stat stat-zero">
-                                <span class="inventory-hub-stat-icon"><i class="fas fa-ban"></i></span>
-                                <strong id="hub-stock-zero">0</strong>
-                                <span class="inventory-hub-stat-label">Zerados</span>
-                            </div>
-                            <div class="inventory-hub-stat stat-expired">
-                                <span class="inventory-hub-stat-icon"><i class="fas fa-calendar-xmark"></i></span>
-                                <strong id="hub-stock-expired">0</strong>
-                                <span class="inventory-hub-stat-label">Vencidos</span>
-                            </div>
-                            <div class="inventory-hub-stat stat-low">
-                                <span class="inventory-hub-stat-icon"><i class="fas fa-arrow-trend-down"></i></span>
-                                <strong id="hub-stock-low">0</strong>
-                                <span class="inventory-hub-stat-label">Estoque baixo</span>
-                            </div>
-                            <div class="inventory-hub-stat stat-expiring">
-                                <span class="inventory-hub-stat-icon"><i class="fas fa-hourglass-half"></i></span>
-                                <strong id="hub-stock-expiring">0</strong>
-                                <span class="inventory-hub-stat-label">Vencendo</span>
-                            </div>
-                        </div>
+                        <div id="hub-stock-alerts" class="inventory-hub-alerts"></div>
                     </a>
                 </aside>
 

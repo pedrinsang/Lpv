@@ -643,18 +643,19 @@
     font-size: 0.75rem;
 }
 
-.inventory-hub-stats {
+.inventory-hub-alerts {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 7px;
 }
 
-/* Uma linha por alerta: a trilha tem só este cartão, então ele ocupa a
-   coluna na vertical em vez de espremer quatro tiles num grid. */
-.inventory-hub-stat {
-    flex: 1 1 0;
+/* Uma linha por produto perto do fim do prazo previsto. A trilha tem só este
+   cartão, então a lista ocupa a coluna na vertical. */
+.inventory-hub-alert {
+    flex: 1 1 auto;
     min-height: 44px;
+    max-height: 62px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -662,64 +663,81 @@
     border: 1px solid var(--border-glass);
     border-radius: 10px;
     background: rgba(15, 23, 42, 0.5);
-    transition: border-color var(--duration-fast) ease, background var(--duration-fast) ease;
 }
 
-.inventory-hub-stat-icon {
+.inventory-hub-alert-icon {
     width: 26px;
     height: 26px;
     flex: 0 0 26px;
     display: grid;
     place-items: center;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--alert-accent, rgba(255, 255, 255, 0.05));
+    color: #0f172a;
     font-size: 0.7rem;
 }
 
-.inventory-hub-stat strong {
-    font-size: 1.15rem;
-    line-height: 1;
+.inventory-hub-alert-text {
+    min-width: 0;
+}
+
+/* O nome do reagente pode ser longo; a linha corta em vez de quebrar o cartão. */
+.inventory-hub-alert-text strong,
+.inventory-hub-alert-text small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.inventory-hub-alert-text strong {
+    font-size: 0.82rem;
     color: var(--text-primary);
 }
 
-.inventory-hub-stat-label {
-    margin-left: auto;
-    text-align: right;
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+.inventory-hub-alert-text small {
+    margin-top: 2px;
+    font-size: 0.68rem;
     color: var(--text-tertiary);
 }
 
-.inventory-hub-stat.stat-low,
-.inventory-hub-stat.stat-expiring {
-    --stat-accent: #fbbf24;
-    color: #fbbf24;
-}
-
-.inventory-hub-stat.stat-zero,
-.inventory-hub-stat.stat-expired {
-    --stat-accent: #f87171;
-    color: #f87171;
-}
-
-.inventory-hub-stat.has-alert {
+.inventory-hub-alert.is-near {
+    --alert-accent: #fbbf24;
+    border-color: rgba(251, 191, 36, 0.55);
     background: rgba(245, 158, 11, 0.07);
-    border-color: #fbbf24;
 }
 
-.inventory-hub-stat.stat-zero.has-alert,
-.inventory-hub-stat.stat-expired.has-alert {
+.inventory-hub-alert.is-late {
+    --alert-accent: #f87171;
+    border-color: rgba(248, 113, 113, 0.55);
     background: rgba(239, 68, 68, 0.07);
-    border-color: #f87171;
 }
 
-/* Preenche pelo --stat-accent e não por currentColor: a própria regra troca o
-   color para escurecer o glifo, o que zeraria o fundo. */
-.inventory-hub-stat.has-alert .inventory-hub-stat-icon {
-    background: var(--stat-accent);
-    color: #0f172a;
+.inventory-hub-more {
+    text-align: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+}
+
+.inventory-hub-empty {
+    flex: 1;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px dashed var(--border-glass);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+}
+
+.inventory-hub-empty i {
+    color: var(--color-success, #6ee7b7);
+    font-size: 0.9rem;
 }
 
 /* =========================================
@@ -763,23 +781,20 @@
         flex: 0 0 auto;
     }
 
-    .inventory-hub-stat {
-        min-height: 0;
-    }
-
     /* Empilhado o cartão é largo: os alertas voltam a ficar lado a lado. */
-    .inventory-hub-stats {
+    .inventory-hub-alerts {
         flex-direction: row;
+        flex-wrap: wrap;
     }
 
-    .inventory-hub-stat {
-        flex: 1 1 0;
+    .inventory-hub-alert {
+        flex: 1 1 calc(50% - 4px);
         min-width: 0;
+        max-height: none;
     }
 
-    .inventory-hub-stat-label {
-        margin-left: 0;
-        text-align: left;
+    .inventory-hub-more {
+        flex: 1 1 100%;
     }
 }
 
@@ -839,12 +854,14 @@
         scroll-snap-align: start;
     }
 
-    .inventory-hub-stats {
-        flex-wrap: wrap;
+    /* No celular a tela é estreita: nome do produto e prazo só cabem numa
+       linha inteira por alerta. */
+    .inventory-hub-alerts {
+        flex-direction: column;
     }
 
-    .inventory-hub-stat {
-        flex: 1 1 calc(50% - 4px);
+    .inventory-hub-alert {
+        flex: 0 0 auto;
     }
 
     /* 1. Botão Hambúrguer Visível */
