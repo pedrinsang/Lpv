@@ -102,11 +102,20 @@ function initThemeSystem() {
 onAuthStateChanged(auth, async (user) => {
     const currentPath = window.location.pathname;
     const isPagesDir = currentPath.includes('/pages/');
-    const isPublicPage = currentPath.includes('auth.html') ||
-                         currentPath.endsWith('/') ||
-                         currentPath.includes('index.html');
-    
-    const isAuthPage = currentPath.includes('auth.html');
+
+    // Qual página está aberta, pelo nome do arquivo e sem a extensão.
+    //
+    // Procurar a string "auth.html" no caminho não serve: hospedagem com "clean
+    // URLs" (Vercel com a opção ligada, e o `npx serve` do desenvolvimento
+    // local) entrega /pages/auth.html como /pages/auth. Sem o ".html" a tela de
+    // login se achava página privada, e um visitante deslogado era mandado para
+    // o login — de onde era mandado para o login de novo, sem parar.
+    const pagina = (currentPath.split('/').pop() || '').replace(/\.html$/, '');
+
+    const isAuthPage = pagina === 'auth';
+    const isHubPage = pagina === 'hub';
+    // Raiz do site ("" depois do split) e index são as páginas abertas.
+    const isPublicPage = isAuthPage || pagina === '' || pagina === 'index';
 
     if (user) {
         // --- LOGADO ---
@@ -130,12 +139,13 @@ onAuthStateChanged(auth, async (user) => {
                 return;
             }
 
-            if (status === 'active' && (isAuthPage || currentPath.endsWith('/'))) {
+            // Quem já está logado não fica na porta de entrada: vai para o Hub.
+            if (status === 'active' && (isAuthPage || pagina === '' || pagina === 'index')) {
                 window.location.href = isPagesDir ? 'hub.html' : 'pages/hub.html';
                 return;
             }
 
-            if (!isPublicPage || currentPath.includes('hub.html')) {
+            if (!isPublicPage || isHubPage) {
                 loadUserInterface(data, user.uid);
             }
 
@@ -155,7 +165,7 @@ onAuthStateChanged(auth, async (user) => {
                 window.currentUserRoles = liveRoles;
                 window.currentUserRole = primaryRole(liveData.role);
 
-                if (!isPublicPage || currentPath.includes('hub.html')) {
+                if (!isPublicPage || isHubPage) {
                     loadUserInterface(liveData, user.uid);
                 }
             }, (err) => {

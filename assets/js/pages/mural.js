@@ -48,7 +48,9 @@ let currentUid = null;
 // --- INICIALIZAÇÃO ---
 onAuthStateChanged(auth, async (user) => {
     if (!user) {
-        window.location.href = '../auth.html';
+        // O Mural mora em /pages/, então o login é irmão dele. Com "../" a conta
+        // subia um nível a mais e caía num /auth.html que não existe.
+        window.location.href = 'auth.html';
         return;
     }
 
