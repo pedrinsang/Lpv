@@ -25,22 +25,51 @@
         hostAntigo: 'pedrinsang.github.io',
         baseAntiga: '/Lpv',
 
-        // Endereço novo, sem barra no fim. Ex.: 'https://lpv-digital.vercel.app'
-        enderecoNovo: 'lpvdigital.vercel.app'
+        // Endereço novo. Com ou sem protocolo — veja `origemDestino`.
+        enderecoNovo: 'https://lpvdigital.vercel.app'
     };
 
-    if (!MIGRACAO.enderecoNovo) return;
+    /**
+     * Reduz o que está escrito acima a uma origem absoluta ("https://host").
+     *
+     * O protocolo não é detalhe de estilo. Sem ele, "lpvdigital.vercel.app/x" é
+     * um caminho RELATIVO: o navegador resolve dentro da origem antiga e a
+     * pessoa vai parar em pedrinsang.github.io/Lpv/lpvdigital.vercel.app/x, que
+     * é 404. E como a limpeza do cache acontece antes da saída, ela fica num 404
+     * sem volta automática.
+     *
+     * Em vez de confiar que a constante foi escrita certa, ela é normalizada
+     * aqui; se ainda assim não virar URL válida, a migração não acontece.
+     * Deixar alguém no endereço antigo funcionando é muito melhor do que
+     * despachar para o vazio.
+     */
+    function origemDestino(valor) {
+        var texto = String(valor || '').trim();
+        if (!texto) return '';
+        if (!/^https?:\/\//i.test(texto)) texto = 'https://' + texto;
+        try {
+            return new URL(texto).origin;
+        } catch (erro) {
+            return '';
+        }
+    }
+
+    var origemNova = origemDestino(MIGRACAO.enderecoNovo);
+
+    if (!origemNova) return;
     if (window.location.hostname !== MIGRACAO.hostAntigo) return;
+    // Destino apontando de volta para o host antigo mandaria a página para si
+    // mesma, sem parar.
+    if (origemNova.indexOf('//' + MIGRACAO.hostAntigo) !== -1) return;
 
     // O endereço novo serve na raiz, então o prefixo /Lpv/ sai do caminho.
     var caminho = window.location.pathname;
     if (caminho.indexOf(MIGRACAO.baseAntiga) === 0) {
         caminho = caminho.slice(MIGRACAO.baseAntiga.length);
     }
-    if (!caminho) caminho = '/';
+    if (caminho.charAt(0) !== '/') caminho = '/' + caminho;
 
-    var destino = MIGRACAO.enderecoNovo.replace(/\/$/, '') +
-                  caminho + window.location.search + window.location.hash;
+    var destino = origemNova + caminho + window.location.search + window.location.hash;
 
     function limpar() {
         var tarefas = [];
