@@ -14,19 +14,44 @@ Abra http://localhost:5500. A página de login é [pages/auth.html](pages/auth.h
 
 ## Publicação
 
-O site é servido pelo **GitHub Pages**, da branch `main`, pasta raiz:
-
-- Endereço: https://pedrinsang.github.io/Lpv/
-- Publicar = dar push na `main`. Não há build nem workflow de deploy.
-
-O detalhe que morde: o app fica em **`/Lpv/`**, não na raiz do domínio. Todo caminho
-escrito à mão precisa ser relativo — um `/assets/...` ou `/pages/...` funciona no
-`npx serve` local e quebra em produção. Foi o que aconteceu com a lista de arquivos
-do [sw.js](sw.js): os caminhos absolutos davam 404, a instalação do service worker
-falhava inteira e o app ficava sem cache e sem o convite de instalação do PWA.
+Site estático, sem build: publicar é dar push na `main`.
 
 O Firebase Hosting não é usado — o [firebase.json](firebase.json) existe só para
 publicar as regras do Firestore.
+
+**Todo caminho escrito à mão precisa ser relativo.** Um `/assets/...` ou
+`/pages/...` funciona no `npx serve` local e quebra assim que o app é servido de
+uma subpasta. Foi o que aconteceu com a lista de arquivos do [sw.js](sw.js) no
+GitHub Pages: os caminhos absolutos davam 404, a instalação do service worker
+falhava inteira e o app ficava sem cache e sem o convite de instalação do PWA.
+
+### Trocar de hospedagem
+
+Só três coisas precisam de atenção — o código não guarda endereço nenhum.
+
+1. **Firebase → Authentication → Settings → Authorized domains**: adicione o
+   domínio novo *antes* de divulgar. Sem isso o login falha com
+   `auth/unauthorized-domain`. Se a API key tiver restrição de referrer no Google
+   Cloud, inclua a origem lá também.
+2. **Supabase não precisa de nada**: as políticas do bucket identificam o usuário
+   pelo emissor do token (o projeto Firebase), não pelo domínio.
+3. **Endereço antigo**: veja abaixo — ele não morre sozinho.
+
+### Migrar quem já usa o endereço antigo
+
+Quem abriu o site antes tem um service worker registrado na origem antiga, com o
+app em cache. Enquanto ele existir, aquela origem continua entregando uma versão
+congelada — a pessoa fica num app que nunca atualiza e não tem como saber por quê.
+Uma página de "mudamos de endereço" não resolve isso.
+
+O [assets/js/migracao.js](assets/js/migracao.js) cuida disso: desregistra o
+service worker, apaga o cache e leva a pessoa para o endereço novo, preservando a
+página em que ela estava. Ele é o primeiro script de toda página e **não faz nada
+enquanto `enderecoNovo` estiver vazio**.
+
+Para ativar, preencha a constante no topo do arquivo e dê push. Passados alguns
+meses, quando ninguém mais chegar pelo endereço antigo, apague o arquivo e as
+linhas `<script>` que o chamam.
 
 ## Autenticação com Firebase
 
