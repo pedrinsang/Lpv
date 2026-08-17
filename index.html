@@ -466,7 +466,7 @@
                 </a>
 
                 <div class="version-footer">
-                    <span style="font-size: 0.8rem; color: var(--text-secondary);">UFSM &bull; LPV Digital v4.1</span>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">UFSM &bull; LPV Digital</span>
                 </div>
 
             </div>
@@ -484,11 +484,8 @@
         });
     </script>
     
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(console.error);
-        }
-    </script>
+    <!-- O registro do service worker mora no core.js: o app instalado abre em
+         pages/auth.html, que nunca passava por aqui e ficava sem PWA. -->
 
     <!-- INTRO ANIMATION SCRIPT -->
     <script>
@@ -615,7 +612,7 @@
                 const playPromise = audio.play();
                 if (playPromise) {
                     playPromise.catch((e) => {
-                        console.log('Audio play failed:', e);
+                        console.warn('Não foi possível tocar o jingle:', e);
                         // Retry on next user interaction
                         document.addEventListener('click', () => audio.play().catch(() => {}), { once: true });
                     });

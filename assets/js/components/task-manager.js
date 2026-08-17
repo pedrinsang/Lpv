@@ -14,7 +14,6 @@ import {
 import { camposDerivados, parseProtocolo } from '../lib/protocolo.js';
 import { registrarLiberacao, registrarExclusao } from '../lib/livro-indice.js';
 
-console.log("Task Manager Loaded - Mobile Layout Fix");
 const ENABLE_EXTERNAL_STORAGE_INTEGRATION = true;
 
 // --- ESTILOS INJETADOS (Correções Específicas Mobile) ---

@@ -7,7 +7,7 @@
  * (azul = necropsia, rosa = biópsia), e os botões do filtro "Tipo" e os
  * contadores do topo servem de legenda.
  */
-import { db, auth, logout } from '../core.js';
+import { db, auth, logout, hasFullControl } from '../core.js';
 import { collection, query, where, getDocs, getDoc, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { anoProtocolo, pesoProtocolo } from '../lib/protocolo.js';
 import { ANO_DESCONHECIDO, zerarIndice } from '../lib/livro-indice.js';
@@ -124,6 +124,13 @@ const campos = {
 
 const botoesExportar = [el('btn-export-excel'), el('btn-export-excel-mobile')].filter(Boolean);
 const botoesApagar = [el('btn-clear-history'), el('btn-clear-history-mobile')].filter(Boolean);
+
+// Apagar o acervo é a única ação irreversível do sistema, e o botão nasce ao
+// lado do "Exportar" — que é justamente o que se demonstra numa apresentação.
+// Vale para quem responde pelo laudo (professor, pós, admin), a mesma régua do
+// `isLaudoManager` das regras do Firestore. Estagiário nem vê o botão, em vez
+// de descobrir a barreira só no erro de permissão do servidor.
+let podeApagarAcervo = false;
 
 // ================================================================
 // ESTADO
@@ -851,8 +858,11 @@ function exportarExcel() {
     XLSX.utils.book_append_sheet(wb, ws, 'Livro de Registros');
     XLSX.writeFile(wb, `Livro_Registros_LPV_${new Date().toISOString().slice(0, 10)}.xlsx`);
 
-    // Apagar só fica disponível depois de existir uma cópia exportada.
-    botoesApagar.forEach((btn) => btn.classList.add('is-visible'));
+    // Apagar só fica disponível depois de existir uma cópia exportada — e só
+    // para quem responde pelo laudo.
+    if (podeApagarAcervo) {
+        botoesApagar.forEach((btn) => btn.classList.add('is-visible'));
+    }
 }
 
 botoesExportar.forEach((btn) => btn.addEventListener('click', exportarExcel));
@@ -861,6 +871,11 @@ botoesExportar.forEach((btn) => btn.addEventListener('click', exportarExcel));
 // APAGAR HISTÓRICO
 // ================================================================
 async function apagarHistorico() {
+    if (!podeApagarAcervo) {
+        alert('Apenas professor, pós-graduando ou admin podem apagar o histórico.');
+        return;
+    }
+
     if (!confirm('ATENÇÃO: deseja apagar permanentemente TODO o histórico de laudos liberados?')) return;
 
     botoesApagar.forEach((btn) => { btn.disabled = true; });
@@ -1018,11 +1033,22 @@ async function iniciar() {
     await carregarCasos(state.f.ano);
 }
 
-auth.onAuthStateChanged((user) => {
+auth.onAuthStateChanged(async (user) => {
     if (!user) {
         window.location.href = 'auth.html';
         return;
     }
+
+    try {
+        const perfil = await getDoc(doc(db, 'users', user.uid));
+        podeApagarAcervo = perfil.exists() && hasFullControl(perfil.data().role);
+    } catch (erro) {
+        // Sem conseguir ler o papel, o botão fica fora: errar para o lado de
+        // não oferecer a exclusão é barato; o contrário, não.
+        console.warn('Não foi possível ler o perfil para liberar a exclusão.', erro);
+        podeApagarAcervo = false;
+    }
+
     medirLinhas();
     iniciar();
 });

@@ -51,7 +51,7 @@
       "name": "Entrar no Sistema",
       "short_name": "Login",
       "description": "Acesso rápido ao login do sistema",
-      "url": "/pages/auth.html",
+      "url": "./pages/auth.html",
       "icons": [
         {
           "src": "assets/images/lpvminilogo.png",

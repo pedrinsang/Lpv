@@ -3,8 +3,6 @@ import {
     collection, query, where, doc, getDoc, updateDoc, deleteDoc, onSnapshot, addDoc
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-console.log("Planner Module — agenda semanal/mensal");
-
 /* ==========================================================================
    CONSTANTES
    ========================================================================== */

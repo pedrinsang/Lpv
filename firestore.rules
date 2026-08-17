@@ -35,14 +35,21 @@ service cloud.firestore {
       return hasAnyRole(['admin']);
     }
 
+    // Toda variante de "pós graduando" precisa estar aqui: a tela de gestão de
+    // equipe grava a role com acento e espaço ("pós graduando"), e é essa lista
+    // que libera a leitura da coleção `users`. Sem ela, quem é só pós-graduando
+    // abre a Nova Entrada com os selects de docente e pós vazios, e a página de
+    // Admin sem ninguém na lista.
     function isStaff() {
       return hasAnyRole([
         'admin',
         'professor',
         'pos-graduando',
+        'pos graduando',
         'pos_graduando',
         'posgraduando',
         'pós-graduando',
+        'pós graduando',
         'graduando',
         'estagiario'
       ]);

@@ -8,8 +8,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { camposDerivados, formatarProtocolo, parseProtocolo } from '../lib/protocolo.js';
 
-console.log("Entry Modal Module Loaded - formulário único (tipo pelo protocolo)");
-
 // --- ELEMENTOS DO DOM ---
 const modal = document.getElementById('entry-modal');
 const closeBtn = document.getElementById('close-modal-btn');

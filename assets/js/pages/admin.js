@@ -202,13 +202,11 @@ if(searchInput) {
 // --- FUNÇÕES GLOBAIS ---
 window.approveUser = async (uid) => {
     if (!confirm("Aprovar este usuário?")) return;
-    try { 
-        console.log("Aprovando usuário:", uid);
-        await updateDoc(doc(db, "users", uid), { 
-            status: 'active', 
-            role: ['estagiario'] 
+    try {
+        await updateDoc(doc(db, "users", uid), {
+            status: 'active',
+            role: ['estagiario']
         });
-        console.log("Usuário aprovado com sucesso!");
         alert("Usuário aprovado com sucesso! ✓");
     } catch (e) { 
         console.error("Erro ao aprovar usuário:", e);

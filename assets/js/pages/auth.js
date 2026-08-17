@@ -1,7 +1,8 @@
 import { auth, db } from '../core.js';
-import { 
-    signInWithEmailAndPassword, 
+import {
+    signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
+    sendPasswordResetEmail,
     signOut,
     deleteUser
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
@@ -144,6 +145,47 @@ if (loginForm) {
             // Mensagem GENÉRICA — não revela se o email existe ou não
             showAlert(alertBox, "Email ou senha inválidos. Verifique seus dados e tente novamente.", 'error');
         }
+    });
+}
+
+// =========================================================
+// RECUPERAÇÃO DE SENHA
+//
+// O Firebase manda o email de redefinição. A resposta é sempre a mesma, exista
+// a conta ou não: dizer "esse email não tem cadastro" entregaria a quem
+// perguntasse quais endereços do laboratório estão no sistema.
+// =========================================================
+const forgotLink = document.getElementById('forgot-password');
+
+if (forgotLink) {
+    forgotLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+
+        const alertBox = document.getElementById('login-alert');
+        const email = document.getElementById('login-email').value.trim();
+
+        if (!email) {
+            showAlert(alertBox, 'Digite seu email no campo acima e clique de novo em "Esqueci minha senha".', 'warning');
+            document.getElementById('login-email').focus();
+            return;
+        }
+
+        try {
+            await sendPasswordResetEmail(auth, email);
+        } catch (error) {
+            // Só erro de formato vale avisar; o resto segue na mensagem neutra.
+            if (error?.code === 'auth/invalid-email') {
+                showAlert(alertBox, 'Formato de email inválido.', 'error');
+                return;
+            }
+            if (error?.code === 'auth/too-many-requests') {
+                showAlert(alertBox, 'Muitas tentativas. Aguarde alguns minutos e tente novamente.', 'error');
+                return;
+            }
+            console.error('Erro ao enviar redefinição de senha:', error?.code, error?.message);
+        }
+
+        showAlert(alertBox, `Se houver uma conta para ${email}, o link de redefinição chegou na caixa de entrada. Confira também o spam.`, 'warning');
     });
 }
 

@@ -437,9 +437,11 @@
         </div>
         <nav class="sidebar-nav">
             <a href="hub.html" class="sidebar-link"><i class="fas fa-home"></i> <span>Visão Geral</span></a>
-            <a href="mural.html" class="sidebar-link"><i class="fas fa-columns"></i> <span>Mural de Tarefas</span></a>
+            <a href="mural.html" class="sidebar-link"><i class="fas fa-columns"></i> <span>Mural</span></a>
+            <a href="historico.html" class="sidebar-link"><i class="fas fa-history"></i> <span>Registros</span></a>
             <a href="estoque.html" class="sidebar-link"><i class="fas fa-boxes-stacked"></i> <span>Estoque</span></a>
             <a href="planner.html" class="sidebar-link"><i class="fas fa-calendar-alt"></i> <span>Planner</span></a>
+            <a href="admin.html" class="sidebar-link hidden" id="sidebar-admin-link"><i class="fas fa-shield-alt"></i> <span>Admin</span></a>
             <button class="sidebar-link btn-sidebar-new"><i class="fas fa-plus"></i> <span>Nova Entrada</span></button>
         </nav>
         <div class="sidebar-footer">
@@ -590,8 +592,22 @@
         </div>
     </div>
 
+    <nav class="bottom-nav">
+        <a href="hub.html" class="nav-item"><i class="fas fa-home"></i><span>Início</span></a>
+        <a href="mural.html" class="nav-item"><i class="fas fa-columns"></i><span>Mural</span></a>
+        <div class="nav-fab-container">
+            <button class="nav-fab"><i class="fas fa-plus"></i></button>
+        </div>
+        <a href="historico.html" class="nav-item"><i class="fas fa-history"></i><span>Registros</span></a>
+        <a href="planner.html" class="nav-item"><i class="fas fa-calendar-alt"></i><span>Planner</span></a>
+    </nav>
+
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
+    <lpv-entry-form></lpv-entry-form>
+
+    <script type="module" src="../assets/js/components/entry-form.js"></script>
+    <script type="module" src="../assets/js/components/entry-modal.js"></script>
     <script type="module" src="../assets/js/core.js"></script>
     <script type="module">
         import { auth, db, signOut } from '../assets/js/core.js';

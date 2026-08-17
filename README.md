@@ -12,6 +12,22 @@ npx serve -l 5500
 
 Abra http://localhost:5500. A página de login é [pages/auth.html](pages/auth.html) e a home protegida é [pages/hub.html](pages/hub.html).
 
+## Publicação
+
+O site é servido pelo **GitHub Pages**, da branch `main`, pasta raiz:
+
+- Endereço: https://pedrinsang.github.io/Lpv/
+- Publicar = dar push na `main`. Não há build nem workflow de deploy.
+
+O detalhe que morde: o app fica em **`/Lpv/`**, não na raiz do domínio. Todo caminho
+escrito à mão precisa ser relativo — um `/assets/...` ou `/pages/...` funciona no
+`npx serve` local e quebra em produção. Foi o que aconteceu com a lista de arquivos
+do [sw.js](sw.js): os caminhos absolutos davam 404, a instalação do service worker
+falhava inteira e o app ficava sem cache e sem o convite de instalação do PWA.
+
+O Firebase Hosting não é usado — o [firebase.json](firebase.json) existe só para
+publicar as regras do Firestore.
+
 ## Autenticação com Firebase
 
 A configuração do Firebase fica embutida em [assets/js/core.js](assets/js/core.js) — é o único lugar onde ela existe.

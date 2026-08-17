@@ -1,12 +1,13 @@
 /**
- * LPV - CORE SYSTEM (Versão Final v8.1 - Correção Theme Toggle)
+ * LPV — CORE
+ *
+ * Firebase (Auth + Firestore), sessão, papéis do usuário e a casca comum das
+ * páginas: tema, logout, sidebar mobile e registro do service worker.
  */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import '../js/animations.js';
-
-console.log(">>> CORE.JS V8.1 CARREGADO <<<");
 
 // --- CONFIGURAÇÃO ---
 const firebaseConfig = {
@@ -109,8 +110,6 @@ onAuthStateChanged(auth, async (user) => {
 
     if (user) {
         // --- LOGADO ---
-        console.log("Core: Usuário detectado:", user.uid);
-
         if (unsubscribeCurrentUserProfile) {
             unsubscribeCurrentUserProfile();
             unsubscribeCurrentUserProfile = null;
@@ -121,13 +120,10 @@ onAuthStateChanged(auth, async (user) => {
         if (userDoc.exists()) {
             const data = userDoc.data();
             const status = data.status || 'active';
-            console.log("Core: Perfil encontrado. Status:", status);
 
             if (status === 'pending') {
-                if (isAuthPage) {
-                    console.log("Core: Usuário pendente na tela de Auth.");
-                    return; 
-                }
+                // Na tela de login o próprio auth.js explica que falta aprovação.
+                if (isAuthPage) return;
                 console.warn("Core: Usuário pendente tentando acessar sistema.");
                 await signOut(auth);
                 if (!isAuthPage) window.location.href = isPagesDir ? 'auth.html' : 'pages/auth.html';
@@ -166,12 +162,10 @@ onAuthStateChanged(auth, async (user) => {
                 console.warn('Core: falha ao sincronizar perfil em tempo real:', err);
             });
         } else {
-            console.log("⚠️ Core: Perfil não encontrado. Aguardando criação...");
+            console.warn('Core: perfil não encontrado. Aguardando criação...');
         }
     } else {
         // --- DESLOGADO ---
-        console.log("Core: Nenhum usuário logado.");
-
         if (unsubscribeCurrentUserProfile) {
             unsubscribeCurrentUserProfile();
             unsubscribeCurrentUserProfile = null;
@@ -242,11 +236,25 @@ function applyRolePermissions(role) {
 
 }
 
+// --- SERVICE WORKER (PWA) ---
+//
+// Registrado aqui, e não numa página só, porque o app instalado abre direto em
+// `pages/auth.html`: quem entrava por lá ficava sem service worker e, sem ele,
+// o navegador não oferece a instalação.
+//
+// O endereço sai de `import.meta.url` (este arquivo é /assets/js/core.js, logo
+// o sw.js está dois níveis acima). Assim vale tanto na raiz do domínio quanto
+// numa subpasta como o /Lpv/ do GitHub Pages.
+if ('serviceWorker' in navigator) {
+    const swUrl = new URL('../../sw.js', import.meta.url);
+    navigator.serviceWorker.register(swUrl, { scope: new URL('./', swUrl).href })
+        .catch((erro) => console.warn('Service worker não registrado:', erro));
+}
+
 // --- FUNÇÃO DE LOGOUT GLOBAL ---
 async function logout() {
     try {
         await signOut(auth);
-        console.log("Logout realizado com sucesso.");
     } catch (error) {
         console.error("Erro ao fazer logout:", error);
     }
