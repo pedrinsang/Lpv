@@ -6,7 +6,11 @@ import {
     doc,
     getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-import { camposDerivados, formatarProtocolo, parseProtocolo } from '../lib/protocolo.js';
+import { camposDerivados, formatarProtocolo, parseProtocolo, montarProtocolo } from '../lib/protocolo.js';
+import {
+    prepararSerie, ultimoDaSerie, proximoDaSerie, protocoloJaUsado, registrarNaSerie
+} from '../lib/serie-protocolo.js';
+import { infoDoNivel } from '../lib/prioridade.js';
 
 // --- ELEMENTOS DO DOM ---
 const modal = document.getElementById('entry-modal');
@@ -17,8 +21,11 @@ const modalTitle = document.getElementById('entry-modal-title');
 const form = document.getElementById('form-new-entry');
 const protocoloInput = document.getElementById('entry-protocolo');
 const urgentInput = document.getElementById('entry-urgent');
+const priorityInput = document.getElementById('entry-priority');
 const typePill = document.getElementById('entry-type-pill');
 const typeText = document.getElementById('entry-type-text');
+const serieHint = document.getElementById('entry-protocolo-serie');
+const dateInput = document.getElementById('date-entrada');
 
 const selectDocente = document.getElementById('select-docente');
 const selectPos = document.getElementById('select-pos');
@@ -62,7 +69,125 @@ function updateTypePill() {
     typeText.textContent = info ? info.text : 'Informe o protocolo';
 }
 
-if (protocoloInput) protocoloInput.addEventListener('input', updateTypePill);
+// ==========================================================================
+// 1b. NÚMERO SUGERIDO PELA SÉRIE
+//
+//     A numeração é sequencial por tipo e por ano, então o número seguinte é
+//     dedutível: assim que o prefixo identifica a série (V ou VN), o campo se
+//     completa com o último número usado + 1 — contando tanto o que já está no
+//     Livro quanto as amostras ainda pendentes no Mural.
+//
+//     O trecho completado entra SELECIONADO, como faz o autocompletar do
+//     navegador: aceitar é seguir em frente, recusar é digitar por cima. É isso
+//     que deixa "V" virar "VN" sem atrapalhar — o "N" cai sobre a seleção, e a
+//     sugestão se refaz para a série de necropsia.
+// ==========================================================================
+
+/**
+ * O campo tem só o prefixo, sem número — é aqui que a sugestão entra. O
+ * separador opcional cobre quem digita "VN-" antes do número.
+ */
+const SO_PREFIXO = /^\s*(vn|v)\s*[-–/]?\s*$/i;
+
+/**
+ * Ano da série. Sai da data de entrada (e não do relógio) para que uma amostra
+ * lançada com atraso em janeiro continue recebendo o número da série do ano em
+ * que entrou no laboratório.
+ */
+function anoDaSerie() {
+    const ano = Number(String(dateInput?.value || '').slice(0, 4));
+    return ano >= 1980 ? ano : new Date().getFullYear();
+}
+
+/** Mostra onde a série parou; sem tipo, esconde a linha. */
+function mostrarSerie(tipo, ano) {
+    if (!serieHint) return;
+
+    if (!tipo) {
+        serieHint.hidden = true;
+        serieHint.textContent = '';
+        return;
+    }
+
+    const ultimo = ultimoDaSerie(tipo, ano);
+    const nome = tipo === 'necropsia' ? 'necropsia' : 'biópsia';
+
+    serieHint.textContent = ultimo
+        ? `Última ${nome} registrada: ${montarProtocolo(tipo, ultimo, ano)}. Digite por cima para usar outro número.`
+        : `Nenhuma ${nome} na série de ${String(ano).slice(-2)} ainda — a numeração começa em 001.`;
+    serieHint.hidden = false;
+}
+
+async function sugerirNumero() {
+    if (!protocoloInput) return;
+
+    // Em edição o protocolo já é o do caso: renumerar aqui trocaria a
+    // identidade de uma amostra que já existe.
+    if (editingTaskId) return;
+
+    const prefixo = protocoloInput.value.match(SO_PREFIXO);
+    if (!prefixo) {
+        mostrarSerie(null);
+        return;
+    }
+
+    const tipo = prefixo[1].toUpperCase() === 'VN' ? 'necropsia' : 'biopsia';
+    const ano = anoDaSerie();
+
+    // Sem a varredura não há série conhecida — e chutar o 001 faria a pessoa
+    // repetir um protocolo. Nesse caso o campo fica como ela digitou.
+    const serie = await prepararSerie();
+    if (!serie) return;
+
+    // A varredura é assíncrona: entre pedir e receber, a pessoa pode ter
+    // continuado a digitar (ou desistido do campo). Só completa se o campo
+    // ainda estiver esperando exatamente esta sugestão.
+    if (document.activeElement !== protocoloInput) return;
+    const agora = protocoloInput.value.match(SO_PREFIXO);
+    if (!agora || agora[1].toUpperCase() !== prefixo[1].toUpperCase()) return;
+
+    const sugestao = proximoDaSerie(tipo, ano);
+    const sigla = tipo === 'necropsia' ? 'Vn' : 'V';
+
+    protocoloInput.value = sugestao;
+    protocoloInput.setSelectionRange(sigla.length, sugestao.length);
+
+    updateTypePill();
+    mostrarSerie(tipo, ano);
+}
+
+if (protocoloInput) {
+    protocoloInput.addEventListener('input', (evento) => {
+        updateTypePill();
+
+        // Apagar não pode chamar a sugestão de volta: o número reapareceria a
+        // cada Backspace e o campo ficaria impossível de limpar.
+        if (String(evento.inputType || '').startsWith('delete')) {
+            mostrarSerie(null);
+            return;
+        }
+
+        sugerirNumero();
+    });
+}
+
+// ==========================================================================
+// 1c. NÍVEL DE PRIORIDADE
+//
+//     Urgente e prioritária são degraus da mesma escala, então marcar os dois
+//     não quer dizer nada: marcar um desmarca o outro. São dois checkboxes e
+//     não um select porque o normal é a amostra comum — nenhum dos dois — e
+//     assim esse caso continua sendo não fazer nada.
+// ==========================================================================
+function exclusividadeDosNiveis(marcado, outro) {
+    if (!marcado || !outro) return;
+    marcado.addEventListener('change', () => {
+        if (marcado.checked) outro.checked = false;
+    });
+}
+
+exclusividadeDosNiveis(urgentInput, priorityInput);
+exclusividadeDosNiveis(priorityInput, urgentInput);
 
 // ==========================================================================
 // 2. ABRIR E FECHAR MODAL (MODO CRIAÇÃO)
@@ -88,11 +213,14 @@ function openModal() {
     form.reset();
     if (hiddenPosUid) hiddenPosUid.value = '';
 
-    const dateInput = document.getElementById('date-entrada');
     if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
 
     setupSubmitButton('Salvar Entrada');
     updateTypePill();
+    mostrarSerie(null);
+    // Adianta a varredura da série para que o número já esteja pronto quando a
+    // pessoa terminar de digitar o prefixo.
+    prepararSerie();
     loadTeamData();
 }
 
@@ -103,6 +231,7 @@ function closeModal() {
     editingTaskData = null;
     if (form) form.reset();
     updateTypePill();
+    mostrarSerie(null);
 }
 
 // ==========================================================================
@@ -132,10 +261,12 @@ function fillForm(data) {
     });
 
     if (urgentInput) urgentInput.checked = !!data.isUrgent;
+    if (priorityInput) priorityInput.checked = !!data.isPriority && !data.isUrgent;
     if (hiddenPosUid) hiddenPosUid.value = data.posResponsavelUid || '';
 
     syncPosResponsavelUid();
     updateTypePill();
+    mostrarSerie(null);
 }
 
 function syncPosResponsavelUid() {
@@ -203,6 +334,22 @@ async function saveEntry(e) {
     }
     const taskType = protocoloLido.tipo;
 
+    // A sugestão trabalha com o que a última varredura viu; se alguém cadastrou
+    // o mesmo número em outra máquina nesse meio-tempo, o número repetido só
+    // apareceria depois, no Livro, com dois casos disputando a mesma linha.
+    // O aviso é conferência, não trava: repetir pode ser proposital (recadastro
+    // de um caso excluído, por exemplo).
+    if (!editingTaskId && protocoloJaUsado(protocoloInput?.value)) {
+        const formatado = formatarProtocolo(protocoloInput.value);
+        const seguir = confirm(
+            `Já existe um caso com o protocolo ${formatado}.\n\nDeseja cadastrar assim mesmo?`
+        );
+        if (!seguir) {
+            protocoloInput?.focus();
+            return;
+        }
+    }
+
     const btn = form.querySelector('button[type="submit"]');
     const originalText = btn.innerHTML;
 
@@ -217,6 +364,7 @@ async function saveEntry(e) {
         data.posResponsavelUid = hiddenPosUid?.value || '';
         // O checkbox só entra no FormData quando marcado — lemos direto do input.
         data.isUrgent = !!urgentInput?.checked;
+        data.isPriority = !data.isUrgent && !!priorityInput?.checked;
 
         if (editingTaskId) {
             // --- MODO EDIÇÃO ---
@@ -236,6 +384,7 @@ async function saveEntry(e) {
             const casoCompleto = { ...(editingTaskData || {}), ...alteracoes, id: updatedId };
 
             await updateDoc(doc(db, "tasks", updatedId), alteracoes);
+            registrarNaSerie(alteracoes.protocolo);
 
             // Mural e Hub se corrigem pelo onSnapshot; o Livro de Registros lê
             // por ano e guarda em cache, então precisa do aviso para não deixar
@@ -268,9 +417,14 @@ async function saveEntry(e) {
 
         await addDoc(collection(db, "tasks"), taskData);
 
-        const urgentMessage = taskData.isUrgent ? '\n\nMarcada como URGENTE.' : '';
+        // O próximo cadastro já sai com o número seguinte, sem esperar a
+        // próxima varredura da série.
+        registrarNaSerie(taskData.protocolo);
 
-        alert(`Entrada de ${taskType.toUpperCase()} registrada!${urgentMessage}`);
+        const nivel = infoDoNivel(taskData);
+        const avisoNivel = nivel ? `\n\nMarcada como ${nivel.rotulo.toUpperCase()}.` : '';
+
+        alert(`Entrada de ${taskType.toUpperCase()} registrada!${avisoNivel}`);
         closeModal();
 
     } catch (error) {

@@ -148,14 +148,22 @@
   letter-spacing: 1px;
 }
 
-/* Urgência: branco sólido com texto vermelho, para destacar por cima do
-   gradiente do hero (rosa na biópsia, azul na necropsia). */
-.tm-urgent-badge {
+/* Nível da amostra: branco sólido com o texto na cor do nível, para destacar
+   por cima do gradiente do hero (rosa na biópsia, azul na necropsia). */
+.tm-nivel-badge {
   margin-left: 8px;
   background: #fff;
-  color: #dc2626;
   font-weight: 800;
+}
+
+.tm-nivel-badge.is-urgent {
+  color: #dc2626;
   box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.55);
+}
+
+.tm-nivel-badge.is-priority {
+  color: #b45309;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.6);
 }
 
 /* Code Section */

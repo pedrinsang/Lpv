@@ -17,7 +17,8 @@ class LpvEntryForm extends HTMLElement {
                         <div class="form-group">
                             <label>Nº Protocolo Interno</label>
                             <input type="text" name="protocolo" id="entry-protocolo" placeholder="Ex: V-123/26 ou VN-123/26" class="input-field" required autocomplete="off">
-                            <small class="field-hint"><strong>V</strong> = biópsia &nbsp;·&nbsp; <strong>VN</strong> = necropsia</small>
+                            <small class="field-hint"><strong>V</strong> = biópsia &nbsp;·&nbsp; <strong>VN</strong> = necropsia &nbsp;·&nbsp; o número vem sozinho</small>
+                            <small class="field-hint field-hint-serie" id="entry-protocolo-serie" hidden></small>
                         </div>
                         <div class="form-group">
                             <label>Data Entrada</label>
@@ -30,14 +31,24 @@ class LpvEntryForm extends HTMLElement {
                             </span>
                         </div>
 
-                        <label class="urgent-toggle span-3" for="entry-urgent">
-                            <input type="checkbox" name="isUrgent" id="entry-urgent">
-                            <span class="urgent-toggle-mark"><i class="fas fa-triangle-exclamation"></i></span>
-                            <span class="urgent-toggle-text">
-                                <strong>Marcar como amostra urgente</strong>
-                                <small>Somente amostras urgentes aparecem no painel "Urgências" do Hub.</small>
-                            </span>
-                        </label>
+                        <div class="span-3 priority-toggles">
+                            <label class="urgent-toggle is-urgente" for="entry-urgent">
+                                <input type="checkbox" name="isUrgent" id="entry-urgent">
+                                <span class="urgent-toggle-mark"><i class="fas fa-triangle-exclamation"></i></span>
+                                <span class="urgent-toggle-text">
+                                    <strong>Urgente</strong>
+                                    <small>Passa na frente de todas.</small>
+                                </span>
+                            </label>
+                            <label class="urgent-toggle is-prioritaria" for="entry-priority">
+                                <input type="checkbox" name="isPriority" id="entry-priority">
+                                <span class="urgent-toggle-mark"><i class="fas fa-flag"></i></span>
+                                <span class="urgent-toggle-text">
+                                    <strong>Prioritária</strong>
+                                    <small>Vem antes das comuns.</small>
+                                </span>
+                            </label>
+                        </div>
 
                         <div class="form-group span-2">
                             <label>Remetente</label>

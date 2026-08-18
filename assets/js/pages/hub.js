@@ -2,6 +2,7 @@ import { auth, db, normalizeRoles, hasAnyRole } from '../core.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import { doc, getDoc, collection, query, onSnapshot, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { pesoProtocolo } from '../lib/protocolo.js';
+import { NIVEIS, bandeiraDoNivel, classeDoNivel, nivelDaAmostra, pesoPrioridade } from '../lib/prioridade.js';
 import {
     describeDeadline,
     formatDate,
@@ -15,6 +16,7 @@ const els = {
     userBadge: document.getElementById('user-role-badge'),
     urgentList: document.getElementById('urgent-list'),
     urgentCount: document.getElementById('urgent-count'),
+    priorityCount: document.getElementById('priority-count'),
     queueFilterContainer: document.getElementById('queue-filter-container'),
     queueFilterAll: document.getElementById('queue-filter-all'),
     queueFilterMine: document.getElementById('queue-filter-mine')
@@ -126,36 +128,49 @@ function renderInventoryAlerts(list, subtitle, alerts) {
 }
 
 // 4. DASHBOARD (LÓGICA CORRIGIDA COM FILTRO)
+
+/**
+ * Uma consulta por marcador, e não um `or()` sobre os dois campos: o Firestore
+ * só devolve documento que TEM o campo consultado, e `isPriority` nasceu depois
+ * — a disjunção deixaria de fora justamente os casos urgentes antigos, que é
+ * quem mais precisa aparecer aqui. Cada consulta guarda o seu resultado e o
+ * painel é redesenhado com a união das duas.
+ */
+const filaPorFonte = { urgentes: [], prioritarias: [] };
+
 function initRealTimeDashboard() {
-    // A fila só mostra amostra urgente (ver isTaskRelevant), então o filtro vai
-    // na consulta e não depois: o acervo de laudos liberados não precisa sair do
-    // Firestore para ser descartado aqui — e leitura é o recurso que acaba.
-    const q = query(collection(db, "tasks"), where("isUrgent", "==", true));
+    // O filtro vai na consulta e não depois: o acervo de laudos liberados não
+    // precisa sair do Firestore para ser descartado aqui — e leitura é o
+    // recurso que acaba.
+    const consultas = {
+        urgentes: query(collection(db, "tasks"), where("isUrgent", "==", true)),
+        prioritarias: query(collection(db, "tasks"), where("isPriority", "==", true))
+    };
 
-    unsubscribeTasks = onSnapshot(q, (snapshot) => {
-        let myQueue = [];
+    const cancelamentos = Object.entries(consultas).map(([fonte, q]) => onSnapshot(q, (snapshot) => {
+        filaPorFonte[fonte] = snapshot.docs
+            .map((doc) => ({ id: doc.id, ...doc.data() }))
+            // Tarefa exclusiva do Planner não polui o Hub.
+            .filter((task) => task.type !== 'agendamento_rapido' && isTaskRelevant(task));
 
-        snapshot.forEach(doc => {
-            const task = { id: doc.id, ...doc.data() };
+        // As duas fontes podem trazer o mesmo caso (dado antigo com os dois
+        // campos marcados); o id manda e o caso entra uma vez só.
+        const porId = new Map();
+        [...filaPorFonte.urgentes, ...filaPorFonte.prioritarias]
+            .forEach((task) => porId.set(task.id, task));
 
-            // Ignora tarefas exclusivas do Planner para não poluir o Hub
-            if (task.type === 'agendamento_rapido') return;
-
-            if (isTaskRelevant(task)) {
-                myQueue.push(task);
-            }
-        });
-
-        queueSourceTasks = myQueue;
+        queueSourceTasks = [...porId.values()];
         applyQueueFilter();
 
-    }, (error) => console.warn(error));
+    }, (error) => console.warn(error)));
+
+    unsubscribeTasks = () => cancelamentos.forEach((cancelar) => cancelar());
 }
 
-// Só entra na fila a amostra marcada como urgente na entrada; o laudo liberado
-// tira o caso da fila.
+// Entra na fila a amostra marcada como urgente ou como prioritária na entrada;
+// o laudo liberado tira o caso da fila.
 function isTaskRelevant(task) {
-    return !task.releasedAt && !!task.isUrgent;
+    return !task.releasedAt && nivelDaAmostra(task) !== null;
 }
 
 function setupQueueFilters() {
@@ -256,11 +271,37 @@ function renderDeadlineCell(info) {
         <i class="fas ${icon}"></i>${days} d</span>`;
 }
 
-// O caso mais perto de estourar o prazo (ou mais atrasado) vem primeiro.
+/**
+ * Contadores do cabeçalho: um por nível, cada um na sua cor. Com a fila vazia
+ * sobra um só, em verde — dois zeros lado a lado não dizem nada.
+ */
+function renderPriorityCounts(urgentes, prioritarias) {
+    const total = urgentes + prioritarias;
+    const rotular = (n, nivel) =>
+        `${n} ${n === 1 ? NIVEIS[nivel].rotulo.toLowerCase() : NIVEIS[nivel].plural}`;
+
+    if (els.urgentCount) {
+        els.urgentCount.textContent = total === 0 ? 'Nada na fila' : rotular(urgentes, 'urgente');
+        els.urgentCount.classList.toggle('is-clear', total === 0);
+    }
+
+    if (els.priorityCount) {
+        els.priorityCount.hidden = total === 0;
+        els.priorityCount.textContent = rotular(prioritarias, 'prioritaria');
+    }
+}
+
+// Urgente antes de prioritária, sempre: é a ordem da escala, e um prazo
+// confortável numa urgente não a faz esperar atrás de uma prioritária estourada.
+// Dentro de cada nível vale o prazo — o caso mais perto de estourar (ou mais
+// atrasado) vem primeiro.
 function renderUrgentList(tasks) {
     if (!els.urgentList) return;
 
     const rows = [...tasks].sort((a, b) => {
+        const nivel = pesoPrioridade(a) - pesoPrioridade(b);
+        if (nivel !== 0) return nivel;
+
         const infoA = getDeadlineInfo(a);
         const infoB = getDeadlineInfo(b);
         if (!infoA !== !infoB) return infoA ? -1 : 1;   // sem data vai pro fim
@@ -271,10 +312,10 @@ function renderUrgentList(tasks) {
         return pesoProtocolo(a.protocolo) - pesoProtocolo(b.protocolo);
     });
 
-    if (els.urgentCount) {
-        els.urgentCount.textContent = `${rows.length} ${rows.length === 1 ? 'urgente' : 'urgentes'}`;
-        els.urgentCount.classList.toggle('is-clear', rows.length === 0);
-    }
+    renderPriorityCounts(
+        rows.filter((task) => nivelDaAmostra(task) === 'urgente').length,
+        rows.filter((task) => nivelDaAmostra(task) === 'prioritaria').length
+    );
 
     els.urgentList.innerHTML = '';
     els.urgentList.classList.toggle('is-empty', rows.length === 0);
@@ -283,7 +324,7 @@ function renderUrgentList(tasks) {
         els.urgentList.innerHTML = `
             <div class="urgent-empty">
                 <i class="far fa-check-circle fa-2x"></i>
-                <p>Nenhuma amostra urgente no momento.</p>
+                <p>Nenhuma amostra urgente ou prioritária no momento.</p>
             </div>`;
         return;
     }
@@ -293,7 +334,7 @@ function renderUrgentList(tasks) {
         const typeClass = isNecropsia ? 'type-necro' : 'type-bio';
 
         const card = document.createElement('div');
-        card.className = `urgent-card is-urgent ${typeClass}`;
+        card.className = `urgent-card ${classeDoNivel(task)} ${typeClass}`;
         card.setAttribute('role', 'button');
         card.setAttribute('tabindex', '0');
         card.title = `${task.protocolo || ''} — ${task.animalNome || ''}`;
@@ -312,7 +353,7 @@ function renderUrgentList(tasks) {
             : '—';
 
         card.innerHTML = `
-            <span class="u-prot"><i class="fas fa-triangle-exclamation u-flag" title="Amostra urgente"></i>${escapeHtml(task.protocolo || '---')}</span>
+            <span class="u-prot">${bandeiraDoNivel(task, 'u-flag')}${escapeHtml(task.protocolo || '---')}</span>
             <span class="u-animal"><strong>${escapeHtml(task.animalNome || 'Sem Nome')}</strong>
                 <span class="u-species">(${escapeHtml(task.especie || '?')})</span></span>
             <span class="u-type ${typeClass}">${isNecropsia ? 'NECROPSIA' : 'BIÓPSIA'}</span>

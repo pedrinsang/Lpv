@@ -1,4 +1,5 @@
 import { db, auth } from '../core.js';
+import { infoDoNivel } from '../lib/prioridade.js';
 import { 
     doc, getDoc, updateDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
@@ -456,12 +457,21 @@ function renderDetails(task) {
     // para quem não pode apagar o caso.
     if (btnDelete) btnDelete.classList.toggle('hidden', !permission.canDelete);
 
+    // Selo do nível da amostra, quando ela tem um: URGENTE em vermelho,
+    // PRIORITÁRIA em âmbar, nada para a comum.
+    const renderNivelBadge = (caso) => {
+        const info = infoDoNivel(caso);
+        if (!info) return '';
+        return `<div class="tm-hero-badge tm-nivel-badge ${info.classe}">
+            <i class="fas ${info.icone}"></i> ${info.rotulo.toUpperCase()}</div>`;
+    };
+
     // --- HTML FINAL DO CARD ---
     const html = `
         <div class="tm-hero-modern ${typeClass}">
             <div class="tm-hero-content">
                 <div class="tm-hero-badge"><i class="fas ${typeIcon}"></i> ${typeLabel}</div>
-                ${task.isUrgent ? `<div class="tm-hero-badge tm-urgent-badge"><i class="fas fa-triangle-exclamation"></i> URGENTE</div>` : ''}
+                ${renderNivelBadge(task)}
                 <h2>${task.animalNome || 'Sem Nome'}</h2>
                 <p><i class="fas fa-paw"></i> ${task.especie || 'Espécie não inf.'} &bull; ${task.sexo || '-'} &bull; ${task.idade || '-'}</p>
             </div>

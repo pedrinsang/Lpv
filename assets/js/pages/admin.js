@@ -44,6 +44,22 @@ function checkPermission(role) {
     }
 }
 
+// --- QUEM PODE O QUÊ ---
+// Aprovar cadastro é de professor e admin; remover conta continua só do admin
+// (ver firestore.rules — é lá que a regra vale de verdade). A página também
+// abre para pós-graduando, então os botões precisam dizer a verdade: botão que
+// só devolve erro de permissão é armadilha.
+const podeAprovar = (roles) => roles.includes('admin') || roles.includes('professor');
+const podeRemover = (roles) => roles.includes('admin');
+
+/** Papéis de quem está logado, lidos da própria lista que acabou de chegar. */
+function rolesDoUsuarioAtual(registros) {
+    const meu = registros.find(u => u.id === auth.currentUser?.uid);
+    return meu
+        ? normalizeRoles(meu.role)
+        : (window.currentUserRoles || normalizeRoles(window.currentUserRole || []));
+}
+
 // --- DADOS EM TEMPO REAL ---
 const q = query(collection(db, "users"));
 let allUsers = [];
@@ -60,7 +76,7 @@ onSnapshot(q, (snapshot) => {
     });
 
     allUsers = active; 
-    renderPending(pending);
+    renderPending(pending, rolesDoUsuarioAtual([...pending, ...active]));
     renderActive(active);
 }, (error) => {
     console.error("Erro:", error);
@@ -76,13 +92,17 @@ function getInitials(name) {
 }
 
 // --- RENDERIZAR PENDENTES ---
-function renderPending(users) {
+function renderPending(users, meusPapeis) {
     if (users.length === 0) {
         pendingSection.classList.add('hidden');
         return;
     }
     
     pendingSection.classList.remove('hidden');
+
+    const aprovar = podeAprovar(meusPapeis);
+    const remover = podeRemover(meusPapeis);
+
     pendingGrid.innerHTML = users.map(u => `
         <div class="admin-card pending fade-in">
             <div class="card-header">
@@ -99,12 +119,18 @@ function renderPending(users) {
             </div>
 
             <div class="card-actions">
+                ${aprovar ? `
                 <button class="btn btn-sm" style="background:#10b981; color:white; border:none; flex:1;" onclick="window.approveUser('${u.id}')">
                     <i class="fas fa-check"></i> Aprovar
-                </button>
+                </button>` : ''}
+                ${remover ? `
                 <button class="btn btn-sm" style="background:#ef4444; color:white; border:none; width:40px;" onclick="window.deleteUser('${u.id}', '${u.name}')">
                     <i class="fas fa-times"></i>
-                </button>
+                </button>` : ''}
+                ${!aprovar && !remover ? `
+                <span style="flex:1; font-size:.8rem; color:var(--text-tertiary);">
+                    <i class="fas fa-lock"></i> Aprovação é de professor ou admin.
+                </span>` : ''}
             </div>
         </div>
     `).join('');
@@ -117,8 +143,7 @@ function renderActive(users) {
         return;
     }
 
-    const currentUserRecord = users.find(u => u.id === auth.currentUser?.uid);
-    const currentUserRoles = currentUserRecord ? normalizeRoles(currentUserRecord.role) : (window.currentUserRoles || normalizeRoles(window.currentUserRole || []));
+    const currentUserRoles = rolesDoUsuarioAtual(users);
     const currentUserIsAdmin = currentUserRoles.includes('admin');
 
     activeGrid.innerHTML = users.map(u => {
@@ -216,9 +241,7 @@ window.approveUser = async (uid) => {
 
 window.toggleRole = async (uid, checkbox) => {
     try {
-        const currentUserRecord = allUsers.find(u => u.id === auth.currentUser?.uid);
-        const currentUserRoles = currentUserRecord ? normalizeRoles(currentUserRecord.role) : (window.currentUserRoles || normalizeRoles(window.currentUserRole || []));
-        const currentUserIsAdmin = currentUserRoles.includes('admin');
+        const currentUserIsAdmin = rolesDoUsuarioAtual(allUsers).includes('admin');
         const isSelf = uid === auth.currentUser?.uid;
 
         if (isSelf && !currentUserIsAdmin) {

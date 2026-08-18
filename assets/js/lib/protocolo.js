@@ -49,12 +49,17 @@ export function pesoProtocolo(protocolo) {
     return (p.ano * 10000 + p.numero) * 2 + (p.tipo === 'necropsia' ? 1 : 0);
 }
 
+/** Grafia oficial a partir das três partes: montarProtocolo('necropsia', 12, 2026) -> "Vn012-26". */
+export function montarProtocolo(tipo, numero, ano) {
+    const sigla = tipo === 'necropsia' ? 'Vn' : 'V';
+    return `${sigla}${String(numero).padStart(3, '0')}-${String(ano).slice(-2)}`;
+}
+
 /** Grafia oficial: V001-26 (biópsia), Vn001-26 (necropsia). */
 export function formatarProtocolo(protocolo) {
     const p = parseProtocolo(protocolo);
     if (!p) return String(protocolo || '');
-    const sigla = p.tipo === 'necropsia' ? 'Vn' : 'V';
-    return `${sigla}${String(p.numero).padStart(3, '0')}-${String(p.ano).slice(-2)}`;
+    return montarProtocolo(p.tipo, p.numero, p.ano);
 }
 
 /**

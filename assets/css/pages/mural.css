@@ -258,6 +258,19 @@
     box-shadow: 0 6px 18px rgba(239, 68, 68, 0.18);
 }
 
+/* Prioritária: mesmo desenho em âmbar, um tom abaixo do vermelho. */
+.mural-card.is-priority {
+    border-left-color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.28);
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.09), rgba(245, 158, 11, 0.02) 45%, transparent 75%),
+                var(--bg-glass);
+}
+
+.mural-card.is-priority:hover {
+    border-color: rgba(245, 158, 11, 0.55);
+    box-shadow: 0 6px 18px rgba(245, 158, 11, 0.16);
+}
+
 .mural-card-top {
     display: flex;
     align-items: center;
@@ -276,7 +289,15 @@
     margin-right: 6px;
     font-size: 0.8rem;
     color: #ef4444;
+}
+
+/* Só a urgente pisca: se tudo pisca, nada chama atenção. */
+.m-flag.is-urgent {
     animation: urgentPulse 1.8s ease-in-out infinite;
+}
+
+.m-flag.is-priority {
+    color: #f59e0b;
 }
 
 .m-prazo {

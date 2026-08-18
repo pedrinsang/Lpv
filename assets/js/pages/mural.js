@@ -12,6 +12,7 @@ import { auth, db } from '../core.js';
 import { collection, query, where, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import { pesoProtocolo } from '../lib/protocolo.js';
+import { bandeiraDoNivel, classeDoNivel, pesoPrioridade } from '../lib/prioridade.js';
 
 const els = {
     board: document.getElementById('mural-board'),
@@ -153,14 +154,15 @@ function renderBoard() {
     });
 }
 
-// Urgente primeiro, sempre: é o motivo de a amostra ter sido marcada assim na
-// entrada, e o prazo de uma urgente não conta a mesma história que o de uma
-// comum. Dentro de cada grupo vale o prazo — o caso mais perto de estourar (ou
-// mais atrasado) vem primeiro; sem data de entrada não há prazo a cobrar, então
-// esses ficam no fim.
+// Nível primeiro, sempre: urgente, depois prioritária, depois comum. É o motivo
+// de a amostra ter sido marcada assim na entrada, e o prazo de uma urgente não
+// conta a mesma história que o de uma comum. Dentro de cada nível vale o prazo —
+// o caso mais perto de estourar (ou mais atrasado) vem primeiro; sem data de
+// entrada não há prazo a cobrar, então esses ficam no fim.
 function ordenarPorPrazo(tasks) {
     return [...tasks].sort((a, b) => {
-        if (!a.isUrgent !== !b.isUrgent) return a.isUrgent ? -1 : 1;
+        const nivel = pesoPrioridade(a) - pesoPrioridade(b);
+        if (nivel !== 0) return nivel;
 
         const infoA = getDeadlineInfo(a);
         const infoB = getDeadlineInfo(b);
@@ -196,7 +198,7 @@ function renderPanel(painel, tasks) {
 
 function buildCard(task, index) {
     const card = document.createElement('article');
-    card.className = `mural-card${task.isUrgent ? ' is-urgent' : ''}`;
+    card.className = `mural-card ${classeDoNivel(task)}`.trim();
     card.style.setProperty('--card-index', index);
     card.setAttribute('role', 'button');
     card.setAttribute('tabindex', '0');
@@ -218,7 +220,7 @@ function buildCard(task, index) {
     card.innerHTML = `
         <div class="mural-card-top">
             <span class="m-prot">
-                ${task.isUrgent ? '<i class="fas fa-triangle-exclamation m-flag" title="Amostra urgente"></i>' : ''}
+                ${bandeiraDoNivel(task, 'm-flag')}
                 ${escapeHtml(task.protocolo || '---')}
             </span>
             ${renderDeadline(getDeadlineInfo(task))}

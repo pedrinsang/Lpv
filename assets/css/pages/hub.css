@@ -88,6 +88,13 @@
     border-radius: 20px;
 }
 
+/* Prioritária: âmbar, entre o vermelho da urgente e o cinza da comum. */
+.urgent-count.is-priority {
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
 .urgent-count.is-clear {
     color: #6ee7b7;
     background: rgba(16, 185, 129, 0.12);
@@ -189,11 +196,34 @@
     box-shadow: 0 6px 18px rgba(239, 68, 68, 0.18);
 }
 
+/* Prioritária: o mesmo desenho em âmbar, mais discreto — a fila já a colocou
+   acima das comuns, o cartão só precisa dizer por quê. */
+.urgent-card.is-priority {
+    --card-accent: #f59e0b;
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.09), rgba(245, 158, 11, 0.02) 45%, transparent 75%),
+                var(--bg-glass);
+    border-color: rgba(245, 158, 11, 0.28);
+}
+
+.urgent-card.is-priority:hover,
+.urgent-card.is-priority:focus-visible {
+    border-color: rgba(245, 158, 11, 0.55);
+    box-shadow: 0 6px 18px rgba(245, 158, 11, 0.16);
+}
+
 .u-flag {
     margin-right: 7px;
     font-size: 0.8rem;
     color: #ef4444;
+}
+
+/* Só a urgente pisca: se tudo pisca, nada chama atenção. */
+.u-flag.is-urgent {
     animation: urgentPulse 1.8s ease-in-out infinite;
+}
+
+.u-flag.is-priority {
+    color: #f59e0b;
 }
 
 @keyframes urgentPulse {

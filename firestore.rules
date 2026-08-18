@@ -74,6 +74,22 @@ service cloud.firestore {
       return hasUserProfile() && currentUserData().status != 'pending';
     }
 
+    function isProfessor() {
+      return hasAnyRole(['professor', 'professores']);
+    }
+
+    // Aprovar o cadastro de alguém: tirar a conta de 'pending' e entregar a
+    // role de entrada. É o único poder do professor sobre a conta alheia —
+    // promover, rebaixar e remover continuam sendo do admin, e o `hasOnly`
+    // garante que nenhum outro campo viaje junto na mesma escrita.
+    function isAprovacaoDeCadastro(userId) {
+      return resource.data.status == 'pending'
+        && request.resource.data.status == 'active'
+        && request.resource.data.role == ['estagiario']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'role'])
+        && request.auth.uid != userId;   // ninguém aprova a si mesmo
+    }
+
     function isInventoryManager() {
       return hasAnyRole([
         'admin',
@@ -102,6 +118,7 @@ service cloud.firestore {
 
       allow update: if isSignedIn() && (
         isAdmin() ||
+        (isApprovedUser() && isProfessor() && isAprovacaoDeCadastro(userId)) ||
         (
           request.auth.uid == userId &&
           request.resource.data.role == resource.data.role &&
