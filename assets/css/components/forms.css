@@ -82,6 +82,12 @@ textarea.input-field {
   margin-bottom: 10px;
 }
 
+/* O primeiro divisor abre o formulário: o respiro dele já é o do cabeçalho do
+   modal, e o `margin-top` empilharia um segundo. */
+.form-grid > .divider-text:first-child {
+  margin-top: 0;
+}
+
 /* Dica sob um campo — sobe sobre o margin-bottom do .input-field para não
    descolar da caixa que explica. */
 .field-hint {

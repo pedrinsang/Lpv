@@ -1,16 +1,22 @@
 /**
  * LPV — HISTÓRICO / LIVRO DE REGISTROS
  *
- * Todos os laudos liberados, de todos os anos, em uma linha por caso, com
- * janela virtual (só o que está em tela vira DOM) e expansão inline da ficha.
- * O tipo do caso não ocupa coluna: vira a cor da borda esquerda da linha
- * (azul = necropsia, rosa = biópsia), e os botões do filtro "Tipo" e os
- * contadores do topo servem de legenda.
+ * Todos os casos do acervo, de todos os anos, em uma linha por caso, com janela
+ * virtual (só o que está em tela vira DOM) e expansão inline da ficha. O tipo do
+ * caso não ocupa coluna: vira a cor da borda esquerda da linha (azul =
+ * necropsia, rosa = biópsia), e os botões do filtro "Tipo" e os contadores do
+ * topo servem de legenda.
+ *
+ * O livro é o registro de entrada do laboratório, não só o arquivo de laudos
+ * prontos: a amostra ganha a linha dela no cadastro da entrada, com tudo o que
+ * se sabe do caso. A liberação do laudo só preenche as duas colunas que a
+ * entrada não tem como saber — data do laudo e diagnóstico. Por isso o filtro
+ * "Laudo" existe: é ele que separa o que já está fechado do que ainda corre.
  */
 import { db, auth, logout, hasFullControl } from '../core.js';
 import { collection, query, where, getDocs, getDoc, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { anoProtocolo, pesoProtocolo } from '../lib/protocolo.js';
-import { ANO_DESCONHECIDO, zerarIndice } from '../lib/livro-indice.js';
+import { ANO_DESCONHECIDO, gravarIndice } from '../lib/livro-indice.js';
 import '../components/task-manager.js';
 
 // ================================================================
@@ -25,6 +31,7 @@ const SITUACAO = {
 const ROTULOS = {
     busca: 'Busca',
     tipo: 'Tipo',
+    laudo: 'Laudo',
     situacao: 'Situação',
     ano: 'Ano do protocolo',
     docente: 'Docente',
@@ -40,7 +47,7 @@ const ROTULOS = {
 const NO_PAINEL = ['docente', 'posGraduando', 'especie', 'sexo', 'origem', 'remetente', 'raca', 'periodo'];
 
 const F_VAZIO = {
-    busca: '', tipo: 'todos', situacao: '', ano: '',
+    busca: '', tipo: 'todos', laudo: '', situacao: '', ano: '',
     docente: '', posGraduando: '', especie: '', sexo: '', origem: '',
     remetente: '', raca: '', campoData: 'dataLaudo', de: '', ate: ''
 };
@@ -72,8 +79,8 @@ function isoLocal(value) {
     return `${d.getFullYear()}-${mes}-${dia}`;
 }
 
-/** Um ano do índice ainda tem laudo? `{ biopsia: 0, necropsia: 0 }` já não. */
-const temLaudo = (contagens) => Object.values(contagens || {}).some((n) => Number(n) > 0);
+/** Um ano do índice ainda tem caso? `{ biopsia: 0, necropsia: 0 }` já não. */
+const temCaso = (contagens) => Object.values(contagens || {}).some((n) => Number(n) > 0);
 
 /** Nome do ano no filtro. '0' é o balde dos protocolos que não têm ano legível. */
 const rotuloAno = (a) => (a === ANO_DESCONHECIDO ? 'Sem ano (protocolo inválido)' : a);
@@ -108,6 +115,7 @@ const segTipo = el('f-tipo');
 
 const campos = {
     busca: el('f-busca'),
+    laudo: el('f-laudo'),
     situacao: el('f-situacao'),
     ano: el('f-ano'),
     docente: el('f-docente'),
@@ -138,7 +146,7 @@ let podeApagarAcervo = false;
 const state = {
     casos: [],
     f: { ...F_VAZIO },
-    ordem: { campo: 'dataLaudo', dir: 'desc' },
+    ordem: { campo: 'protocolo', dir: 'desc' },
     aberto: null,
     scrollTop: 0,
     painelAberto: false,
@@ -162,10 +170,20 @@ let rafScroll = null;
 function normalizarCaso(id, t) {
     const necropsia = t.type === 'necropsia' || (!t.type && t.k7Color === 'azul');
     const dataEntrada = t.dataEntrada || isoLocal(t.createdAt);
+    // O laudo liberado é o que fecha a linha do livro. Enquanto não vem, o caso
+    // já está aqui — com data de entrada, animal, remetente e o resto — só sem
+    // data de laudo e sem diagnóstico.
+    //
+    // `releasedAt` é o mesmo critério que tira o caso do Mural e que a ficha usa
+    // para mostrar o laudo como fechado: um caso não pode estar em andamento numa
+    // tela e concluído na outra.
+    const liberado = !!t.releasedAt;
     // `dataLaudo` é a data informada na liberação e pode ser retroativa;
     // `releasedAt` (o instante do clique) é o que sobra nos casos liberados
     // antes de o formulário de liberação existir.
-    const dataLaudo = t.dataLaudo || isoLocal(t.releasedAt) || isoLocal(t.updatedAt);
+    const dataLaudo = liberado
+        ? (t.dataLaudo || isoLocal(t.releasedAt) || isoLocal(t.updatedAt))
+        : '';
     const situacaoKey = SITUACAO[t.financialStatus] ? t.financialStatus
         : (SITUACAO[t.situacao] ? t.situacao : 'pendente');
     const diagnostico = t.diagnostico || (t.report && t.report.diagnostico) || '';
@@ -174,6 +192,7 @@ function normalizarCaso(id, t) {
         id,
         protocolo: t.protocolo || '—',
         tipo: necropsia ? 'necropsia' : 'biopsia',
+        liberado,
         situacao: situacaoKey,
         docente: t.docente || '',
         posGraduando: t.posGraduando || '',
@@ -204,8 +223,9 @@ function normalizarCaso(id, t) {
         caso.protocolo, caso.nome, caso.rg, caso.proprietario, caso.remetente,
         caso.docente, caso.posGraduando, caso.especie, caso.raca, caso.sexo,
         caso.origem, caso.diagnostico,
-        br(caso.dataEntrada), br(caso.dataLaudo),
-        caso.tipo === 'necropsia' ? 'necropsia' : 'biopsia'
+        br(caso.dataEntrada), liberado ? br(caso.dataLaudo) : '',
+        caso.tipo === 'necropsia' ? 'necropsia' : 'biopsia',
+        liberado ? 'laudo liberado' : 'laudo pendente em aberto'
     ].filter(Boolean).join(' '));
 
     return caso;
@@ -243,9 +263,9 @@ function removerCasoLocal(id) {
     const anos = state.meta && state.meta.anos;
     if (caso && anos && anos[caso.ano]) {
         if (anos[caso.ano][caso.tipo] > 0) anos[caso.ano][caso.tipo] -= 1;
-        // Excluído o último laudo do ano, o ano deixa de existir para o livro e
+        // Excluído o último caso do ano, o ano deixa de existir para o livro e
         // não pode continuar no filtro.
-        if (!temLaudo(anos[caso.ano])) delete anos[caso.ano];
+        if (!temCaso(anos[caso.ano])) delete anos[caso.ano];
     }
 
     // O ano em tela pode ter acabado de sumir: cai para "Todos os anos" em vez
@@ -269,11 +289,29 @@ function atualizarCasoLocal(id, bruto) {
     const indice = state.casos.findIndex((c) => c.id === id);
     if (indice === -1) return;   // caso de outro ano, não carregado aqui
 
+    const anterior = state.casos[indice];
     const atualizado = normalizarCaso(id, bruto);
 
-    // Corrigir o protocolo pode mudar o ano da série, e aí o caso deixou de
-    // pertencer ao ano que está na tela: sai da lista em vez de virar uma linha
-    // fora de lugar. O cache do ano novo ainda não existe, então nada a inserir.
+    // Corrigir o protocolo pode mudar o ano da série ou o tipo do caso; no
+    // Firestore quem move a contagem é a própria edição da entrada, mas os
+    // contadores do topo leem do espelho local.
+    const anos = state.meta && state.meta.anos;
+    const mudouDeBalde = anterior
+        && (anterior.ano !== atualizado.ano || anterior.tipo !== atualizado.tipo);
+    if (anos && mudouDeBalde) {
+        if (anos[anterior.ano] && anos[anterior.ano][anterior.tipo] > 0) {
+            anos[anterior.ano][anterior.tipo] -= 1;
+            if (!temCaso(anos[anterior.ano])) delete anos[anterior.ano];
+        }
+        anos[atualizado.ano] = anos[atualizado.ano] || { biopsia: 0, necropsia: 0 };
+        anos[atualizado.ano][atualizado.tipo] = Number(anos[atualizado.ano][atualizado.tipo] || 0) + 1;
+        montarSelectAnos();
+        renderTotais();
+    }
+
+    // O caso pode ter deixado de pertencer ao ano que está na tela: sai da lista
+    // em vez de virar uma linha fora de lugar. O cache do ano novo ainda não
+    // existe, então nada a inserir.
     if (state.f.ano && atualizado.ano !== state.f.ano) {
         tirarDaLista(id);                      // o caso existe, só não é deste ano
         state.porAno.delete(atualizado.ano);   // força reler o ano de destino
@@ -291,12 +329,65 @@ function atualizarCasoLocal(id, bruto) {
     render();
 }
 
+/**
+ * Amostra cadastrada com a página aberta. O livro recebe a linha no mesmo
+ * instante em que o Mural recebe o cartão — sem esperar recarga, e sem reler do
+ * Firestore o ano inteiro que o cache já tem.
+ */
+function inserirCasoLocal(id, bruto) {
+    if (!ehCasoDoLivro(bruto)) return;
+
+    const caso = normalizarCaso(id, bruto);
+
+    // `state.casos` e o cache do ano podem ser o MESMO array (o filtro de ano
+    // entrega a lista cacheada): o teste por id evita a linha duplicada.
+    const cache = state.porAno.get(caso.ano);
+    if (cache && !cache.some((c) => c.id === id)) cache.push(caso);
+
+    // Com filtro de ano ativo, um caso de outro ano não entra na lista em tela;
+    // ele já foi para o cache do ano dele (se houver) e aparece quando for a vez.
+    const noRecorte = !state.f.ano || state.f.ano === caso.ano;
+    if (noRecorte && !state.casos.some((c) => c.id === id)) state.casos.push(caso);
+
+    // Espelho local do índice: quem grava no Firestore é o cadastro da entrada,
+    // mas os contadores do topo leem daqui e não podem esperar a próxima carga.
+    const anos = state.meta && state.meta.anos;
+    if (anos) {
+        anos[caso.ano] = anos[caso.ano] || { biopsia: 0, necropsia: 0 };
+        anos[caso.ano][caso.tipo] = Number(anos[caso.ano][caso.tipo] || 0) + 1;
+    }
+
+    memoSig = null;
+    montarSelectAnos();
+    atualizarOpcoes();
+    renderTotais();
+    render();
+}
+
+document.addEventListener('lpv:caso-criado', (e) => inserirCasoLocal(e.detail.id, e.detail.task));
 document.addEventListener('lpv:caso-excluido', (e) => removerCasoLocal(e.detail.id));
 document.addEventListener('lpv:caso-atualizado', (e) => atualizarCasoLocal(e.detail.id, e.detail.task));
 
 // ================================================================
 // FILTRO + ORDENAÇÃO (memoizado por assinatura)
 // ================================================================
+
+/**
+ * A ordem do próprio livro: o protocolo é cronológico (ano da série + número
+ * sequencial), não alfabético — "V140-26" vem depois de "V009-26", e não antes.
+ * Por ser único e existir em todo caso, ele também é o desempate de qualquer
+ * outra coluna.
+ *
+ * Protocolo ilegível não tem lugar na sequência: fica no fim nas duas direções.
+ * O peso desses casos é o maior possível, então em ordem decrescente eles
+ * abririam a lista — que é o oposto do que são, uma pendência de cadastro.
+ */
+function porProtocolo(a, b, sinal) {
+    const semA = a.pesoProtocolo === Number.MAX_SAFE_INTEGER;
+    const semB = b.pesoProtocolo === Number.MAX_SAFE_INTEGER;
+    if (semA || semB) return semA && semB ? 0 : (semA ? 1 : -1);
+    return sinal * (a.pesoProtocolo - b.pesoProtocolo);
+}
 function processar() {
     const { casos, f, ordem } = state;
     const sig = JSON.stringify([casos.length, f, ordem]);
@@ -307,6 +398,8 @@ function processar() {
 
     const out = casos.filter((c) => {
         if (f.tipo !== 'todos' && c.tipo !== f.tipo) return false;
+        if (f.laudo === 'liberado' && !c.liberado) return false;
+        if (f.laudo === 'pendente' && c.liberado) return false;
         if (f.situacao && c.situacao !== f.situacao) return false;
         if (f.ano && c.ano !== f.ano) return false;
         if (f.docente && c.docente !== f.docente) return false;
@@ -327,15 +420,16 @@ function processar() {
 
     const sinal = ordem.dir === 'asc' ? 1 : -1;
     out.sort((a, b) => {
-        // O protocolo é cronológico, não alfabético: ordena por ano e número.
-        if (ordem.campo === 'protocolo') {
-            return sinal * (a.pesoProtocolo - b.pesoProtocolo);
-        }
+        if (ordem.campo === 'protocolo') return porProtocolo(a, b, sinal);
+
         const va = String(a[ordem.campo] ?? '');
         const vb = String(b[ordem.campo] ?? '');
-        if (!va && !vb) return 0;
-        if (!va) return 1;   // vazios sempre no fim
-        if (!vb) return -1;
+        if (va && !vb) return -1;   // vazios sempre no fim, nas duas direções
+        if (!va && vb) return 1;
+        // Empate cai no protocolo. Sem isso a ordem dentro do bloco empatado é a
+        // que o Firestore devolveu — e empate deixou de ser exceção: todo caso em
+        // aberto tem data de laudo vazia, então todos eles empatam entre si.
+        if (va === vb) return porProtocolo(a, b, sinal);
         return sinal * va.localeCompare(vb, 'pt-BR', { numeric: true });
     });
 
@@ -393,12 +487,20 @@ function medirLinhas() {
 function linhaHTML(c, aberto) {
     const sit = SITUACAO[c.situacao] || SITUACAO.pendente;
     const resumo = [c.especie, c.sexo].filter(Boolean).join(' · ');
+    // Sem laudo liberado a coluna não fica vazia: um traço não diferencia "não
+    // tem data" de "ainda não foi laudado", e é essa a informação que importa
+    // numa linha que existe desde a entrada da amostra.
+    const laudo = c.liberado
+        ? `<span class="lr-laudo">${br(c.dataLaudo)}</span>`
+        : '<span class="lr-laudo is-aberto"><i class="fas fa-hourglass-half"></i> Em aberto</span>';
     const diag = c.diagnostico
         ? `<span class="lr-diag lr-truncate" title="${esc(c.diagnostico)}">${esc(c.diagnostico)}</span>`
-        : '<span class="lr-diag lr-truncate is-empty">Sem diagnóstico registrado</span>';
+        : `<span class="lr-diag lr-truncate is-empty">${
+            c.liberado ? 'Sem diagnóstico registrado' : 'Aguardando liberação do laudo'
+          }</span>`;
 
     return `
-        <div class="ledger-row tipo-${c.tipo}" role="button" tabindex="0"
+        <div class="ledger-row tipo-${c.tipo}${c.liberado ? '' : ' is-aberto'}" role="button" tabindex="0"
              title="${c.tipo === 'necropsia' ? 'Necropsia' : 'Biópsia'}">
             <i class="lr-chevron fas fa-chevron-right"></i>
             <span class="lr-protocolo">${esc(c.protocolo)}</span>
@@ -408,7 +510,7 @@ function linhaHTML(c, aberto) {
             </span>
             <span class="lr-prop lr-truncate">${esc(c.proprietario || '—')}</span>
             <span class="lr-entrada">${br(c.dataEntrada)}</span>
-            <span class="lr-laudo">${br(c.dataLaudo)}</span>
+            ${laudo}
             <span class="lr-situacao lr-tag ${sit.cls}">${sit.label}</span>
             <span class="lr-pos lr-truncate">${esc(curto(c.posGraduando))}</span>
             ${diag}
@@ -438,12 +540,14 @@ function expansaoHTML(c) {
                 ${item('Idade', c.idade)}
                 ${item('Raça', c.raca)}
                 ${item('Entrada', br(c.dataEntrada))}
-                ${item('Laudo', br(c.dataLaudo))}
+                ${item('Laudo', c.liberado ? br(c.dataLaudo) : 'Em aberto')}
                 ${item('Valor', c.valor ? `R$ ${c.valor}` : '—')}
             </dl>
             <div class="ledger-expand-diag">
                 <span>Diagnóstico</span>
-                <p>${esc(c.diagnostico || 'Sem diagnóstico registrado.')}</p>
+                <p>${esc(c.diagnostico || (c.liberado
+                    ? 'Sem diagnóstico registrado.'
+                    : 'O laudo ainda não foi liberado — o diagnóstico entra na ficha, na liberação.'))}</p>
             </div>
             <div class="ledger-expand-actions">
                 <button type="button" class="is-primary" data-abrir="${esc(c.id)}">
@@ -492,6 +596,15 @@ function render() {
 
     vazioBox.classList.toggle('hidden', lista.length > 0 || !state.carregado);
     el('foot-filtrados').textContent = nf(lista.length);
+
+    // Quantos do recorte ainda não têm laudo. Some quando é zero: no acervo
+    // fechado de um ano antigo, "0 em aberto" é ruído — a informação só existe
+    // enquanto houver trabalho correndo.
+    const abertos = lista.reduce((n, c) => n + (c.liberado ? 0 : 1), 0);
+    el('foot-abertos').textContent = nf(abertos);
+    el('foot-abertos-box').classList.toggle('hidden', abertos === 0);
+    el('foot-abertos-sep').classList.toggle('hidden', abertos === 0);
+
     el('foot-render').textContent = nf(Math.max(0, fim - ini));
 
     atualizarCabecalhoOrdem();
@@ -541,6 +654,7 @@ function renderTotais() {
 // ================================================================
 function rotuloValor(chave, valor) {
     if (chave === 'tipo') return valor === 'necropsia' ? 'Necropsias' : 'Biópsias';
+    if (chave === 'laudo') return valor === 'liberado' ? 'Liberados' : 'Em aberto';
     if (chave === 'situacao') return (SITUACAO[valor] || {}).label || valor;
     if (chave === 'ano') return rotuloAno(valor);
     return valor;
@@ -684,7 +798,7 @@ campos.busca.addEventListener('input', (e) => {
     debounceBusca = setTimeout(() => aplicar('busca', valor), 200);
 });
 
-['situacao', 'docente', 'posGraduando', 'especie', 'sexo', 'origem',
+['laudo', 'situacao', 'docente', 'posGraduando', 'especie', 'sexo', 'origem',
  'campoData', 'de', 'ate'].forEach((chave) => {
     campos[chave].addEventListener('change', (e) => aplicar(chave, e.target.value));
 });
@@ -784,18 +898,22 @@ if (typeof ResizeObserver === 'function') {
 
 // ================================================================
 // EXPORTAÇÃO EXCEL — exporta o que está no filtro atual
+//
+// Com o livro mostrando também as amostras em aberto, o filtro "Laudo" é o que
+// separa uma cópia do arquivo fechado de um retrato do laboratório inteiro.
 // ================================================================
 function exportarExcel() {
     const lista = processar();
     if (lista.length === 0) {
-        alert('Não há laudos no filtro atual para exportar.');
+        alert('Não há registros no filtro atual para exportar.');
         return;
     }
 
     const rows = lista.map((c) => [
         c.protocolo,
         br(c.dataEntrada),
-        br(c.dataLaudo),
+        c.liberado ? br(c.dataLaudo) : '---',
+        c.liberado ? 'Liberado' : 'Em aberto',
         c.nome || '---',
         c.rg || '---',
         c.especie || '---',
@@ -813,9 +931,12 @@ function exportarExcel() {
         parseFloat(String(c.valor || '0').replace(',', '.')) || 0
     ]);
 
-    const COL_VALOR = 17;
+    // A coluna do laudo entra logo depois da data dele: exportado assim, o livro
+    // continua legível de ponta a ponta — dá para ver de um lance de olhos o que
+    // já fechou e o que ainda corre.
+    const COL_VALOR = 18;
     const total = rows.reduce((soma, row) => soma + row[COL_VALOR], 0);
-    const header = ['PROTOCOLO', 'DATA ENTRADA', 'DATA LAUDO', 'NOME', 'RG', 'ESPÉCIE', 'RAÇA',
+    const header = ['PROTOCOLO', 'DATA ENTRADA', 'DATA LAUDO', 'LAUDO', 'NOME', 'RG', 'ESPÉCIE', 'RAÇA',
         'SEXO', 'IDADE', 'PROPRIETÁRIO', 'REMETENTE', 'DOCENTE', 'PÓS-GRADUANDO', 'TIPO',
         'DIAGNÓSTICO', 'HVU/EXTERNO', 'SITUAÇÃO', 'VALOR (R$)'];
     const footer = header.map((_, i) => (i === COL_VALOR ? total : (i === 0 ? 'TOTAL' : '')));
@@ -846,13 +967,13 @@ function exportarExcel() {
             } else if (R % 2 === 0) {
                 ws[cellRef].s.fill = { fgColor: { rgb: 'F2F2F2' } };
             }
-            if ([3, 5, 6, 9, 10, 14].includes(C) && R !== 0) ws[cellRef].s.alignment.horizontal = 'left';
+            if ([4, 6, 7, 10, 11, 15].includes(C) && R !== 0) ws[cellRef].s.alignment.horizontal = 'left';
         }
     }
 
-    ws['!cols'] = [{ wch: 15 }, { wch: 14 }, { wch: 14 }, { wch: 20 }, { wch: 12 }, { wch: 14 },
-        { wch: 16 }, { wch: 14 }, { wch: 10 }, { wch: 25 }, { wch: 25 }, { wch: 25 },
-        { wch: 25 }, { wch: 12 }, { wch: 40 }, { wch: 16 }, { wch: 16 }, { wch: 14 }];
+    ws['!cols'] = [{ wch: 15 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 20 }, { wch: 12 },
+        { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 10 }, { wch: 25 }, { wch: 25 },
+        { wch: 25 }, { wch: 25 }, { wch: 12 }, { wch: 40 }, { wch: 16 }, { wch: 16 }, { wch: 14 }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Livro de Registros');
@@ -876,25 +997,36 @@ async function apagarHistorico() {
         return;
     }
 
-    if (!confirm('ATENÇÃO: deseja apagar permanentemente TODO o histórico de laudos liberados?')) return;
+    const aviso = 'ATENÇÃO: deseja apagar permanentemente TODO o histórico de laudos liberados?'
+        + '\n\nOs casos ainda em aberto permanecem — eles são o trabalho em andamento do Mural.';
+    if (!confirm(aviso)) return;
 
     botoesApagar.forEach((btn) => { btn.disabled = true; });
     try {
         // A tela mostra um ano por vez, mas o botão apaga o acervo inteiro:
         // busca tudo antes de excluir.
         const todos = await buscarTudo();
-        if (todos.length === 0) return;
+        // O livro passou a mostrar também as amostras em aberto, e essas são o
+        // trabalho que ainda está no Mural: apagar o histórico não pode levar
+        // junto o que nem foi laudado.
+        const liberados = todos.filter((c) => c.liberado);
+        const restantes = todos.filter((c) => !c.liberado);
+        if (liberados.length === 0) {
+            alert('Não há laudos liberados para apagar.');
+            return;
+        }
 
         // O Firestore limita cada lote a 500 operações.
-        for (let i = 0; i < todos.length; i += 450) {
+        for (let i = 0; i < liberados.length; i += 450) {
             const lote = writeBatch(db);
-            todos.slice(i, i + 450).forEach((c) => lote.delete(doc(db, 'tasks', c.id)));
+            liberados.slice(i, i + 450).forEach((c) => lote.delete(doc(db, 'tasks', c.id)));
             await lote.commit();
         }
 
-        // O índice é uma contagem denormalizada: sem zerar junto, ele continua
-        // anunciando anos e totais de um acervo que não existe mais.
-        await zerarIndice();
+        // O índice é uma contagem denormalizada: sem regravar junto, ele
+        // continua anunciando anos e totais de um acervo que não existe mais.
+        // Regravar (e não zerar) porque os casos em aberto continuam no livro.
+        await gravarIndice(contarPorAno(restantes));
 
         alert('Histórico limpo com sucesso!');
         window.location.reload();
@@ -910,7 +1042,7 @@ botoesApagar.forEach((btn) => btn.addEventListener('click', apagarHistorico));
 // ================================================================
 // CARGA DOS DADOS
 //
-// O acervo cresce um ano por vez e vai acumular décadas de laudos, então puxar
+// O acervo cresce um ano por vez e vai acumular décadas de casos, então puxar
 // a coleção inteira a cada abertura não se sustenta. A página lê primeiro o
 // índice `meta/livroRegistros` (um documento com os anos e as contagens), monta
 // o filtro de ano e os totais a partir dele, e só busca no Firestore o ano
@@ -930,9 +1062,9 @@ function anosDoAcervo() {
     //
     // Ano com contagem zerada não entra: o índice guarda a chave do ano até
     // alguém regravar o documento, e sem esse corte um ano que teve o último
-    // laudo excluído continuaria sendo oferecido no filtro.
+    // caso excluído continuaria sendo oferecido no filtro.
     const anosIndice = (state.meta && state.meta.anos) || {};
-    const doIndice = Object.keys(anosIndice).filter((a) => temLaudo(anosIndice[a]));
+    const doIndice = Object.keys(anosIndice).filter((a) => temCaso(anosIndice[a]));
     const chaves = [...new Set([...doIndice, ...state.casos.map((c) => c.ano).filter(Boolean)])];
 
     return chaves.sort((a, b) => {
@@ -957,17 +1089,21 @@ async function carregarMeta() {
     }
 }
 
-/** Casos liberados de um ano de protocolo. */
+/**
+ * O Planner grava os compromissos da agenda na mesma coleção `tasks`. Eles não
+ * são amostra nem protocolo: ficam fora do livro, como já ficam fora do Mural.
+ */
+const ehCasoDoLivro = (t) => t && t.type !== 'agendamento_rapido';
+
+/** Casos de um ano de protocolo — liberados ou ainda em aberto. */
 async function buscarAno(ano) {
     if (state.porAno.has(ano)) return state.porAno.get(ano);
 
     const snapshot = await getDocs(query(
         collection(db, 'tasks'), where('protocoloAno', '==', Number(ano))
     ));
-    // Só filtro de igualdade na consulta (não exige índice composto); o laudo
-    // liberado é conferido aqui.
     const casos = snapshot.docs
-        .filter((d) => d.data().releasedAt)
+        .filter((d) => ehCasoDoLivro(d.data()))
         .map((d) => normalizarCaso(d.id, d.data()));
 
     state.porAno.set(ano, casos);
@@ -976,8 +1112,49 @@ async function buscarAno(ano) {
 
 /** Acervo inteiro — usado quando não há índice ou em "Todos os anos". */
 async function buscarTudo() {
-    const snapshot = await getDocs(query(collection(db, 'tasks'), where('releasedAt', '!=', null)));
-    return snapshot.docs.map((d) => normalizarCaso(d.id, d.data()));
+    const snapshot = await getDocs(collection(db, 'tasks'));
+    return snapshot.docs
+        .filter((d) => ehCasoDoLivro(d.data()))
+        .map((d) => normalizarCaso(d.id, d.data()));
+}
+
+/**
+ * Contagem por ano e tipo, no formato do índice `meta/livroRegistros`.
+ */
+function contarPorAno(casos) {
+    const anos = {};
+    casos.forEach((c) => {
+        const ano = c.ano || ANO_DESCONHECIDO;
+        anos[ano] = anos[ano] || { biopsia: 0, necropsia: 0 };
+        anos[ano][c.tipo] += 1;
+    });
+    return anos;
+}
+
+/**
+ * O índice é uma contagem denormalizada e pode ficar para trás: gravação que
+ * falhou, caso cadastrado antes de o índice contar amostras em aberto, protocolo
+ * corrigido com o índice fora do ar. Quando a página carrega o acervo inteiro
+ * ela sabe a verdade — e é a única hora barata de consertar, porque a leitura
+ * já foi paga. Só grava quando o índice realmente diverge.
+ */
+async function reconciliarIndice(casos) {
+    const apurado = contarPorAno(casos);
+    const guardado = (state.meta && state.meta.anos) || {};
+
+    const chaves = new Set([...Object.keys(apurado), ...Object.keys(guardado)]);
+    const divergiu = [...chaves].some((ano) => ['biopsia', 'necropsia'].some((tipo) => (
+        Math.max(0, Number((apurado[ano] || {})[tipo]) || 0)
+        !== Math.max(0, Number((guardado[ano] || {})[tipo]) || 0)
+    )));
+    if (!divergiu) return;
+
+    state.meta = {
+        ...(state.meta || {}),
+        anos: apurado,
+        total: casos.length
+    };
+    await gravarIndice(apurado);
 }
 
 function mostrarCarregando(ligado, texto) {
@@ -987,7 +1164,7 @@ function mostrarCarregando(ligado, texto) {
         vazioBox.querySelector('.ledger-empty-title').textContent = texto || 'Carregando…';
         vazioBox.querySelector('.ledger-empty-sub').textContent = '';
     } else {
-        vazioBox.querySelector('.ledger-empty-title').textContent = 'Nenhum laudo encontrado';
+        vazioBox.querySelector('.ledger-empty-title').textContent = 'Nenhum registro encontrado';
         vazioBox.querySelector('.ledger-empty-sub').textContent = 'Ajuste a busca ou limpe os filtros.';
     }
 }
@@ -1001,6 +1178,7 @@ async function carregarCasos(ano) {
             // "Todos os anos" lê o acervo inteiro em vez de percorrer os anos do
             // índice: é o que garante que um caso fora do índice ainda apareça.
             state.casos = await buscarTudo();
+            await reconciliarIndice(state.casos);
         }
     } catch (erro) {
         console.error('Erro ao carregar o livro de registros:', erro);

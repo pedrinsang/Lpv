@@ -14,6 +14,8 @@ class LpvEntryForm extends HTMLElement {
 
                 <form id="form-new-entry">
                     <div class="form-grid">
+                        <div class="span-3 divider-text">Identificação da Amostra</div>
+
                         <div class="form-group">
                             <label>Nº Protocolo Interno</label>
                             <input type="text" name="protocolo" id="entry-protocolo" placeholder="Ex: V-123/26 ou VN-123/26" class="input-field" required autocomplete="off">
@@ -50,6 +52,8 @@ class LpvEntryForm extends HTMLElement {
                             </label>
                         </div>
 
+                        <div class="span-3 divider-text">Remetente</div>
+
                         <div class="form-group span-2">
                             <label>Remetente</label>
                             <input type="text" name="remetente" class="input-field">
@@ -60,7 +64,9 @@ class LpvEntryForm extends HTMLElement {
                         </div>
                         <div class="form-group">
                             <label>Contato do Remetente</label>
-                            <input type="text" name="remetenteContato" class="input-field" placeholder="Telefone ou WhatsApp">
+                            <input type="text" name="remetenteContato" class="input-field"
+                                   placeholder="Telefone ou e-mail"
+                                   autocapitalize="none" spellcheck="false">
                         </div>
                         <div class="form-group">
                             <label>Clínica / Empresa</label>
@@ -77,6 +83,8 @@ class LpvEntryForm extends HTMLElement {
                             <label>Endereço do Remetente</label>
                             <input type="text" name="remetenteEndereco" class="input-field" placeholder="Rua, número, bairro, cidade">
                         </div>
+
+                        <div class="span-3 divider-text">Financeiro e Responsáveis</div>
 
                         <div class="form-group">
                             <label>Situação Financeira</label>
@@ -106,7 +114,7 @@ class LpvEntryForm extends HTMLElement {
 
                         <div class="span-3 divider-text">Dados do Animal</div>
 
-                        <div class="form-group span-2">
+                        <div class="form-group">
                             <label>Nome do Animal</label>
                             <input type="text" name="animalNome" class="input-field">
                         </div>
@@ -115,22 +123,9 @@ class LpvEntryForm extends HTMLElement {
                             <input type="text" name="animalRg" class="input-field">
                         </div>
                         <div class="form-group">
-                            <label>Proprietário</label>
-                            <input type="text" name="proprietario" class="input-field">
-                        </div>
-                        <div class="form-group">
-                            <label>Contato do Proprietário</label>
-                            <input type="text" name="proprietarioContato" class="input-field" placeholder="Telefone ou WhatsApp">
-                        </div>
-                        <div class="form-group">
                             <label>Espécie</label>
                             <input type="text" name="especie" placeholder="Canina" class="input-field">
                         </div>
-                        <div class="form-group span-3">
-                            <label>Endereço do Proprietário</label>
-                            <input type="text" name="proprietarioEndereco" class="input-field" placeholder="Rua, número, bairro, cidade">
-                        </div>
-
                         <div class="form-group">
                             <label>Raça</label>
                             <input type="text" name="raca" class="input-field">
@@ -145,6 +140,23 @@ class LpvEntryForm extends HTMLElement {
                         <div class="form-group">
                             <label>Idade</label>
                             <input type="text" name="idade" class="input-field">
+                        </div>
+
+                        <div class="span-3 divider-text">Dados do Proprietário</div>
+
+                        <div class="form-group span-2">
+                            <label>Proprietário</label>
+                            <input type="text" name="proprietario" class="input-field">
+                        </div>
+                        <div class="form-group">
+                            <label>Contato do Proprietário</label>
+                            <input type="text" name="proprietarioContato" class="input-field"
+                                   placeholder="Telefone ou e-mail"
+                                   autocapitalize="none" spellcheck="false">
+                        </div>
+                        <div class="form-group span-3">
+                            <label>Endereço do Proprietário</label>
+                            <input type="text" name="proprietarioEndereco" class="input-field" placeholder="Rua, número, bairro, cidade">
                         </div>
 
                     </div>

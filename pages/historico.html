@@ -119,6 +119,15 @@
                         </div>
                     </div>
 
+                    <div class="ledger-field" style="width: 140px;">
+                        <label for="f-laudo">Laudo</label>
+                        <select id="f-laudo">
+                            <option value="">Todos</option>
+                            <option value="liberado">Liberados</option>
+                            <option value="pendente">Em aberto</option>
+                        </select>
+                    </div>
+
                     <div class="ledger-field" style="width: 150px;">
                         <label for="f-situacao">Situação</label>
                         <select id="f-situacao">
@@ -204,7 +213,7 @@
 
                             <div class="ledger-track" id="ledger-track"></div>
                             <div class="ledger-empty hidden" id="ledger-empty">
-                                <p class="ledger-empty-title">Nenhum laudo encontrado</p>
+                                <p class="ledger-empty-title">Nenhum registro encontrado</p>
                                 <p class="ledger-empty-sub">Ajuste a busca ou limpe os filtros.</p>
                             </div>
                         </div>
@@ -213,8 +222,10 @@
 
                 <div class="ledger-foot">
                     <div class="ledger-foot-info">
-                        <span><strong id="foot-filtrados">0</strong> laudos no filtro</span>
+                        <span><strong id="foot-filtrados">0</strong> registros no filtro</span>
                         <span class="ledger-foot-sep"></span>
+                        <span id="foot-abertos-box" class="hidden"><i class="fas fa-hourglass-half"></i> <strong id="foot-abertos">0</strong> em aberto</span>
+                        <span id="foot-abertos-sep" class="ledger-foot-sep hidden"></span>
                         <span><i class="fas fa-bolt"></i> <span id="foot-render">0</span> linhas em tela · janela virtual</span>
                         <span class="ledger-foot-sep"></span>
                         <span>Acervo desde <span id="foot-desde">—</span></span>

@@ -1,7 +1,8 @@
 /* ================================================================
    LPV — HISTÓRICO / LIVRO DE REGISTROS
-   Lista densa (uma linha por laudo) com janela virtual e expansão inline.
-   Cobre todos os laudos liberados, de todos os anos.
+   Lista densa (uma linha por caso) com janela virtual e expansão inline.
+   Cobre o acervo inteiro: o caso entra no livro no cadastro da entrada, e a
+   liberação do laudo só completa a linha que já existe.
 
    O tipo do caso não ocupa coluna: é comunicado pela cor da borda
    esquerda da linha (azul = necropsia, rosa = biópsia). A legenda
@@ -449,6 +450,22 @@
     white-space: nowrap;
 }
 
+/* Caso ainda sem laudo: a coluna diz o estado em vez de ficar em branco, e a
+   linha inteira recua um tom para o arquivo fechado continuar sendo o que salta
+   aos olhos na leitura de cima para baixo. */
+.lr-laudo.is-aberto {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    font-size: 0.72rem;
+}
+.lr-laudo.is-aberto i { font-size: 0.66rem; opacity: 0.8; }
+
+.ledger-row.is-aberto .lr-protocolo,
+.ledger-row.is-aberto .lr-animal strong { opacity: 0.82; }
+
 .lr-diag { font-size: 0.78rem; color: var(--text-tertiary); }
 .lr-diag.is-empty { opacity: 0.45; }
 
@@ -567,6 +584,7 @@
 }
 .ledger-foot-info strong { color: var(--text-secondary); }
 .ledger-foot-info .fa-bolt { color: var(--color-accent); }
+.ledger-foot-info .fa-hourglass-half { opacity: 0.65; }
 .ledger-foot-sep { width: 1px; height: 14px; background: var(--border-color); }
 .ledger-foot-btn {
     display: flex;

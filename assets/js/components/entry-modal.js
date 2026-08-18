@@ -11,6 +11,8 @@ import {
     prepararSerie, ultimoDaSerie, proximoDaSerie, protocoloJaUsado, registrarNaSerie
 } from '../lib/serie-protocolo.js';
 import { infoDoNivel } from '../lib/prioridade.js';
+import { registrarCaso, moverCaso } from '../lib/livro-indice.js';
+import { formatarContato } from '../lib/contato.js';
 
 // --- ELEMENTOS DO DOM ---
 const modal = document.getElementById('entry-modal');
@@ -35,7 +37,8 @@ const hiddenPosUid = document.getElementById('select-pos-uid');
 let editingTaskId = null; // null = Modo Criação | ID = Modo Edição
 // Documento completo do caso em edição. O formulário só conhece os campos da
 // entrada, mas o Livro de Registros precisa do caso inteiro (data do laudo,
-// diagnóstico, releasedAt) para redesenhar a linha sem reler o Firestore.
+// diagnóstico, releasedAt) para redesenhar a linha sem reler o Firestore — e o
+// índice do livro precisa do protocolo antigo para mover a contagem de ano.
 let editingTaskData = null;
 
 // ==========================================================================
@@ -190,6 +193,25 @@ exclusividadeDosNiveis(urgentInput, priorityInput);
 exclusividadeDosNiveis(priorityInput, urgentInput);
 
 // ==========================================================================
+// 1d. CONTATO: TELEFONE OU E-MAIL NO MESMO CAMPO
+//
+//     A forma só pode ser imposta quando a pessoa termina de escrever, e não a
+//     cada tecla: enquanto ela digita, "123" tanto pode virar um telefone
+//     quanto o começo de "123joao@ufsm.br". Formatar durante a digitação
+//     encheria o e-mail de parênteses que ficariam lá depois do "@" chegar.
+//     Por isso a normalização acontece na saída do campo.
+// ==========================================================================
+const CAMPOS_CONTATO = ['remetenteContato', 'proprietarioContato'];
+
+CAMPOS_CONTATO.forEach((nome) => {
+    const campo = form && form.elements[nome];
+    if (!campo) return;
+    campo.addEventListener('blur', () => {
+        campo.value = formatarContato(campo.value);
+    });
+});
+
+// ==========================================================================
 // 2. ABRIR E FECHAR MODAL (MODO CRIAÇÃO)
 // ==========================================================================
 openBtns.forEach(btn => {
@@ -325,7 +347,7 @@ async function saveEntry(e) {
 
     // O protocolo tem que ser legível por inteiro, não só ter o prefixo certo: o
     // número e o ano da série são o que põe o caso num ano do Livro de Registros.
-    // Sem eles o caso é liberado mas não aparece em ano nenhum do livro.
+    // Sem eles a amostra é cadastrada mas cai no balde “Sem ano” do livro.
     const protocoloLido = parseProtocolo(protocoloInput?.value);
     if (!protocoloLido) {
         alert('Protocolo inválido.\n\nUse "V" para biópsia e "VN" para necropsia, seguidos do número e do ano da série:\nV-123/26, V123-26, VN-7/2026.');
@@ -362,6 +384,9 @@ async function saveEntry(e) {
 
         syncPosResponsavelUid();
         data.posResponsavelUid = hiddenPosUid?.value || '';
+        // Rede de segurança para quem cola o número e envia sem sair do campo:
+        // o `blur` não chega a acontecer e o telefone iria cru para o Firestore.
+        CAMPOS_CONTATO.forEach((nome) => { data[nome] = formatarContato(data[nome]); });
         // O checkbox só entra no FormData quando marcado — lemos direto do input.
         data.isUrgent = !!urgentInput?.checked;
         data.isPriority = !data.isUrgent && !!priorityInput?.checked;
@@ -381,10 +406,16 @@ async function saveEntry(e) {
             };
 
             const updatedId = editingTaskId;
-            const casoCompleto = { ...(editingTaskData || {}), ...alteracoes, id: updatedId };
+            const anterior = { ...(editingTaskData || {}) };
+            const casoCompleto = { ...anterior, ...alteracoes, id: updatedId };
 
             await updateDoc(doc(db, "tasks", updatedId), alteracoes);
             registrarNaSerie(alteracoes.protocolo);
+
+            // Corrigir o protocolo pode mudar o ano da série ou o tipo do caso,
+            // e o índice do livro conta por ano e por tipo: sem mover a
+            // contagem, o caso passa a ser oferecido num ano e contado noutro.
+            await moverCaso(anterior, casoCompleto);
 
             // Mural e Hub se corrigem pelo onSnapshot; o Livro de Registros lê
             // por ano e guarda em cache, então precisa do aviso para não deixar
@@ -415,11 +446,24 @@ async function saveEntry(e) {
             createdAt: new Date().toISOString()
         };
 
-        await addDoc(collection(db, "tasks"), taskData);
+        const criado = await addDoc(collection(db, "tasks"), taskData);
 
         // O próximo cadastro já sai com o número seguinte, sem esperar a
         // próxima varredura da série.
         registrarNaSerie(taskData.protocolo);
+
+        // A amostra entra no Livro de Registros agora, com tudo o que a entrada
+        // sabe dela; a liberação só acrescenta a data do laudo e o diagnóstico à
+        // linha que já está lá. Por isso o índice do livro (que monta o filtro
+        // de ano e os contadores do acervo) é somado aqui, e não na liberação.
+        await registrarCaso(taskData);
+
+        // Mural e Hub escutam o Firestore e veem o caso sozinhos. O Livro lê por
+        // ano e guarda em cache, de propósito: sem este aviso, a amostra recém
+        // cadastrada só apareceria lá na próxima recarga da página.
+        document.dispatchEvent(new CustomEvent('lpv:caso-criado', {
+            detail: { id: criado.id, task: { ...taskData, id: criado.id } }
+        }));
 
         const nivel = infoDoNivel(taskData);
         const avisoNivel = nivel ? `\n\nMarcada como ${nivel.rotulo.toUpperCase()}.` : '';

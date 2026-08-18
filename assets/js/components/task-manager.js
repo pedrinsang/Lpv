@@ -13,7 +13,7 @@ import {
     hasActiveUploadedWord
 } from '../lib/report-files-service.js';
 import { camposDerivados, parseProtocolo } from '../lib/protocolo.js';
-import { registrarLiberacao, registrarExclusao } from '../lib/livro-indice.js';
+import { registrarExclusao } from '../lib/livro-indice.js';
 
 const ENABLE_EXTERNAL_STORAGE_INTEGRATION = true;
 
@@ -420,10 +420,24 @@ function renderDetails(task) {
         </div>`;
 
     // --- REGISTRO DO LIVRO ---
-    // Data do laudo e diagnóstico são as duas colunas do Livro de Registros que
-    // não vêm da entrada da amostra: entram na liberação e ficam visíveis aqui.
+    // O caso entra no Livro de Registros no cadastro da entrada, então este card
+    // aparece sempre. Data do laudo e diagnóstico são as duas únicas colunas do
+    // livro que a entrada não tem como preencher: chegam na liberação.
     let livroHtml = '';
-    if (laudoLiberado) {
+    if (!laudoLiberado) {
+        livroHtml = `
+            <div class="info-card" style="grid-column:1 / -1; border:1px dashed var(--border-glass);">
+                <div class="info-icon"><i class="fas fa-book"></i></div>
+                <div class="info-label">Registro no Livro</div>
+                <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:4px;">
+                    O caso já consta no livro com o protocolo
+                    <strong>${esc(task.protocolo || '—')}</strong>, desde a entrada em ${brData(task.dataEntrada)}.
+                </div>
+                <div style="font-size:0.8rem; color:var(--text-tertiary); margin-top:8px; font-style:italic;">
+                    Faltam a data do laudo e o diagnóstico — é o que a liberação acrescenta.
+                </div>
+            </div>`;
+    } else {
         livroHtml = `
             <div class="info-card" style="grid-column:1 / -1; border:1px solid rgba(34,197,94,0.3);">
                 <div class="info-icon"><i class="fas fa-book"></i></div>
@@ -725,14 +739,14 @@ async function toggleFinancialStatus() {
 /**
  * FORMULÁRIO DE LIBERAÇÃO
  *
- * A liberação é o ponto em que a amostra vira linha do Livro de Registros, e
- * duas colunas do livro não existem em lugar nenhum antes dela: a data do laudo
- * e o diagnóstico. Todo o resto (protocolo, animal, remetente, docente, pós,
- * origem, situação, valor) já veio da entrada da amostra. Por isso a liberação
- * pede esses dois campos em vez de só congelar a data do clique.
+ * A linha do Livro de Registros já existe desde o cadastro da entrada, com tudo
+ * o que se sabe do caso (protocolo, animal, remetente, docente, pós, origem,
+ * situação, valor). O que falta nela são as duas colunas que só o laudo produz:
+ * a data do laudo e o diagnóstico. É isso — e só isso — que a liberação
+ * acrescenta; ela não cria registro nenhum.
  *
  * O mesmo formulário serve para corrigir o registro de um laudo já liberado —
- * aí ele não mexe em `releasedAt` nem soma de novo no índice do livro.
+ * aí ele não mexe em `releasedAt`.
  */
 function openReleaseForm() {
     if (!currentTask || !formRelease) return;
@@ -767,13 +781,13 @@ function openReleaseForm() {
                 <i class="fas fa-triangle-exclamation"></i>
                 <strong>Protocolo sem ano de série.</strong> O livro organiza os casos pelo ano do protocolo
                 (V001-26, Vn007-2026). Como “${esc(currentTask.protocolo || '')}” não tem ano legível,
-                o caso vai aparecer em <em>Sem ano</em>. Corrija em “Editar Dados” antes de liberar.
+                o caso está aparecendo em <em>Sem ano</em>. Corrija em “Editar Dados”.
             </div>` : ''}
 
         ${financeiroPendente ? `
             <div style="background:#fffbeb; border:1px solid #fcd34d; color:#78350f; padding:10px 12px; border-radius:8px; margin-bottom:16px; font-size:0.82rem;">
                 <i class="fas fa-exclamation-triangle"></i>
-                <strong>Financeiro pendente.</strong> O laudo pode ser liberado assim mesmo, mas o caso vai para o livro como “Pendente”.
+                <strong>Financeiro pendente.</strong> O laudo pode ser liberado assim mesmo, mas o caso continua no livro como “Pendente”.
             </div>` : ''}
 
         <div class="form-group">
@@ -783,7 +797,7 @@ function openReleaseForm() {
             <input type="date" id="release-data" class="input-field" required
                    value="${esc(dataAtual)}" max="${esc(hoje)}" style="max-width:220px;">
             <div style="font-size:0.75rem; color:var(--text-tertiary); margin-top:6px;">
-                É a data que vai para a coluna “Laudo” do Livro de Registros. Pode ser retroativa.
+                Preenche a coluna “Laudo” da linha que o caso já tem no Livro de Registros. Pode ser retroativa.
             </div>
         </div>
 
@@ -831,7 +845,7 @@ async function salvarLiberacao(event, jaLiberado) {
         if (!confirm(`A data do laudo é anterior à entrada da amostra (${entrada}).\nDeseja gravar assim mesmo?`)) return;
     }
 
-    if (!jaLiberado && !confirm('Liberar este laudo?\nO caso sai do Mural e passa a constar no Livro de Registros.')) return;
+    if (!jaLiberado && !confirm('Liberar este laudo?\nO caso sai do Mural; no Livro de Registros, a linha dele recebe a data do laudo e o diagnóstico.')) return;
 
     const btn = formRelease.querySelector('button[type="submit"]');
     const textoOriginal = btn.innerHTML;
@@ -866,10 +880,9 @@ async function salvarLiberacao(event, jaLiberado) {
 
         await updateDoc(doc(db, "tasks", currentTask.id), dados);
 
-        // O índice conta laudos liberados; correção não é liberação nova.
-        if (!jaLiberado) {
-            await registrarLiberacao({ ...currentTask, ...derivados });
-        }
+        // O índice do livro não é tocado aqui: ele conta casos, e este já foi
+        // somado no cadastro da entrada. Liberar não cria linha, completa a que
+        // existe.
 
         Object.assign(currentTask, dados);
         // Mural e Planner tiram o caso sozinhos (onSnapshot); o Livro precisa do
@@ -985,8 +998,8 @@ if(btnDelete) {
 
         const nome = [currentTask.protocolo, currentTask.animalNome].filter(Boolean).join(' — ') || 'este caso';
         const aviso = currentTask.releasedAt
-            ? `Excluir ${nome}?\n\nO laudo já foi liberado: ele sai do Livro de Registros junto.`
-            : `Excluir ${nome}?`;
+            ? `Excluir ${nome}?\n\nO laudo já foi liberado: o caso sai do Livro de Registros junto.`
+            : `Excluir ${nome}?\n\nO caso sai do Mural e do Livro de Registros.`;
         if (!confirm(aviso)) return;
 
         const excluido = { ...currentTask };
