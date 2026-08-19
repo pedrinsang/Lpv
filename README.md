@@ -62,6 +62,36 @@ A configuração do Firebase fica embutida em [assets/js/core.js](assets/js/core
 
 Para apontar para outro projeto Firebase, copie o objeto de configuração Web (Project settings → Your apps → Web → Config) e substitua o `firebaseConfig` no topo do [core.js](assets/js/core.js).
 
+### Email de redefinição de senha
+
+O email que o Firebase manda quando alguém clica em "Esqueci minha senha" é
+customizável, e o padrão vem em inglês e sem identidade nenhuma. A versão do LPV
+está em
+[firebase/email-templates/password-reset.html](firebase/email-templates/password-reset.html).
+
+Para aplicar: Firebase Console → Authentication → Templates → Redefinição de
+senha → editar → colar no campo **Mensagem**. Sugestão de assunto:
+`Redefinir sua senha do LPV`.
+
+O template usa `%LINK%` (obrigatória) e `%EMAIL%`. **Não** usa `%APP_NAME%` de
+propósito: sem o nome público configurado, o Firebase cai para o ID do projeto
+(`labpatvet-9e06a`) e o texto fica feio. A marca está escrita à mão.
+
+O logo é carregado por URL absoluta do GitHub Pages
+([assets/images/email/lpv-wordmark.png](assets/images/email/lpv-wordmark.png),
+5 KB) — email não abre arquivo local. **Ele precisa estar publicado antes de o
+template funcionar**: se você trocar de hospedagem, atualize a URL dentro do
+template. Com a imagem bloqueada, que é o padrão de vários clientes, a faixa
+escura continua de pé e o texto alternativo "LPV" aparece no lugar.
+
+Para conferir o resultado, abra
+[firebase/email-templates/preview.html](firebase/email-templates/preview.html)
+no navegador — é o mesmo HTML com valores de exemplo e a imagem embutida. Ao
+editar o template, gere o preview de novo.
+
+O HTML é feito de `<table>` com estilo inline. Não é desleixo: o Outlook renderiza
+email com o motor do Word (sem flex nem grid) e o Firebase não guarda `<style>`.
+
 ### Publicar regras do Firestore
 
 ```powershell

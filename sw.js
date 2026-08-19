@@ -1,6 +1,6 @@
 // Trocar a versão descarta o cache anterior na ativação. Suba um número sempre
 // que um arquivo da lista abaixo mudar de conteúdo.
-const CACHE_NAME = 'lpv-ultra-fast-v17';
+const CACHE_NAME = 'lpv-ultra-fast-v18';
 
 // Caminhos RELATIVOS ao próprio sw.js — nunca absolutos.
 //
@@ -17,6 +17,7 @@ const ASSETS_TO_CACHE = [
   './pages/mural.html',
   './pages/estoque.html',
   './assets/css/global.css',
+  './assets/css/pages/auth.css',
   './assets/css/pages/estoque.css',
   './assets/js/core.js',
   './assets/js/pages/estoque.js',

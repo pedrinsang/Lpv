@@ -1,0 +1,542 @@
+/* =========================================================
+   TELA DE ACESSO — split refinado
+
+   Celular: a foto vira um hero de 300px e o formulário sobe
+   por cima dele como uma folha arredondada.
+   Desktop (>=1024px): as duas metades ficam lado a lado.
+   ========================================================= */
+
+/* O reset reserva 110px embaixo para a barra de navegação do app e pinta um
+   brilho no fundo. Esta tela não tem barra e a foto cobre o fundo inteiro. */
+.auth-page {
+    padding-bottom: 0;
+    background-image: none;
+}
+
+.auth-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+    /* A partir de 1024px o responsive.css torna o body um flex row: sem o
+       flex:1 o layout encolheria até o tamanho do conteúdo. */
+    flex: 1;
+    min-width: 0;
+}
+
+/* ---------- Metade da marca (hero no celular) ---------- */
+
+.auth-brand {
+    position: relative;
+    flex: 0 0 300px;
+    min-height: 300px;
+    padding: calc(20px + env(safe-area-inset-top, 0px)) 20px 34px;
+    display: flex;
+    flex-direction: column;
+    color: #fff;
+    background-color: var(--color-primary-dark);
+    background-image:
+        linear-gradient(180deg, rgba(2, 132, 199, 0.88) 0%, rgba(15, 23, 42, 0.97) 100%),
+        url('../../images/fundo-lab.png');
+    background-size: cover;
+    background-position: center, 0% center;
+    background-repeat: no-repeat;
+}
+
+/* Voltar — círculo no celular, pílula com rótulo no desktop. */
+.auth-back {
+    position: absolute;
+    top: calc(20px + env(safe-area-inset-top, 0px));
+    left: 20px;
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    transition: opacity var(--duration-fast) ease;
+}
+
+.auth-back:hover { opacity: 0.8; }
+
+.auth-back-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    font-size: 1rem;
+}
+
+.auth-back-label { display: none; }
+
+/* Marca centralizada — só no celular. */
+.auth-hero-mark {
+    margin: auto;
+    text-align: center;
+    animation: auth-drop 0.7s var(--ease-out-expo) both;
+}
+
+.auth-hero-mark img {
+    height: 74px;
+    width: auto;
+    margin-bottom: 14px;
+    filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.35));
+}
+
+.auth-hero-eyebrow {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Discurso e números — só no desktop. */
+.auth-pitch,
+.auth-facts { display: none; }
+
+/* ---------- Metade do formulário ---------- */
+
+.auth-panel {
+    position: relative;
+    z-index: 10;
+    flex: 1;
+    margin-top: -28px;
+    padding: 32px 24px calc(32px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-body);
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 28px 28px 0 0;
+    box-shadow: 0 -18px 40px rgba(0, 0, 0, 0.45);
+    animation: auth-rise 0.6s var(--ease-out-expo) both;
+}
+
+.auth-panel-inner { width: 100%; }
+
+/* Tablet e celular deitado: sem isto os campos esticariam por mil pixels
+   antes de o layout de duas colunas entrar, aos 1024px. */
+@media (min-width: 560px) {
+    .auth-panel-inner {
+        max-width: 430px;
+        margin: 0 auto;
+    }
+}
+
+.auth-eyebrow {
+    display: none;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin-bottom: 12px;
+}
+
+.auth-head { margin-bottom: 26px; }
+
+.auth-title {
+    margin: 0 0 6px;
+    font-size: 1.625rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+}
+
+.auth-subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.auth-field { min-width: 0; }
+
+.auth-label,
+.auth-label-row {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+/* Rótulo e "esqueci minha senha" dividem a mesma linha. */
+.auth-label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.auth-link {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: normal;
+    text-transform: none;
+    color: #94a3b8;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.auth-link:hover { color: var(--color-accent); }
+
+.auth-input {
+    width: 100%;
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    /* 16px evita o zoom automático do iOS ao focar o campo. */
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color var(--duration-fast) ease,
+                background var(--duration-fast) ease,
+                box-shadow var(--duration-fast) ease;
+}
+
+.auth-input::placeholder { color: #64748b; }
+
+.auth-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    background: rgba(30, 41, 59, 0.9);
+    box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.18);
+}
+
+/* Código de acesso — o campo que muda tudo no cadastro. A dupla classe é
+   proposital: sem ela o .auth-input do bloco desktop sobrescreve o fundo. */
+.auth-input.auth-input--accent {
+    border-color: rgba(2, 132, 199, 0.55);
+    background: rgba(2, 132, 199, 0.08);
+}
+
+.auth-input-wrap { position: relative; }
+
+/* O olho fica dentro do campo; o padding à direita abre espaço pra ele. */
+.auth-input-wrap .auth-input { padding-right: 52px; }
+
+.auth-toggle {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 1.05rem;
+    cursor: pointer;
+    transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+
+.auth-toggle:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-secondary);
+}
+
+.auth-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.auth-check input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
+.auth-submit {
+    width: 100%;
+    padding: 19px;
+    border: none;
+    border-radius: 16px;
+    background: var(--gradient-main);
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 12px 26px rgba(2, 132, 199, 0.32);
+    transition: transform var(--duration-normal) var(--ease-spring),
+                box-shadow var(--duration-normal) var(--ease-spring);
+}
+
+.auth-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 38px rgba(2, 132, 199, 0.42);
+}
+
+.auth-submit:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+
+.auth-submit:disabled {
+    opacity: 0.7;
+    cursor: progress;
+}
+
+/* Instalar aplicativo — presença menor que a do botão principal. */
+.auth-ghost {
+    width: 100%;
+    padding: 15px;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 12px;
+    background: rgba(56, 189, 248, 0.08);
+    color: #7dd3fc;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.auth-ghost:hover {
+    background: rgba(56, 189, 248, 0.16);
+    border-color: var(--color-accent);
+}
+
+.auth-foot {
+    padding-top: 18px;
+    border-top: 1px solid var(--border-glass);
+    text-align: center;
+    font-size: 0.875rem;
+    color: #94a3b8;
+}
+
+.auth-foot-link {
+    color: var(--color-accent);
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.auth-foot-link:hover { text-decoration: underline; }
+
+/* O alerta é posicionado pelo pai: showAlert() reescreve o class do elemento. */
+.auth-form .alert-message { margin-bottom: 0; }
+
+/* Senha e confirmação: empilhadas no celular, lado a lado quando cabe. */
+.auth-pair {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+/* ---------- Desktop ---------- */
+
+@media (min-width: 1024px) {
+    .auth-layout {
+        flex-direction: row;
+        height: 100vh;
+        height: 100dvh;
+    }
+
+    .auth-brand {
+        flex: 0 0 52%;
+        min-height: 0;
+        padding: clamp(48px, 5vw, 72px);
+        justify-content: space-between;
+        background-image:
+            linear-gradient(135deg,
+                rgba(2, 132, 199, 0.92) 0%,
+                rgba(12, 74, 110, 0.94) 45%,
+                rgba(15, 23, 42, 0.96) 100%),
+            url('../../images/fundo-lab.png');
+    }
+
+    .auth-back {
+        position: static;
+        align-self: flex-start;
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .auth-back-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.12);
+    }
+
+    .auth-back-label { display: inline; }
+
+    .auth-hero-mark { display: none; }
+
+    .auth-pitch {
+        display: block;
+        max-width: 520px;
+    }
+
+    .auth-pitch-logo {
+        width: clamp(150px, 13vw, 190px);
+        height: auto;
+        margin-bottom: clamp(28px, 4vh, 44px);
+        filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.35));
+    }
+
+    .auth-pitch-title {
+        margin: 0 0 20px;
+        font-size: clamp(38px, 3.6vw, 60px);
+        line-height: 1.02;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+    }
+
+    .auth-pitch-text {
+        margin: 0;
+        max-width: 400px;
+        font-size: clamp(16px, 1.35vw, 20px);
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.78);
+        text-wrap: pretty;
+    }
+
+    .auth-facts {
+        display: flex;
+        gap: 40px;
+        padding-top: 32px;
+        border-top: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .auth-fact-label {
+        margin-bottom: 6px;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.55);
+    }
+
+    .auth-fact-value {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .auth-panel {
+        flex: 1;
+        min-width: 0;
+        margin-top: 0;
+        padding: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        background:
+            radial-gradient(at 85% 0%, rgba(56, 189, 248, 0.14) 0px, transparent 55%),
+            var(--bg-body);
+        overflow-y: auto;
+    }
+
+    .auth-panel-inner { max-width: 430px; }
+
+    .auth-eyebrow { display: block; }
+
+    .auth-head { margin-bottom: 36px; }
+
+    .auth-title {
+        font-size: 2.125rem;
+        margin-bottom: 8px;
+    }
+
+    .auth-subtitle { font-size: 0.9375rem; }
+
+    .auth-form { gap: 18px; }
+
+    .auth-input {
+        padding: 15px 16px;
+        font-size: 0.9375rem;
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .auth-label,
+    .auth-label-row { margin-bottom: 9px; }
+
+    .auth-toggle {
+        right: 8px;
+        width: 38px;
+        height: 38px;
+        border-radius: 9px;
+    }
+
+    .auth-check { min-height: 0; }
+
+    .auth-submit {
+        padding: 18px;
+        margin-top: 6px;
+        border-radius: 14px;
+    }
+
+    .auth-ghost { padding: 14px; }
+
+    .auth-foot {
+        margin-top: 14px;
+        padding-top: 24px;
+    }
+
+    .auth-pair { grid-template-columns: 1fr 1fr; }
+}
+
+/* Tela baixa: os números do rodapé são a primeira coisa a sair. */
+@media (min-width: 1024px) and (max-height: 760px) {
+    .auth-facts { display: none; }
+}
+
+/* ---------- Movimento ---------- */
+
+@keyframes auth-rise {
+    from { transform: translateY(40px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes auth-drop {
+    from { transform: translateY(-24px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .auth-panel,
+    .auth-hero-mark {
+        animation: none;
+    }
+
+    .auth-submit:hover:not(:disabled),
+    .auth-submit:active:not(:disabled) { transform: none; }
+}

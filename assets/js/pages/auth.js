@@ -92,7 +92,7 @@ if (loginForm) {
         const email = document.getElementById('login-email').value;
         const pass = document.getElementById('login-password').value;
         const alertBox = document.getElementById('login-alert');
-        const btn = loginForm.querySelector('button');
+        const btn = loginForm.querySelector('button[type="submit"]');
 
         // Verifica bloqueio por tentativas excessivas
         if (isLoginBlocked()) {
@@ -125,6 +125,7 @@ if (loginForm) {
 
             // Login bem-sucedido — limpa tentativas
             resetLoginAttempts();
+            persistRememberedEmail();
             window.location.href = '../pages/hub.html';
 
         } catch (error) {
@@ -202,7 +203,7 @@ if (registerForm) {
         const pass = document.getElementById('reg-pass').value;
         const confirm = document.getElementById('reg-confirm').value;
         const alertBox = document.getElementById('register-alert');
-        const btn = registerForm.querySelector('button');
+        const btn = registerForm.querySelector('button[type="submit"]');
 
         alertBox.classList.add('hidden');
 
@@ -333,6 +334,64 @@ function showAlert(element, message, type) {
     element.textContent = message; // ✅ seguro contra XSS
     element.className = `alert-message ${type}`; 
     element.classList.remove('hidden');
+}
+
+// =========================================================
+// MOSTRAR / OCULTAR SENHA
+//
+// Cada botão aponta para o campo pelo id em data-password-toggle. O estado
+// vive no próprio input, então não há nada para sincronizar entre os dois.
+// =========================================================
+document.querySelectorAll('[data-password-toggle]').forEach((btn) => {
+    const input = document.getElementById(btn.dataset.passwordToggle);
+    if (!input) return;
+
+    btn.addEventListener('click', () => {
+        const revealing = input.type === 'password';
+        input.type = revealing ? 'text' : 'password';
+
+        btn.setAttribute('aria-pressed', String(revealing));
+        btn.setAttribute('aria-label', revealing ? 'Ocultar senha' : 'Mostrar senha');
+
+        const icon = btn.querySelector('i');
+        if (icon) icon.className = revealing ? 'fas fa-eye-slash' : 'fas fa-eye';
+
+        // Devolve o cursor pro fim do texto: clicar no olho tira o foco do campo.
+        input.focus();
+        const end = input.value.length;
+        try { input.setSelectionRange(end, end); } catch { /* type=email não aceita */ }
+    });
+});
+
+// =========================================================
+// LEMBRAR EMAIL NESTE DISPOSITIVO
+//
+// Só o email, nunca a senha. Fica no localStorage porque a intenção é
+// justamente valer para as próximas visitas neste navegador.
+// =========================================================
+const REMEMBERED_EMAIL_KEY = 'remembered_email';
+const rememberCheck = document.getElementById('remember-email');
+const loginEmailInput = document.getElementById('login-email');
+
+if (rememberCheck && loginEmailInput) {
+    const saved = localStorage.getItem(REMEMBERED_EMAIL_KEY);
+    if (saved) {
+        loginEmailInput.value = saved;
+        rememberCheck.checked = true;
+    }
+
+    // Desmarcar apaga na hora, sem esperar o próximo login dar certo.
+    rememberCheck.addEventListener('change', () => {
+        if (!rememberCheck.checked) localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+    });
+}
+
+// Chamada no sucesso do login: só grava depois que o email provou existir,
+// senão guardaria um erro de digitação para sempre.
+function persistRememberedEmail() {
+    if (!rememberCheck || !loginEmailInput) return;
+    if (!rememberCheck.checked) return;
+    localStorage.setItem(REMEMBERED_EMAIL_KEY, loginEmailInput.value.trim());
 }
 
 // =========================================================
