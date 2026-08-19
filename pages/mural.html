@@ -118,21 +118,33 @@
     <lpv-entry-form></lpv-entry-form>
 
     <div id="task-manager-modal" class="modal-overlay hidden mural-task-modal">
-        <div class="modal-glass mural-modal-glass" style="display: flex; flex-direction: column; max-height: 90vh; padding: 0; overflow: hidden;">
-            <div class="mural-modal-topbar" style="flex-shrink: 0; display: flex; justify-content: flex-end; background: var(--background-glass);">
-                <button id="close-tm-btn" class="btn-close-modal" style="position: relative; top: auto; right: auto; background: rgba(0,0,0,0.1); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-times"></i>
-                </button>
+        <div class="modal-glass tm-modal-shell mural-modal-glass">
+            <div class="tm-modal-topbar mural-modal-topbar">
+                <div class="tm-modal-ident">
+                    <span class="tm-modal-ident-icon"><i class="fas fa-folder-open"></i></span>
+                    <div style="min-width: 0;">
+                        <div class="tm-modal-kicker">Ficha completa da amostra</div>
+                        <div class="tm-modal-title" id="tm-modal-title">—</div>
+                    </div>
+                </div>
+                <button id="close-tm-btn" class="btn-close-modal"><i class="fas fa-times"></i></button>
             </div>
-            <div id="view-details-content" style="flex: 1; overflow-y: auto;">
+
+            <div id="view-details-content">
                 <div id="tm-info-grid"></div>
-                <div class="modal-footer mural-modal-footer" style="justify-content: space-between; margin-top: 2rem; gap: 10px;">
-                    <button id="btn-delete-task" class="btn btn-secondary" style="color: var(--color-error); border-color: var(--color-error); margin-right: auto;">
-                        <i class="fas fa-trash"></i>
+            </div>
+
+            <div id="tm-details-footer" class="tm-modal-footer mural-modal-footer">
+                <button id="btn-delete-task" class="btn btn-secondary" style="color: var(--color-error); border-color: var(--color-error);">
+                    <i class="fas fa-trash"></i>
+                </button>
+                <div class="tm-footer-actions">
+                    <button id="btn-edit-entry" class="btn btn-secondary">
+                        <i class="fas fa-edit"></i> Editar dados da entrada
                     </button>
                 </div>
             </div>
-            <div id="view-k7-form" class="hidden" style="padding: 20px; overflow-y: auto;"><form id="form-k7"></form></div>
+
             <div id="view-release-form" class="hidden" style="padding: 20px; overflow-y: auto;"><form id="form-release"></form></div>
         </div>
     </div>

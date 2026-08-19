@@ -77,9 +77,17 @@ firebase deploy --only firestore:rules
 - `databaseURL`: só é necessário para Realtime Database. Este projeto usa Firestore, então pode ser omitido.
 - `measurementId`: opcional; inclua se for usar Analytics.
 
-## Arquivos do Laudo (Word + PDF)
+## Arquivos do Laudo (Word + PDF) — fora do ar
 
-O laudo entra no sistema como arquivo enviado — não existe editor de laudo online.
+O laudo é feito por fora do site. O sistema guarda a ficha de entrada e o
+diagnóstico; não existe editor de laudo online nem assinatura digital.
+
+O painel de arquivos saiu da ficha da amostra, mas o código continua no
+repositório, pronto para voltar: `renderReportFilesPanel` e
+`bindTaskFileActions` em [task-manager.js](assets/js/components/task-manager.js)
+e a [report-files-service.js](assets/js/lib/report-files-service.js) inteira.
+Enquanto o painel não voltar, nada abaixo está em uso — a configuração fica
+documentada para o dia em que estiver.
 
 - Upload manual de Word e PDF, com histórico de versões por caso.
 - A versão ativa de cada tipo é a fonte oficial do laudo.

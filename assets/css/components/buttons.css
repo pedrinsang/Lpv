@@ -55,6 +55,13 @@
   color: var(--color-primary);
 }
 
+/* Pílula miúda — ações secundárias dentro de cards e da ficha */
+.btn-sm {
+  padding: 7px 14px;
+  font-size: 0.8rem;
+  gap: 8px;
+}
+
 /* Ícone */
 .btn-icon {
   width: 40px;

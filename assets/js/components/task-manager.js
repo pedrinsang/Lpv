@@ -17,71 +17,21 @@ import { registrarExclusao } from '../lib/livro-indice.js';
 
 const ENABLE_EXTERNAL_STORAGE_INTEGRATION = true;
 
-// --- ESTILOS INJETADOS (Correções Específicas Mobile) ---
-const style = document.createElement('style');
-style.innerHTML = `
-    @media (max-width: 768px) {
-        .modal-glass { 
-            width: 100% !important; 
-            height: 100% !important; 
-            max-height: 100vh !important; 
-            border-radius: 0 !important; 
-            margin: 0 !important; 
-            display: flex; 
-            flex-direction: column; 
-        }
-        .tm-hero-modern { flex-direction: column; text-align: center; gap: 15px; }
-        .tm-hero-modern > div:last-child { text-align: center !important; width: 100%; }
-        
-        /* Layout Vertical para as seções principais */
-        .tm-code-section { flex-direction: column; gap: 20px; align-items: stretch !important; }
-        .tm-code-section > div { text-align: left !important; width: 100%; }
-        
-        /* CORREÇÃO: Botão de Editar ocupa largura total */
-        .tm-code-section > button { margin-left: 0 !important; width: 100%; margin-top: 5px; }
-
-        /* CORREÇÃO CRÍTICA: Botão de Copiar no Mobile */
-        .btn-copy-code {
-            width: 40px !important; /* Tamanho fixo */
-            height: 40px !important;
-            padding: 0 !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            flex-shrink: 0 !important; /* Impede de encolher ou esticar */
-            background: rgba(0,0,0,0.05) !important; /* Fundo leve para área de toque */
-            border-radius: 8px !important;
-        }
-
-        .tm-code-row {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: flex-start !important;
-            gap: 10px !important;
-            width: 100%;
-        }
-
-        .tm-info-cards { grid-template-columns: 1fr !important; }
-        .tm-actions-footer { flex-direction: column; }
-        .tm-actions-footer button { width: 100%; }
-        .modal-footer { flex-direction: column-reverse; }
-        .modal-footer button { width: 100%; }
-    }
-    
-    .btn-copy-code:active { transform: scale(0.9); }
-`;
-document.head.appendChild(style);
+// O ajuste de celular da ficha mora em assets/css/components/modals.css, junto
+// com o resto do modal — injetar CSS daqui deixava a mesma regra em dois lugares.
 
 const modal = document.getElementById('task-manager-modal');
 const closeBtn = document.getElementById('close-tm-btn');
 const viewDetails = document.getElementById('view-details-content');
-const viewK7 = document.getElementById('view-k7-form');
 const viewRelease = document.getElementById('view-release-form');
 const infoGrid = document.getElementById('tm-info-grid');
-const formK7 = document.getElementById('form-k7');
 const formRelease = document.getElementById('form-release');
 
+// Rodapé fixo da ficha: sai de cena junto com ela quando o modal troca para o
+// formulário de liberação, que tem rodapé próprio.
+const detailsFooter = document.getElementById('tm-details-footer');
 const btnDelete = document.getElementById('btn-delete-task');
+const btnEditEntry = document.getElementById('btn-edit-entry');
 
 let currentTask = null;
 let currentUserData = null;
@@ -116,6 +66,97 @@ function dataDoLaudo(task) {
     return (task && task.dataLaudo) || isoLocal(task && task.releasedAt);
 }
 
+/** Sexo é gravado como 'M'/'F' no formulário; a ficha lê por extenso. */
+function sexoExtenso(valor) {
+    const s = String(valor ?? '').trim().toUpperCase();
+    if (s === 'M') return 'Macho';
+    if (s === 'F') return 'Fêmea';
+    return valor || '';
+}
+
+/**
+ * Uma célula do bloco de campos.
+ *
+ * `valor` é escapado; `html` entra cru, para os casos em que a célula já vem
+ * montada (contato com link, botão de editar ao lado). Campo vazio vira travessão
+ * em vez de sumir: saber que o cadastro não preencheu é informação.
+ */
+function campo(rotulo, valor, opts = {}) {
+    const { span = 0, tom = '', num = false, html = '' } = opts;
+    const texto = String(valor ?? '').trim();
+    const conteudo = html || (texto ? esc(texto) : '—');
+    const classes = ['tm-field-value', tom, num ? 'is-num' : ''].filter(Boolean).join(' ');
+    return `
+        <div class="tm-field${span ? ` span-${span}` : ''}">
+            <div class="tm-field-label">${esc(rotulo)}</div>
+            <div class="${classes}">${conteudo}</div>
+        </div>`;
+}
+
+/** Bloco de campos com o título da seção — os mesmos títulos do formulário. */
+function bloco(icone, titulo, campos, extraClasse = '') {
+    return `
+        <div class="tm-section">
+            <div class="tm-section-head"><i class="fas ${icone}"></i> ${esc(titulo)}</div>
+            <div class="tm-fields ${extraClasse}">${campos.join('')}</div>
+        </div>`;
+}
+
+/**
+ * CONTATO CLICÁVEL
+ *
+ * Remetente e proprietário guardam telefone ou e-mail no mesmo campo (ver
+ * lib/contato.js). Aqui o conteúdo decide o link: com "@" abre o cliente de
+ * e-mail, com dígitos abre o discador. O botão de copiar existe porque no
+ * computador nenhum dos dois resolve — o número vai para o WhatsApp e o e-mail
+ * para outra janela, e ler da tela para digitar é onde o dígito se perde.
+ */
+function contatoHTML(valor) {
+    const texto = String(valor ?? '').trim();
+    if (!texto) return '';
+
+    const digitos = texto.replace(/\D/g, '');
+    const href = texto.includes('@')
+        ? `mailto:${texto}`
+        : (digitos ? `tel:${texto.trim().startsWith('+') ? '+' : ''}${digitos}` : '');
+
+    const alvo = href ? `<a href="${esc(href)}">${esc(texto)}</a>` : esc(texto);
+
+    return `<div class="tm-contact">${alvo}
+        <button type="button" class="tm-copy" data-copiar="${esc(texto)}" title="Copiar contato">
+            <i class="fas fa-copy"></i>
+        </button>
+    </div>`;
+}
+
+/**
+ * NOME DE QUEM CADASTROU A AMOSTRA
+ *
+ * O caso guarda `createdBy` como uid — o nome mora na coleção `users`, e lê-lo
+ * custa uma leitura a mais por ficha aberta. Por isso o resultado fica em cache
+ * pela sessão: a segunda ficha cadastrada pela mesma pessoa não lê de novo, e o
+ * uid sem perfil legível também é guardado, para não tentar de novo a cada
+ * abertura. Quem não é staff não pode ler o perfil dos outros (ver
+ * firestore.rules); nesse caso o rodapé fica só com as datas.
+ */
+const nomesPorUid = new Map();
+
+async function nomeDeQuemCadastrou(uid) {
+    if (!uid || uid === 'anon') return '';
+    if (nomesPorUid.has(uid)) return nomesPorUid.get(uid);
+
+    let nome = '';
+    try {
+        const perfil = await getDoc(doc(db, 'users', uid));
+        if (perfil.exists()) nome = perfil.data().name || '';
+    } catch (e) {
+        console.warn('Não foi possível ler quem cadastrou a amostra.', e);
+    }
+
+    nomesPorUid.set(uid, nome);
+    return nome;
+}
+
 /**
  * AVISOS PARA A TELA QUE ABRIU A FICHA
  *
@@ -135,6 +176,14 @@ function avisarCasoAtualizado(task) {
     }));
 }
 
+/**
+ * ARQUIVOS DO LAUDO — CÓDIGO GUARDADO, FORA DE USO
+ *
+ * A ficha não mostra mais o painel de arquivos, então nada abaixo é chamado:
+ * `renderReportFilesPanel` e `bindTaskFileActions` ficam aqui de propósito,
+ * prontos para o dia em que o upload/download do Word e do PDF voltar à tela.
+ * Enquanto isso, `lib/report-files-service.js` não tem quem o chame.
+ */
 function formatFileSize(bytes) {
     const value = Number(bytes || 0);
     if (!value || value <= 0) return '-';
@@ -166,76 +215,75 @@ function renderReportFilesPanel(task, permission) {
 
     if (!canView) {
         return `
-            <div class="info-card" style="grid-column:1 / -1; border:1px solid rgba(148,163,184,0.25);">
-                <div class="info-icon"><i class="fas fa-folder-open"></i></div>
-                <div class="info-label">Arquivos do Laudo</div>
-                <div style="font-size:0.78rem; color:var(--text-tertiary); margin-top:6px;">Sem permissão para visualizar arquivos deste laudo.</div>
-            </div>
-        `;
+            <div class="tm-section">
+                <div class="tm-section-head"><i class="fas fa-folder-open"></i> Arquivos do laudo</div>
+                <div class="tm-block">
+                    <p class="tm-block-hint">Sem permissão para visualizar arquivos deste laudo.</p>
+                </div>
+            </div>`;
     }
 
-    const wordVersionsHtml = state.wordVersions.slice().reverse().slice(0, 5).map((version) => {
-        const date = version.uploadedAt ? new Date(version.uploadedAt).toLocaleString('pt-BR') : '-';
-        const activeTag = state.activeWordVersionId === version.versionId
-            ? '<span style="font-size:0.65rem; font-weight:700; color:#14532d; background:#dcfce7; padding:2px 6px; border-radius:999px;">ativo</span>'
-            : '';
-        return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-bottom:1px dashed rgba(148,163,184,0.35);">
-            <div style="min-width:0;">
-                <div style="font-weight:700; font-size:0.82rem; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${version.fileName || 'arquivo.docx'}</div>
-                <div style="font-size:0.72rem; color:var(--text-tertiary);">${date} • ${formatFileSize(version.size)}</div>
-            </div>
-            <div style="display:flex; align-items:center; gap:6px;">
-                ${activeTag}
-                <button data-report-download="word:${version.versionId}" style="border:none; border-radius:6px; padding:4px 6px; background:rgba(59,130,246,0.15); color:#1d4ed8; cursor:pointer;" title="Baixar versão"><i class="fas fa-download"></i></button>
-            </div>
-        </div>`;
-    }).join('');
+    const versoesHtml = (fileType, versoes, activeId, nomePadrao) => versoes
+        .slice()
+        .reverse()
+        .slice(0, 5)
+        .map((version) => {
+            const date = version.uploadedAt ? new Date(version.uploadedAt).toLocaleString('pt-BR') : '-';
+            const activeTag = activeId === version.versionId
+                ? '<span class="tm-tag-active">ativo</span>'
+                : '';
+            return `<div class="tm-file-row">
+                <div style="min-width:0;">
+                    <div class="tm-file-name">${esc(version.fileName || nomePadrao)}</div>
+                    <div class="tm-file-meta">${esc(date)} • ${formatFileSize(version.size)}</div>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    ${activeTag}
+                    <button type="button" class="tm-file-download" data-report-download="${fileType}:${esc(version.versionId)}" title="Baixar versão"><i class="fas fa-download"></i></button>
+                </div>
+            </div>`;
+        })
+        .join('');
 
-    const pdfVersionsHtml = state.pdfVersions.slice().reverse().slice(0, 5).map((version) => {
-        const date = version.uploadedAt ? new Date(version.uploadedAt).toLocaleString('pt-BR') : '-';
-        const activeTag = state.activePdfVersionId === version.versionId
-            ? '<span style="font-size:0.65rem; font-weight:700; color:#14532d; background:#dcfce7; padding:2px 6px; border-radius:999px;">ativo</span>'
-            : '';
-        return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-bottom:1px dashed rgba(148,163,184,0.35);">
-            <div style="min-width:0;">
-                <div style="font-weight:700; font-size:0.82rem; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${version.fileName || 'arquivo.pdf'}</div>
-                <div style="font-size:0.72rem; color:var(--text-tertiary);">${date} • ${formatFileSize(version.size)}</div>
-            </div>
-            <div style="display:flex; align-items:center; gap:6px;">
-                ${activeTag}
-                <button data-report-download="pdf:${version.versionId}" style="border:none; border-radius:6px; padding:4px 6px; background:rgba(59,130,246,0.15); color:#1d4ed8; cursor:pointer;" title="Baixar versão"><i class="fas fa-download"></i></button>
-            </div>
-        </div>`;
-    }).join('');
+    const wordVersionsHtml = versoesHtml('word', state.wordVersions, state.activeWordVersionId, 'arquivo.docx');
+    const pdfVersionsHtml = versoesHtml('pdf', state.pdfVersions, state.activePdfVersionId, 'arquivo.pdf');
+
+    const fonte = hasWordPrimary
+        ? 'Word enviado'
+        : (state.activeSource === 'uploaded_pdf' ? 'PDF enviado' : 'Nenhum arquivo enviado');
 
     return `
-        <div class="info-card" style="grid-column:1 / -1; border:1px solid rgba(59,130,246,0.25);">
-            <div class="info-icon"><i class="fas fa-folder-open"></i></div>
-            <div class="info-label">Arquivos do Laudo</div>
-            <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:4px;">
-                Fonte oficial: <strong>${hasWordPrimary ? 'Word enviado' : (state.activeSource === 'uploaded_pdf' ? 'PDF enviado' : 'Nenhum arquivo enviado')}</strong>
-            </div>
-
-            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">
-                ${canManage ? '<button id="tm-btn-upload-word" class="btn btn-secondary btn-sm" type="button"><i class="fas fa-upload"></i> Upload Word</button>' : ''}
-                ${canManage ? '<button id="tm-btn-upload-pdf" class="btn btn-secondary btn-sm" type="button"><i class="fas fa-upload"></i> Upload PDF</button>' : ''}
-                ${activeWord ? '<button id="tm-btn-download-word-active" class="btn btn-secondary btn-sm" type="button"><i class="fas fa-download"></i> Baixar Word ativo</button>' : ''}
-                ${activePdf ? '<button id="tm-btn-download-pdf-active" class="btn btn-secondary btn-sm" type="button"><i class="fas fa-download"></i> Baixar PDF ativo</button>' : ''}
-                ${canManage && activeWord ? '<button id="tm-btn-remove-word-active" class="btn btn-secondary btn-sm" type="button" style="border-color:#dc2626; color:#b91c1c;"><i class="fas fa-trash"></i> Retirar Word ativo</button>' : ''}
-                ${canManage && activePdf ? '<button id="tm-btn-remove-pdf-active" class="btn btn-secondary btn-sm" type="button" style="border-color:#dc2626; color:#b91c1c;"><i class="fas fa-trash"></i> Retirar PDF ativo</button>' : ''}
-            </div>
-
-            <input id="tm-input-upload-word" type="file" accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden">
-            <input id="tm-input-upload-pdf" type="file" accept=".pdf,application/pdf" class="hidden">
-
-            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-top:12px;">
-                <div style="padding:10px; border:1px solid rgba(148,163,184,0.25); border-radius:10px;">
-                    <div style="font-weight:800; font-size:0.82rem; margin-bottom:6px; color:var(--text-secondary);">Histórico Word</div>
-                    ${wordVersionsHtml || '<div style="font-size:0.75rem; color:var(--text-tertiary);">Sem versões de Word.</div>'}
+        <div class="tm-section">
+            <div class="tm-section-head"><i class="fas fa-folder-open"></i> Arquivos do laudo</div>
+            <div class="tm-block is-files">
+                <div class="tm-block-row">
+                    <div>
+                        <div class="tm-field-label">Fonte oficial</div>
+                        <div class="tm-field-value">${fonte}</div>
+                    </div>
                 </div>
-                <div style="padding:10px; border:1px solid rgba(148,163,184,0.25); border-radius:10px;">
-                    <div style="font-weight:800; font-size:0.82rem; margin-bottom:6px; color:var(--text-secondary);">Histórico PDF</div>
-                    ${pdfVersionsHtml || '<div style="font-size:0.75rem; color:var(--text-tertiary);">Sem versões de PDF.</div>'}
+
+                <div class="tm-block-actions">
+                    ${canManage ? '<button id="tm-btn-upload-word" class="btn btn-secondary btn-sm" type="button"><i class="fas fa-upload"></i> Upload Word</button>' : ''}
+                    ${canManage ? '<button id="tm-btn-upload-pdf" class="btn btn-secondary btn-sm" type="button"><i class="fas fa-upload"></i> Upload PDF</button>' : ''}
+                    ${activeWord ? '<button id="tm-btn-download-word-active" class="btn btn-secondary btn-sm" type="button"><i class="fas fa-download"></i> Baixar Word ativo</button>' : ''}
+                    ${activePdf ? '<button id="tm-btn-download-pdf-active" class="btn btn-secondary btn-sm" type="button"><i class="fas fa-download"></i> Baixar PDF ativo</button>' : ''}
+                    ${canManage && activeWord ? '<button id="tm-btn-remove-word-active" class="btn btn-secondary btn-sm" type="button" style="border-color:#dc2626; color:#f87171;"><i class="fas fa-trash"></i> Retirar Word ativo</button>' : ''}
+                    ${canManage && activePdf ? '<button id="tm-btn-remove-pdf-active" class="btn btn-secondary btn-sm" type="button" style="border-color:#dc2626; color:#f87171;"><i class="fas fa-trash"></i> Retirar PDF ativo</button>' : ''}
+                </div>
+
+                <input id="tm-input-upload-word" type="file" accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden">
+                <input id="tm-input-upload-pdf" type="file" accept=".pdf,application/pdf" class="hidden">
+
+                <div class="tm-file-history">
+                    <div class="tm-file-col">
+                        <div class="tm-file-col-title">Histórico Word</div>
+                        ${wordVersionsHtml || '<p class="tm-block-hint">Sem versões de Word.</p>'}
+                    </div>
+                    <div class="tm-file-col">
+                        <div class="tm-file-col-title">Histórico PDF</div>
+                        ${pdfVersionsHtml || '<p class="tm-block-hint">Sem versões de PDF.</p>'}
+                    </div>
                 </div>
             </div>
         </div>
@@ -307,7 +355,7 @@ async function fetchCurrentUserData() {
 /** O modal tem três telas mutuamente exclusivas: ficha, cassetes e liberação. */
 function mostrarView(nome) {
     if (viewDetails) viewDetails.classList.toggle('hidden', nome !== 'details');
-    if (viewK7) viewK7.classList.toggle('hidden', nome !== 'k7');
+    if (detailsFooter) detailsFooter.classList.toggle('hidden', nome !== 'details');
     if (viewRelease) viewRelease.classList.toggle('hidden', nome !== 'release');
 }
 
@@ -355,200 +403,254 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
+/**
+ * FICHA COMPLETA DA AMOSTRA
+ *
+ * A ficha mostra tudo o que a entrada cadastrou, nos mesmos blocos e com os
+ * mesmos rótulos do formulário — antes ela exibia oito campos dos vinte e três,
+ * e CRMV, contatos, endereços, clínica, origem, RG, raça e prioridade só
+ * apareciam reabrindo o formulário de edição, que é a tela de escrever.
+ *
+ * Campo vazio vira travessão em vez de sumir: quem confere um cadastro precisa
+ * distinguir "não preencheram" de "não existe aqui".
+ */
 function renderDetails(task) {
     const permission = getPermissionContext(task);
     const { isStaff, canReleaseInitial } = permission;
-    // O laudo entra no sistema como Word/PDF enviado; download e histórico de
-    // versões ficam no painel de arquivos.
-    const storagePanelsHtml = ENABLE_EXTERNAL_STORAGE_INTEGRATION
-        ? renderReportFilesPanel(task, permission)
-        : '';
 
     const typeClass = task.type === 'necropsia' ? 'necropsia' : 'biopsia';
     const typeIcon = task.type === 'necropsia' ? 'fa-skull' : 'fa-microscope';
     const typeLabel = task.type === 'necropsia' ? 'Necropsia' : 'Biópsia';
+    const prefixo = task.type === 'necropsia' ? 'VN' : 'V';
 
     // O laudo liberado é o que marca o caso como fechado — não existe mais etapa.
     const laudoLiberado = !!task.releasedAt;
     const dataLaudo = laudoLiberado ? brData(dataDoLaudo(task)) : '';
+    const protocolo = task.protocolo || '—';
+    const nome = task.animalNome || 'Sem nome';
+    const nivel = infoDoNivel(task);
 
-    // --- SEÇÃO FINANCEIRA ---
-    let financialHtml = '';
-    const finStatus = task.financialStatus || task.situacao || 'pendente';
-    
-    let alertStyle = '';
-    let iconClass = '';
-    let statusTitle = '';
-    let statusSub = '';
-    let btnHtml = '';
+    // --- CABEÇALHO FIXO ---
+    // O protocolo sai da vista assim que o miolo rola; a barra o mantém à mão,
+    // que é o número pelo qual o caso é chamado no laboratório.
+    const tituloEl = document.getElementById('tm-modal-title');
+    if (tituloEl) tituloEl.textContent = `${protocolo} · ${nome}`;
 
-    if (finStatus === 'didatico') {
-        alertStyle = 'background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a;'; 
-        iconClass = 'fa-graduation-cap';
-        statusTitle = 'Isento';
-        statusSub = 'Interesse Didático';
-        btnHtml = ''; 
-    } else if (finStatus === 'pago') {
-        alertStyle = 'background: #dcfce7; border: 1px solid #86efac; color: #14532d;';
-        iconClass = 'fa-check-circle';
-        statusTitle = 'Pago';
-        statusSub = 'Liberado';
-        if(isStaff) {
-            btnHtml = `<button onclick="window.toggleFinancialStatus()" style="background:transparent; border:1px solid currentColor; border-radius:4px; padding:2px 8px; font-size:0.65rem; font-weight:700; color:inherit; cursor:pointer; margin-top:3px; white-space:nowrap; opacity:0.8;">REVERTER</button>`;
-        }
-    } else {
-        alertStyle = 'background: #fffbeb; border: 1px solid #fcd34d; color: #78350f;';
-        iconClass = 'fa-exclamation-triangle';
-        statusTitle = 'Pendente';
-        statusSub = 'Bloqueia laudo';
-        if(isStaff) {
-            btnHtml = `<button onclick="window.toggleFinancialStatus()" style="background:transparent; border:1px solid currentColor; border-radius:4px; padding:2px 8px; font-size:0.65rem; font-weight:700; color:inherit; cursor:pointer; margin-top:3px; white-space:nowrap; opacity:0.8;">PAGAR</button>`;
-        }
-    }
+    // --- FAIXA DE IDENTIDADE ---
+    const especieLinha = [task.especie, task.raca, sexoExtenso(task.sexo), task.idade]
+        .map((v) => String(v ?? '').trim())
+        .filter(Boolean)
+        .join(' · ');
 
-    financialHtml = `
-        <div class="finance-alert" style="${alertStyle} padding:8px 12px; border-radius:8px; margin-top:12px; display:flex; align-items:center; gap:10px;">
-            <div style="font-size:1.2rem; flex-shrink:0;"><i class="fas ${iconClass}"></i></div>
-            <div style="flex:1; min-width:0; line-height:1.2;">
-                <div style="font-weight:800; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${statusTitle}</div>
-                <div style="font-size:0.7rem; opacity:0.85; font-weight:600;">${statusSub}</div>
+    const heroHtml = `
+        <div class="tm-hero ${typeClass}">
+            <div class="tm-hero-main">
+                <div class="tm-hero-badges">
+                    <span class="tm-badge"><i class="fas ${typeIcon}"></i> ${typeLabel}</span>
+                    ${nivel ? `<span class="tm-badge ${nivel.classe}"><i class="fas ${nivel.icone}"></i> ${nivel.rotulo}</span>` : ''}
+                    ${task.origem ? `<span class="tm-badge"><i class="fas fa-hospital"></i> ${esc(task.origem)}</span>` : ''}
+                </div>
+                <h2>${esc(nome)}</h2>
+                <p><i class="fas fa-paw"></i> ${esc(especieLinha || 'Sem dados do animal')}</p>
             </div>
-            <div style="display:flex; flex-direction:column; align-items:flex-end; flex-shrink:0;">
-                ${task.valor && task.valor !== '0,00' ? `<div style="font-size:1rem; font-weight:800; letter-spacing:-0.5px;">R$ ${task.valor}</div>` : ''}
-                ${btnHtml}
+            <div class="tm-hero-side">
+                <div class="tm-hero-side-label">Protocolo</div>
+                <div class="tm-hero-protocolo">${esc(protocolo)}</div>
+                <div class="tm-hero-laudo ${laudoLiberado ? '' : 'is-pending'}">
+                    <i class="fas ${laudoLiberado ? 'fa-check-double' : 'fa-hourglass-half'}"></i>
+                    ${laudoLiberado ? `Laudo em ${dataLaudo}` : 'Laudo pendente'}
+                </div>
             </div>
         </div>`;
 
-    // --- REGISTRO DO LIVRO ---
-    // O caso entra no Livro de Registros no cadastro da entrada, então este card
+    // --- IDENTIFICAÇÃO DA AMOSTRA ---
+    const serie = parseProtocolo(task.protocolo);
+    const anoSerie = serie ? serie.ano : (task.protocoloAno || 0);
+
+    const identificacaoHtml = bloco('fa-vial', 'Identificação da amostra', [
+        campo('Nº protocolo interno', protocolo, { num: true }),
+        campo('Tipo do caso', null, {
+            html: `${typeLabel} <span class="tm-field-note">(prefixo ${prefixo})</span>`
+        }),
+        campo('Data de entrada', brData(task.dataEntrada), { num: true }),
+        campo('Prioridade', nivel ? nivel.rotulo : 'Comum', {
+            tom: nivel ? (nivel.chave === 'urgente' ? 'is-alert' : 'is-warn') : '',
+            html: nivel
+                ? `<i class="fas ${nivel.icone}" style="font-size:0.8rem;"></i> ${nivel.rotulo}`
+                : ''
+        }),
+        campo('Ano da série', anoSerie || 'Sem ano', { num: !!anoSerie })
+    ]);
+
+    // --- REMETENTE ---
+    const remetenteHtml = bloco('fa-truck-medical', 'Remetente', [
+        campo('Remetente', task.remetente),
+        campo('CRMV do remetente', task.remetenteCrmv, { num: true }),
+        campo('Contato do remetente', task.remetenteContato, {
+            html: contatoHTML(task.remetenteContato)
+        }),
+        campo('Clínica / empresa', task.remetenteClinicaEmpresa),
+        campo('Origem', task.origem),
+        campo('Endereço do remetente', task.remetenteEndereco, { span: 3 })
+    ]);
+
+    // --- DADOS DO ANIMAL ---
+    const animalHtml = bloco('fa-paw', 'Dados do animal', [
+        campo('Nome do animal', task.animalNome),
+        campo('RG do animal', task.animalRg, { num: true }),
+        campo('Espécie', task.especie),
+        campo('Raça', task.raca),
+        campo('Sexo', sexoExtenso(task.sexo)),
+        campo('Idade', task.idade)
+    ]);
+
+    // --- PROPRIETÁRIO ---
+    const proprietarioHtml = bloco('fa-user-tag', 'Dados do proprietário', [
+        campo('Proprietário', task.proprietario),
+        campo('Contato do proprietário', task.proprietarioContato, {
+            span: 2,
+            html: contatoHTML(task.proprietarioContato)
+        }),
+        campo('Endereço do proprietário', task.proprietarioEndereco, { span: 3 })
+    ]);
+
+    // --- FINANCEIRO E RESPONSÁVEIS ---
+    // Pendente bloqueia a liberação do laudo, então a situação é a primeira
+    // coisa da linha e a única colorida.
+    const finStatus = task.financialStatus || task.situacao || 'pendente';
+    const situacao = {
+        didatico: { rotulo: 'Isento — interesse didático', icone: 'fa-graduation-cap', tom: '', acao: '' },
+        pago: { rotulo: 'Pago', icone: 'fa-check-circle', tom: 'is-ok', acao: 'REVERTER' },
+        pendente: { rotulo: 'Pendente', icone: 'fa-exclamation-triangle', tom: 'is-warn', acao: 'PAGAR' }
+    }[finStatus] || { rotulo: 'Pendente', icone: 'fa-exclamation-triangle', tom: 'is-warn', acao: 'PAGAR' };
+
+    const botaoFinanceiro = isStaff && situacao.acao
+        ? `<button type="button" class="btn btn-secondary btn-sm" onclick="window.toggleFinancialStatus()" style="padding:2px 10px; font-size:0.65rem; font-weight:700;">${situacao.acao}</button>`
+        : '';
+
+    const financeiroHtml = bloco('fa-user-md', 'Financeiro e responsáveis', [
+        campo('Situação financeira', situacao.rotulo, {
+            tom: situacao.tom,
+            html: `<span class="tm-field-inline"><i class="fas ${situacao.icone}" style="font-size:0.8rem;"></i> ${situacao.rotulo} ${botaoFinanceiro}</span>`
+        }),
+        campo('Valor', task.valor && task.valor !== '0,00' ? `R$ ${task.valor}` : '—', { num: true }),
+        campo('Docente responsável', task.docente),
+        campo('Pós-graduando', task.posGraduando)
+    ], 'cols-4');
+
+    // --- REGISTRO NO LIVRO ---
+    // O caso entra no Livro de Registros no cadastro da entrada, então este bloco
     // aparece sempre. Data do laudo e diagnóstico são as duas únicas colunas do
     // livro que a entrada não tem como preencher: chegam na liberação.
-    let livroHtml = '';
-    if (!laudoLiberado) {
-        livroHtml = `
-            <div class="info-card" style="grid-column:1 / -1; border:1px dashed var(--border-glass);">
-                <div class="info-icon"><i class="fas fa-book"></i></div>
-                <div class="info-label">Registro no Livro</div>
-                <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:4px;">
-                    O caso já consta no livro com o protocolo
-                    <strong>${esc(task.protocolo || '—')}</strong>, desde a entrada em ${brData(task.dataEntrada)}.
+    const livroHtml = laudoLiberado
+        ? `
+        <div class="tm-section">
+            <div class="tm-section-head"><i class="fas fa-book"></i> Registro no livro</div>
+            <div class="tm-block is-done">
+                <div class="tm-block-row">
+                    <div>
+                        <div class="tm-field-label">Data do laudo</div>
+                        <div class="tm-field-value is-num">${dataLaudo || '—'}</div>
+                    </div>
+                    <div>
+                        <div class="tm-field-label">Situação</div>
+                        <div class="tm-field-value is-ok"><i class="fas fa-check-double" style="font-size:0.8rem;"></i> Laudo liberado</div>
+                    </div>
                 </div>
-                <div style="font-size:0.8rem; color:var(--text-tertiary); margin-top:8px; font-style:italic;">
-                    Faltam a data do laudo e o diagnóstico — é o que a liberação acrescenta.
+                <div>
+                    <div class="tm-field-label">Diagnóstico</div>
+                    ${task.diagnostico
+                        ? `<p class="tm-block-text">${esc(task.diagnostico)}</p>`
+                        : '<p class="tm-block-hint" style="font-style:italic;">Sem diagnóstico registrado.</p>'}
                 </div>
-            </div>`;
-    } else {
-        livroHtml = `
-            <div class="info-card" style="grid-column:1 / -1; border:1px solid rgba(34,197,94,0.3);">
-                <div class="info-icon"><i class="fas fa-book"></i></div>
-                <div class="info-label">Registro no Livro</div>
-                <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:4px;">
-                    Data do laudo: <strong>${dataLaudo || '—'}</strong>
-                </div>
-                <div style="font-size:0.85rem; color:var(--text-primary); margin-top:8px; white-space:pre-wrap; line-height:1.45;">${
-                    task.diagnostico
-                        ? esc(task.diagnostico)
-                        : '<span style="color:var(--text-tertiary); font-style:italic;">Sem diagnóstico registrado.</span>'
-                }</div>
                 ${canReleaseInitial ? `
-                    <button onclick="window.openReleaseForm()" class="btn btn-secondary btn-sm" type="button" style="margin-top:10px;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.openReleaseForm()" style="align-self:flex-start;">
                         <i class="fas fa-pen"></i> Corrigir registro
                     </button>` : ''}
-            </div>`;
-    }
+            </div>
+        </div>`
+        : `
+        <div class="tm-section">
+            <div class="tm-section-head"><i class="fas fa-book"></i> Registro no livro</div>
+            <div class="tm-block is-open">
+                <p class="tm-block-hint">
+                    O caso já consta no livro com o protocolo <strong>${esc(protocolo)}</strong>,
+                    desde a entrada em ${brData(task.dataEntrada)}.
+                </p>
+                <p class="tm-block-hint" style="font-style:italic;">
+                    Faltam a data do laudo e o diagnóstico — é o que a liberação acrescenta.
+                </p>
+            </div>
+        </div>`;
 
-    // --- BOTÕES DE AÇÃO ---
-    // Liberar é a única ação de laudo aqui; o arquivo em si sobe e desce pelo
-    // painel "Arquivos do Laudo".
+    // --- AÇÕES ---
     let actionsHtml = '';
     if (!laudoLiberado) {
         actionsHtml = canReleaseInitial
-            ? `<button onclick="window.openReleaseForm()" class="action-btn btn-release"><i class="fas fa-check-double"></i> Liberar Laudo</button>`
-            : `<span style="font-size:0.8rem; color:#666; align-self:center;">Liberação: professor, pós ou admin</span>`;
+            ? '<button type="button" onclick="window.openReleaseForm()" class="action-btn btn-release"><i class="fas fa-check-double"></i> Liberar Laudo</button>'
+            : '<span class="tm-block-hint">Liberação: professor, pós ou admin</span>';
     }
 
-    // O botão de excluir mora no rodapé fixo do modal, fora deste HTML — some
-    // para quem não pode apagar o caso.
+    // --- RODAPÉ DE PROCEDÊNCIA ---
+    // O nome de quem cadastrou entra depois, quando a leitura do perfil voltar:
+    // a ficha não segura a abertura por causa dele.
+    const cadastro = task.createdAt ? brData(isoLocal(task.createdAt)) : brData(task.dataEntrada);
+    const ultimaEdicao = task.lastEditedAt ? brData(isoLocal(task.lastEditedAt)) : '';
+
+    // O botão de excluir e o de editar moram no rodapé fixo do modal, fora deste
+    // HTML — o de excluir some para quem não pode apagar o caso.
     if (btnDelete) btnDelete.classList.toggle('hidden', !permission.canDelete);
 
-    // Selo do nível da amostra, quando ela tem um: URGENTE em vermelho,
-    // PRIORITÁRIA em âmbar, nada para a comum.
-    const renderNivelBadge = (caso) => {
-        const info = infoDoNivel(caso);
-        if (!info) return '';
-        return `<div class="tm-hero-badge tm-nivel-badge ${info.classe}">
-            <i class="fas ${info.icone}"></i> ${info.rotulo.toUpperCase()}</div>`;
-    };
-
-    // --- HTML FINAL DO CARD ---
-    const html = `
-        <div class="tm-hero-modern ${typeClass}">
-            <div class="tm-hero-content">
-                <div class="tm-hero-badge"><i class="fas ${typeIcon}"></i> ${typeLabel}</div>
-                ${renderNivelBadge(task)}
-                <h2>${task.animalNome || 'Sem Nome'}</h2>
-                <p><i class="fas fa-paw"></i> ${task.especie || 'Espécie não inf.'} &bull; ${task.sexo || '-'} &bull; ${task.idade || '-'}</p>
-            </div>
-            <div style="text-align:right;">
-                <div style="font-size:0.8rem; opacity:0.8; margin-bottom:4px;">LAUDO</div>
-                <div style="background:white; color:#333; padding:5px 12px; border-radius:8px; font-weight:700;">
-                    ${laudoLiberado ? dataLaudo : 'Pendente'}
-                </div>
-            </div>
-        </div>
-
-        <div class="tm-code-section">
-            <div>
-                <div class="tm-code-label">Protocolo Interno</div>
-                <div class="tm-code-value" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                    ${task.protocolo || "---"}
-                </div>
-            </div>
-
-            <button class="btn btn-sm btn-secondary" onclick="window.triggerEditEntry()" style="margin-left:15px;">
-                <i class="fas fa-edit"></i> Editar Dados
-            </button>
-        </div>
-        
-        ${financialHtml}
-
-        <div class="tm-info-cards">
-            <div class="info-card">
-                <div class="info-icon"><i class="fas fa-user-tag"></i></div>
-                <div class="info-label">Proprietário</div>
-                <div class="info-value">${task.proprietario || '-'}</div>
-            </div>
-            <div class="info-card">
-                <div class="info-icon"><i class="fas fa-user-md"></i></div>
-                <div class="info-label">Veterinário / Docente</div>
-                <div class="info-value">${task.docente || '-'}</div>
-            </div>
-            <div class="info-card">
-                <div class="info-icon"><i class="fas fa-user-graduate"></i></div>
-                <div class="info-label">Pós-Graduando</div>
-                <div class="info-value">${task.posGraduando || '-'}</div>
-            </div>
-            <div class="info-card">
-                <div class="info-icon"><i class="fas fa-vial"></i></div>
-                <div class="info-label">Cassetes (Qtd/Cor)</div>
-                <div class="info-value" style="display:flex; align-items:center; gap:8px;">
-                    ${task.k7Quantity || 0} un. <span class="tm-hero-modern ${typeClass}"style="font-size:0.8rem; margin-left:5px; padding:2px 6px; border-radius:4px;">${task.k7Color || '-'}</span>
-                    ${isStaff ? `<button onclick="window.openK7Edit()" style="background:transparent; border:1px solid var(--text-tertiary); border-radius:6px; padding:2px 8px; cursor:pointer; font-size:0.7rem; color:var(--text-secondary); margin-left:auto;" title="Editar K7"><i class="fas fa-pen"></i></button>` : ''}
-                </div>
-            </div>
-
-            ${livroHtml}
-
-            ${storagePanelsHtml}
-        </div>
-
+    infoGrid.innerHTML = `
+        ${heroHtml}
+        ${identificacaoHtml}
+        ${remetenteHtml}
+        ${animalHtml}
+        ${proprietarioHtml}
+        ${financeiroHtml}
+        ${livroHtml}
         ${actionsHtml ? `<div class="tm-actions-footer">${actionsHtml}</div>` : ''}
+        <div class="tm-meta">
+            <span>Cadastrada<span data-autor></span> em ${cadastro}${ultimaEdicao ? ` · última edição ${ultimaEdicao}` : ''}</span>
+        </div>
     `;
 
-    infoGrid.innerHTML = html;
-    if (ENABLE_EXTERNAL_STORAGE_INTEGRATION) {
-        bindTaskFileActions(task, permission);
+    const alvoAutor = infoGrid.querySelector('[data-autor]');
+    if (alvoAutor && task.createdBy) {
+        nomeDeQuemCadastrou(task.createdBy).then((nome) => {
+            // A ficha pode ter trocado de caso enquanto a leitura voltava.
+            if (nome && alvoAutor.isConnected) alvoAutor.textContent = ` por ${nome}`;
+        });
     }
+}
+
+/**
+ * Copiar contato: o clique confirma na própria pílula (o ícone vira um "certo"
+ * por um segundo), porque um alert para copiar um telefone interrompe mais do
+ * que informa.
+ */
+if (infoGrid) {
+    infoGrid.addEventListener('click', async (event) => {
+        const botao = event.target.closest('.tm-copy[data-copiar]');
+        if (!botao) return;
+
+        const texto = botao.getAttribute('data-copiar') || '';
+        if (!texto) return;
+
+        try {
+            await navigator.clipboard.writeText(texto);
+            botao.classList.add('is-done');
+            botao.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => {
+                botao.classList.remove('is-done');
+                botao.innerHTML = '<i class="fas fa-copy"></i>';
+            }, 1200);
+        } catch (e) {
+            // Sem permissão de área de transferência (ou fora de HTTPS): o link
+            // continua clicável, que é o caminho principal do campo.
+            console.warn('Não foi possível copiar o contato.', e);
+        }
+    });
 }
 
 
@@ -901,92 +1003,6 @@ async function salvarLiberacao(event, jaLiberado) {
 
 
 
-function openK7FormSmart(task) {
-    mostrarView('k7');
-
-    const currentColor = task.k7Color || (task.type === 'necropsia' ? 'azul' : 'rosa');
-    const currentQty = task.k7Quantity || 1;
-    const isNecro = task.type === 'necropsia';
-    
-    // Restringir cores: necropsia = azul/branco, biópsia = rosa/branco
-    const mainColor = isNecro ? 'azul' : 'rosa';
-    const mainLabel = isNecro ? 'Azul' : 'Rosa';
-    const mainBg = isNecro ? '#3b82f6' : '#ec4899';
-    
-    const optionsHTML = `
-        <label class="k7-color-btn ${currentColor === mainColor ? 'selected' : ''}" style="--btn-color: ${mainBg};">
-            <input type="radio" name="k7Color" value="${mainColor}" ${currentColor === mainColor ? 'checked' : ''}>
-            <span class="k7-color-circle" style="background:${mainBg};"></span>
-            <span>${mainLabel}</span>
-        </label>
-        <label class="k7-color-btn ${currentColor === 'branco' ? 'selected' : ''}" style="--btn-color: #94a3b8;">
-            <input type="radio" name="k7Color" value="branco" ${currentColor === 'branco' ? 'checked' : ''}>
-            <span class="k7-color-circle" style="background:#f1f5f9; border:2px solid #cbd5e1;"></span>
-            <span>Branco</span>
-        </label>
-    `;
-    
-    if(formK7) {
-        formK7.innerHTML = `
-            <style>
-                .k7-color-btn {
-                    display: flex; align-items: center; gap: 10px;
-                    padding: 12px 20px; border-radius: 12px; cursor: pointer;
-                    border: 2px solid var(--border-glass); background: var(--bg-glass);
-                    transition: all 0.25s ease; user-select: none; flex: 1;
-                }
-                .k7-color-btn input { display: none; }
-                .k7-color-btn .k7-color-circle {
-                    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
-                    transition: transform 0.25s ease, box-shadow 0.25s ease;
-                }
-                .k7-color-btn span:last-child { font-weight: 600; font-size: 0.95rem; color: var(--text-primary); }
-                .k7-color-btn:hover { border-color: var(--btn-color); background: rgba(0,0,0,0.03); }
-                .k7-color-btn:hover .k7-color-circle { transform: scale(1.1); }
-                .k7-color-btn.selected {
-                    border-color: var(--btn-color);
-                    background: linear-gradient(135deg, rgba(0,0,0,0.02), rgba(0,0,0,0.06));
-                    box-shadow: 0 0 0 3px color-mix(in srgb, var(--btn-color) 25%, transparent);
-                }
-                .k7-color-btn.selected .k7-color-circle {
-                    transform: scale(1.2);
-                    box-shadow: 0 0 12px var(--btn-color);
-                }
-                .k7-color-btn.selected span:last-child { color: var(--btn-color); font-weight: 800; }
-                .k7-color-btn.selected::after {
-                    content: '\\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
-                    margin-left: auto; color: var(--btn-color); font-size: 1.1rem;
-                }
-            </style>
-            <div class="form-group"><label style="font-weight:700; margin-bottom:8px; display:block;">Quantidade de Cassetes</label><input type="number" id="k7-quantity" class="input-field" min="1" value="${currentQty}" style="font-size:1.2rem; text-align:center; max-width:120px;"></div>
-            <div class="form-group"><label style="font-weight:700; margin-bottom:8px; display:block;">Cor do Cassete</label><div style="display:flex; gap:12px;">${optionsHTML}</div></div>
-            <div class="modal-footer"><button type="button" id="btn-cancel-k7-dyn" class="btn btn-secondary">Voltar</button><button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar</button></div>
-        `;
-        
-        // Toggle visual selection on click
-        formK7.querySelectorAll('.k7-color-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                formK7.querySelectorAll('.k7-color-btn').forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected');
-            });
-        });
-        
-        document.getElementById('btn-cancel-k7-dyn').addEventListener('click', () => mostrarView('details'));
-        formK7.onsubmit = async (e) => { 
-            e.preventDefault(); 
-            const qty = parseInt(document.getElementById('k7-quantity').value, 10) || 1; 
-            const color = document.querySelector('input[name="k7Color"]:checked').value; 
-            const updateData = { k7Quantity: qty, k7Color: color };
-            try {
-                await updateDoc(doc(db, "tasks", currentTask.id), updateData); 
-                Object.assign(currentTask, updateData);
-                renderDetails(currentTask);
-                mostrarView('details');
-            } catch(err){ alert("Erro: " + err.message); }
-        };
-    }
-}
-
 if(btnDelete) {
     btnDelete.addEventListener('click', async () => {
         if (!currentTask) return;
@@ -1018,6 +1034,10 @@ if(btnDelete) {
     });
 }
 
+if (btnEditEntry) {
+    btnEditEntry.addEventListener('click', () => window.triggerEditEntry());
+}
+
 window.triggerEditEntry = function() {
     if(currentTask && window.openEditEntry) {
         const tmModal = document.getElementById('task-manager-modal');
@@ -1031,4 +1051,3 @@ window.triggerEditEntry = function() {
 window.openTaskManager = openTaskManager;
 window.openReleaseForm = openReleaseForm;
 window.toggleFinancialStatus = toggleFinancialStatus;
-window.openK7Edit = function() { if(currentTask) openK7FormSmart(currentTask); };

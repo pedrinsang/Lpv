@@ -13,7 +13,7 @@ const ANIMATION_CONFIG = {
     selectors: {
         '.mural-card':       { animation: 'cardSlideIn', duration: '0.45s', easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
         '.admin-card':       { animation: 'springUp',    duration: '0.5s',  easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
-        '.info-card':        { animation: 'springUp',    duration: '0.45s', easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+        '.tm-section':       { animation: 'springUp',    duration: '0.4s',  easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
     },
     staggerDelay: 55, // ms entre cada elemento filho
 };
