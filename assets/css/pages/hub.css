@@ -259,7 +259,12 @@
     color: var(--card-accent);
 }
 
-/* Cinco linhas de fila, sempre — o resto rola por dentro.
+/* Quatro linhas de fila, sempre — o resto rola por dentro.
+ *
+ * Quatro e não cinco porque a altura que o cartão não usa vai inteira para a
+ * semana logo abaixo (a cadeia de `flex: 1 0 auto` cuida disso): uma linha a
+ * menos aqui é uma linha a mais de agenda, que é o que se olha para planejar o
+ * dia. A quinta amostra continua a um giro de rolagem.
  *
  * Os três números seguem o desenho da linha: `--linha-fila` é o
  * `grid-auto-rows` de .hub-row somado ao padding e à borda dela, e o intervalo
@@ -267,7 +272,7 @@
 .hub-card-list {
     --linha-fila: 84px;
     --intervalo: 6px;
-    --linhas-visiveis: 5;
+    --linhas-visiveis: 4;
     flex: 0 0 auto;
     height: calc(
         (var(--linha-fila) * var(--linhas-visiveis))
@@ -770,11 +775,14 @@
     letter-spacing: 0.06em;
 }
 
-.shift-manha .week-shift { color: #fbbf24; }
-.shift-tarde .week-shift { color: #a78bfa; }
+/* Manhã e tarde são rótulos de hora, não tipos de compromisso. Eram âmbar e
+   violeta — as mesmas matizes que os chips usam para dizer "prioritária" e
+   "estágio" — então a cor prometia um sentido que ela não tinha. Ficam neutros;
+   o sol e a lua já separam os dois turnos. */
+.week-shift { color: var(--text-tertiary); }
 
 .week-shift i {
-    opacity: 0.7;
+    opacity: 0.6;
     font-size: 0.55rem;
 }
 
@@ -796,6 +804,9 @@
     opacity: 0.35;
 }
 
+/* A cor sai de `--card-color` / `--card-text`, gravadas pelo JS a partir da
+   tabela de lib/agenda-tipos.js. Antes eram classes fixas aqui, e o Hub só
+   conhecia três das cinco — "Aula" e "Estágio" chegavam cinzas. */
 .week-chip {
     display: flex;
     gap: 6px;
@@ -804,9 +815,9 @@
     font-size: 0.68rem;
     line-height: 1.2;
     cursor: pointer;
-    border-left: 3px solid var(--color-other);
-    background: rgba(100, 116, 139, 0.2);
-    color: var(--hub-muted);
+    border-left: 3px solid var(--card-color, var(--color-other));
+    background: var(--card-chip, rgba(100, 116, 139, 0.2));
+    color: var(--card-text, var(--hub-muted));
     transition: transform var(--duration-fast) ease, opacity var(--duration-fast) ease;
 }
 
@@ -815,16 +826,33 @@
     opacity: 0.85;
 }
 
-.week-chip.type-necro {
-    background: rgba(59, 130, 246, 0.2);
-    color: #93bbfd;
-    border-left-color: var(--color-necro);
+/* =========================================
+   LEGENDA DAS CORES DA SEMANA
+   ========================================= */
+
+.week-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin-bottom: 10px;
 }
 
-.week-chip.type-bio {
-    background: rgba(236, 72, 153, 0.2);
-    color: #f9a8d4;
-    border-left-color: var(--color-bio);
+.week-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.66rem;
+    font-weight: 700;
+    color: var(--card-text, var(--hub-muted));
+    white-space: nowrap;
+}
+
+.week-legend-dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 8px;
+    border-radius: 3px;
+    background: var(--card-color, var(--color-other));
 }
 
 .week-chip-time {

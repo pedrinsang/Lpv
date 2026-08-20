@@ -12,6 +12,7 @@ import {
     etapasDaAmostra,
     etiquetasDeEtapa
 } from '../lib/etapas.js';
+import { TIPOS_AGENDA, infoDoTipo, pintarPorTipo, tipoDaAgenda } from '../lib/agenda-tipos.js';
 import {
     describeDeadline,
     formatDate,
@@ -634,6 +635,7 @@ let weekTasksCache = [];
 let unsubscribeWeek = null;
 
 function initWeekAgenda() {
+    renderWeekLegend();
     renderWeekAgenda();
     subscribeWeekTasks();
 
@@ -677,10 +679,26 @@ function getAgendaShift(task) {
     return (task.scheduledTime || '') < AGENDA_SHIFT_CUTOFF ? 'manha' : 'tarde';
 }
 
-function getAgendaTypeClass(task) {
-    if (task.type === 'necropsia' || (!task.type && task.k7Color === 'azul')) return 'type-necro';
-    if (task.type === 'biopsia' || (!task.type && task.k7Color === 'rosa')) return 'type-bio';
-    return 'type-other';
+/**
+ * Legenda das cores da semana.
+ *
+ * A agenda ganhou cor e cor sem legenda é enfeite: quem abre o Hub precisa saber
+ * que roxo é estágio e verde é aula sem ter que abrir o Planner para descobrir.
+ * Sai da mesma tabela que pinta os chips, então não tem como uma dizer uma coisa
+ * e a outra dizer outra.
+ */
+function renderWeekLegend() {
+    const alvo = document.getElementById('week-legend');
+    if (!alvo) return;
+
+    alvo.innerHTML = '';
+    TIPOS_AGENDA.forEach((tipo) => {
+        const item = document.createElement('span');
+        item.className = 'week-legend-item';
+        pintarPorTipo(item, tipo.id);
+        item.innerHTML = `<span class="week-legend-dot"></span>${escapeHtml(tipo.rotulo)}`;
+        alvo.appendChild(item);
+    });
 }
 
 // Uma coluna por dia; dentro dela os agendamentos vêm rotulados por turno.
@@ -736,12 +754,16 @@ function renderWeekAgenda() {
             }
 
             items.forEach((task) => {
+                const tipo = tipoDaAgenda(task);
                 const chip = document.createElement('div');
-                chip.className = `week-chip ${getAgendaTypeClass(task)}`;
+                chip.className = 'week-chip';
+                // A cor vem da tabela do Planner, não de uma classe daqui: era
+                // assim que "Aula" chegava no Hub pintada de cinza de "outros".
+                pintarPorTipo(chip, tipo);
                 chip.innerHTML = `
                     <span class="week-chip-time">${escapeHtml(task.scheduledTime || '--:--')}</span>
                     <span class="week-chip-label">${escapeHtml(task.protocolo || task.animalNome || 'Sem título')}</span>`;
-                chip.title = `${task.protocolo || ''} — ${task.animalNome || ''} (${task.scheduledTime || '--:--'})`;
+                chip.title = `${infoDoTipo(tipo).rotulo} · ${task.protocolo || ''} — ${task.animalNome || ''} (${task.scheduledTime || '--:--'})`;
                 chip.addEventListener('click', () => { window.location.href = 'planner.html'; });
                 itemsWrap.appendChild(chip);
             });

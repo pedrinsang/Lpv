@@ -1,19 +1,20 @@
-import { db, auth } from '../core.js';
+import { db, auth, normalizeRoles, hasFullControl } from '../core.js';
 import {
     collection, query, where, doc, getDoc, updateDoc, deleteDoc, onSnapshot, addDoc
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { TIPOS_AGENDA, TIPO_AGENDA, pintarPorTipo, tipoDaAgenda } from '../lib/agenda-tipos.js';
 
 /* ==========================================================================
    CONSTANTES
    ========================================================================== */
 
-const TIPOS = [
-    { id: 'necropsia', rotulo: 'Necropsia', cor: '#3b82f6', curto: 'NECRO' },
-    { id: 'biopsia',   rotulo: 'Biópsia',   cor: '#ec4899', curto: 'BIO' },
-    { id: 'aula',      rotulo: 'Aula',      cor: '#10b981', curto: 'AULA' },
-    { id: 'outro',     rotulo: 'Outros',    cor: '#94a3b8', curto: 'GERAL' },
-];
-const T = Object.fromEntries(TIPOS.map(t => [t.id, t]));
+/* A tabela de tipos mora em lib/agenda-tipos.js: a semana do Hub lê a mesma
+   agenda e precisa das mesmas cores. */
+const TIPOS = TIPOS_AGENDA;
+const T = TIPO_AGENDA;
+
+/** O tipo que o estagiário pode criar — e o único que ele pode editar. */
+const TIPO_ESTAGIO = 'estagio';
 
 const DOW_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -51,7 +52,41 @@ const HOJE = iso(new Date());
    ========================================================================== */
 
 let tasksCache = [];
-let canEdit = false;
+
+/**
+ * PERMISSÃO DE EDIÇÃO — dois níveis, não um interruptor.
+ *
+ * Professor, pós-graduando e admin mexem no calendário inteiro: arrastam
+ * amostra, agendam, movem turno, excluem. É a escala do laboratório.
+ *
+ * Estagiário mexe só no que é dele e só do tipo "Estágio" — a própria tarefa, a
+ * própria falta. Não é uma versão mais fraca da mesma permissão: ele pode criar
+ * (o que o "somente leitura" de antes proibia) e não pode tocar em caso de
+ * laboratório nenhum, nem no dos outros estagiários.
+ */
+const perfil = { podeTudo: false, ehEstagiario: false, uid: null };
+
+/** Quem pode encostar NESTA tarefa. */
+function podeEditar(task) {
+    if (perfil.podeTudo) return true;
+    if (!perfil.ehEstagiario || !task) return false;
+    return tipoDaAgenda(task) === TIPO_ESTAGIO && task.createdBy === perfil.uid;
+}
+
+/** Quem pode abrir uma faixa vazia e criar alguma coisa nela. */
+function podeCriar() {
+    return perfil.podeTudo || perfil.ehEstagiario;
+}
+
+/** A fila de pendentes é de amostra do laboratório: estagiário não agenda. */
+function podeMexerNaFila() {
+    return perfil.podeTudo;
+}
+
+/** Os tipos que aparecem no modal de criação para quem está logado. */
+function tiposDisponiveis() {
+    return perfil.podeTudo ? TIPOS : [T[TIPO_ESTAGIO]];
+}
 
 /* No desktop o trilho fica ao lado da agenda e já abre na fila de pendentes;
    no mobile ele é uma gaveta sobreposta, então começa fechado. */
@@ -86,6 +121,7 @@ function cacheEls() {
         'btn-pendentes', 'badge-pendentes', 'btn-agendar',
         'create-modal', 'create-target', 'close-create', 'cancel-create', 'save-create',
         'novo-titulo', 'novo-sub', 'novo-tipos', 'novo-data', 'novo-hora', 'novo-duracao',
+        'create-hint',
     ];
     ids.forEach(id => { el[id] = document.getElementById(id); });
 }
@@ -94,20 +130,8 @@ function cacheEls() {
    NORMALIZAÇÃO DAS TAREFAS DO FIRESTORE
    ========================================================================== */
 
-/**
- * Descobre o tipo de agenda de uma tarefa.
- * Agendamentos criados no Planner guardam `plannerTipo`; as entradas do Mural
- * usam `type`, e as antigas só têm a cor do cassete (`k7Color`).
- */
-function tipoDe(task) {
-    if (task.plannerTipo && T[task.plannerTipo]) return task.plannerTipo;
-    if (task.type === 'necropsia') return 'necropsia';
-    if (task.type === 'biopsia') return 'biopsia';
-    if (task.type === 'aula') return 'aula';
-    if (!task.type && task.k7Color === 'azul') return 'necropsia';
-    if (!task.type && task.k7Color === 'rosa') return 'biopsia';
-    return 'outro';
-}
+/* Leitura do tipo: a mesma da biblioteca, para a semana do Hub não divergir. */
+const tipoDe = tipoDaAgenda;
 
 function tituloDe(task) {
     return task.protocolo || task.animalNome || 'Sem título';
@@ -159,7 +183,8 @@ function proximaLivre(data, turno) {
 }
 
 async function agendar(id, data, turno) {
-    if (!canEdit) return;
+    const alvo = tasksCache.find(t => t.id === id);
+    if (!podeEditar(alvo)) return;
     if (estaNoPassado(data)) {
         alert('Não é possível agendar em dias que já passaram.');
         return;
@@ -230,21 +255,14 @@ function renderToolbar() {
    ========================================================================== */
 
 /** Aplica a cor do tipo como custom properties usadas pelo CSS. */
-function pintar(node, tipo, forte) {
-    const cor = T[tipo].cor;
-    node.style.setProperty('--card-color', cor);
-    node.style.setProperty('--card-tint', `${cor}1f`);
-    node.style.setProperty('--card-edge', `${cor}55`);
-    node.style.setProperty('--card-chip', `${cor}26`);
-    if (forte) node.style.setProperty('--card-tint-strong', `${cor}33`);
-}
+const pintar = pintarPorTipo;
 
 function criarCartao(task) {
     const tipo = tipoDe(task);
     const card = document.createElement('div');
     card.className = 'pl-card';
     pintar(card, tipo);
-    card.draggable = canEdit;
+    card.draggable = podeEditar(task);
     card.innerHTML = `
         <div class="pl-card-top">
             <span class="pl-card-hora">${task.scheduledTime}</span>
@@ -261,7 +279,7 @@ function criarCartao(task) {
         abrirDetalhe(task.id);
     });
     card.addEventListener('dragstart', (e) => {
-        if (!canEdit) return;
+        if (!podeEditar(task)) return;
         dragId = task.id;
         e.stopPropagation();
         e.dataTransfer.effectAllowed = 'move';
@@ -312,7 +330,7 @@ function renderSemana() {
             lane.className = 'pl-lane';
             if (passado) lane.classList.add('is-past');
             if (state.colocacao) lane.classList.add('is-target');
-            if (!canEdit) lane.classList.add('is-locked');
+            if (!podeCriar()) lane.classList.add('is-locked');
 
             doTurno.forEach(t => lane.appendChild(criarCartao(t)));
             if (!doTurno.length) {
@@ -324,11 +342,11 @@ function renderSemana() {
 
             lane.addEventListener('click', (e) => {
                 if (e.target.closest('.pl-card')) return;
-                if (!canEdit) return;
+                if (!podeCriar()) return;
                 if (state.colocacao) agendar(state.colocacao.id, data, turno);
                 else abrirCriar(data, turno);
             });
-            if (canEdit) {
+            if (podeCriar()) {
                 lane.addEventListener('dragover', (e) => { e.preventDefault(); lane.classList.add('is-dragover'); });
                 lane.addEventListener('dragleave', () => lane.classList.remove('is-dragover'));
                 lane.addEventListener('drop', (e) => {
@@ -374,7 +392,7 @@ function renderMes() {
         if (!doMes) cell.classList.add('is-outside');
         else if (eHoje) cell.classList.add('is-today');
         if (doMes && state.colocacao) cell.classList.add('is-target');
-        if (doMes && !canEdit) cell.classList.add('is-locked');
+        if (doMes && !podeCriar()) cell.classList.add('is-locked');
 
         // Cabeçalho da célula: número + contagem/barra por tipo
         const top = document.createElement('div');
@@ -419,7 +437,7 @@ function renderMes() {
         if (doMes) {
             cell.addEventListener('click', (e) => {
                 if (e.target.closest('.pl-chip')) return;
-                if (!canEdit) return;
+                if (!podeCriar()) return;
                 if (state.colocacao) {
                     agendar(state.colocacao.id, data, 'manha');
                 } else {
@@ -427,7 +445,7 @@ function renderMes() {
                     abrirCriar(data, 'manha');
                 }
             });
-            if (canEdit) {
+            if (podeCriar()) {
                 cell.addEventListener('dragover', (e) => { e.preventDefault(); cell.classList.add('is-dragover'); });
                 cell.addEventListener('dragleave', () => cell.classList.remove('is-dragover'));
                 cell.addEventListener('drop', (e) => {
@@ -489,10 +507,14 @@ function renderDetalhe(task) {
             <div class="pl-field"><span class="pl-field-label">Responsável</span><span class="pl-field-value" data-slot="responsavel"></span></div>
             <div class="pl-field"><span class="pl-field-label">Espécie</span><span class="pl-field-value" data-slot="especie"></span></div>
         </div>
-        ${canEdit ? `
+        ${podeEditar(task) ? `
         <div class="pl-detail-actions">
             <button type="button" class="pl-action" data-act="mover"><i class="fas fa-right-left"></i> Mover para ${turno === 'manha' ? 'tarde' : 'manhã'}</button>
-            <button type="button" class="pl-action" data-act="devolver"><i class="fas fa-inbox"></i> Devolver aos pendentes</button>
+            <!-- Devolver aos pendentes é só de quem mexe na fila: um item de
+                 estágio devolvido cairia num trilho que o estagiário não pode
+                 abrir, e ele ficaria sem como trazer o próprio item de volta. -->
+            ${podeMexerNaFila() ? `
+            <button type="button" class="pl-action" data-act="devolver"><i class="fas fa-inbox"></i> Devolver aos pendentes</button>` : ''}
             <button type="button" class="pl-action danger" data-act="excluir"><i class="fas fa-trash"></i> Excluir</button>
         </div>` : ''}
     `;
@@ -531,8 +553,8 @@ function renderPendentes(fila) {
         const card = document.createElement('div');
         card.className = 'pl-pend-card';
         pintar(card, tipo);
-        card.draggable = canEdit;
-        if (!canEdit) card.classList.add('is-locked');
+        card.draggable = podeMexerNaFila();
+        if (!podeMexerNaFila()) card.classList.add('is-locked');
         card.innerHTML = `
             <div class="pl-pend-top">
                 <span class="pl-pend-titulo"></span>
@@ -541,7 +563,7 @@ function renderPendentes(fila) {
             <span class="pl-pend-sub"></span>
             <div class="pl-pend-foot">
                 <span class="pl-pend-espera">${desde ? `na fila desde ${br(desde)}` : 'sem data'}</span>
-                ${canEdit ? `
+                ${podeMexerNaFila() ? `
                 <span class="pl-pend-btns">
                     <button type="button" class="pl-pend-btn schedule" title="Escolher faixa"><i class="fas fa-clock"></i></button>
                     <button type="button" class="pl-pend-btn remove" title="Excluir"><i class="fas fa-trash-alt"></i></button>
@@ -552,7 +574,7 @@ function renderPendentes(fila) {
         card.querySelector('.pl-pend-sub').textContent = subDe(task);
 
         card.addEventListener('dragstart', (e) => {
-            if (!canEdit) return;
+            if (!podeMexerNaFila()) return;
             dragId = task.id;
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', task.id);
@@ -560,7 +582,7 @@ function renderPendentes(fila) {
         });
         card.addEventListener('dragend', () => card.classList.remove('is-dragging'));
 
-        if (canEdit) {
+        if (podeMexerNaFila()) {
             card.querySelector('.schedule').addEventListener('click', (e) => {
                 e.stopPropagation();
                 state.colocacao = task;
@@ -586,6 +608,7 @@ function abrirDetalhe(id) {
 }
 
 async function moverTurno(task) {
+    if (!podeEditar(task)) return;
     const destino = turnoDe(task.scheduledTime) === 'manha' ? 'tarde' : 'manha';
     const hora = proximaLivre(task.scheduledDate, destino);
     await updateDoc(doc(db, 'tasks', task.id), { scheduledTime: hora, updatedAt: new Date().toISOString() });
@@ -601,6 +624,7 @@ async function devolverParaPendentes(task) {
 }
 
 async function excluirTarefa(task) {
+    if (!podeEditar(task)) return;
     if (!confirm(`Tem certeza que deseja excluir "${tituloDe(task)}"?`)) return;
     try {
         if (state.detalheId === task.id) { state.rail = 'pendentes'; state.detalheId = null; }
@@ -617,8 +641,16 @@ async function excluirTarefa(task) {
    ========================================================================== */
 
 function renderTipos() {
+    const disponiveis = tiposDisponiveis();
+
+    // O estagiário só tem "Estágio": a escolha some, e o tipo do estado é
+    // corrigido aqui em vez de na gravação — o botão precisa nascer marcado.
+    if (!disponiveis.some(t => t.id === state.novo.tipo)) {
+        state.novo.tipo = disponiveis[0].id;
+    }
+
     el['novo-tipos'].innerHTML = '';
-    TIPOS.forEach(t => {
+    disponiveis.forEach(t => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'pl-type-btn' + (state.novo.tipo === t.id ? ' is-active' : '');
@@ -630,7 +662,7 @@ function renderTipos() {
 }
 
 function abrirCriar(data, turno) {
-    if (!canEdit) return;
+    if (!podeCriar()) return;
     if (estaNoPassado(data)) {
         alert('Não é possível agendar em dias que já passaram.');
         return;
@@ -653,6 +685,8 @@ function fecharCriar() {
 }
 
 async function salvarCriar() {
+    if (!podeCriar()) return;
+
     const titulo = el['novo-titulo'].value.trim();
     if (!titulo) { alert('Digite um título.'); return; }
 
@@ -660,6 +694,12 @@ async function salvarCriar() {
     const hora = el['novo-hora'].value || '08:00';
     if (!data) { alert('Escolha uma data.'); return; }
     if (estaNoPassado(data)) { alert('Não é possível agendar em dias que já passaram.'); return; }
+
+    // O tipo é conferido de novo na gravação: `state.novo.tipo` é estado de
+    // tela, e tela é o que dá para burlar.
+    const tipo = tiposDisponiveis().some(t => t.id === state.novo.tipo)
+        ? state.novo.tipo
+        : tiposDisponiveis()[0].id;
 
     state.novo.duracao = el['novo-duracao'].value;
 
@@ -674,7 +714,9 @@ async function salvarCriar() {
             // O Mural e o Hub ignoram `agendamento_rapido`; o tipo de agenda
             // fica em `plannerTipo`, que só o Planner lê.
             type: 'agendamento_rapido',
-            plannerTipo: state.novo.tipo,
+            plannerTipo: tipo,
+            // `createdBy` é o dono: é por ele que o estagiário reconhece o que é
+            // dele e o que é de outro estagiário.
             createdBy: auth.currentUser ? auth.currentUser.uid : 'anon',
             createdAt: new Date().toISOString(),
         });
@@ -768,8 +810,18 @@ function initControles() {
 }
 
 function aplicarPermissoes() {
-    if (canEdit) return;
-    el['btn-agendar'].classList.add('hidden');
+    el['btn-agendar'].classList.toggle('hidden', !podeCriar());
+
+    // A lista de tipos depende do papel, então ela só pode ser desenhada depois
+    // que o perfil chega — antes disso o Planner ainda não sabe quem está ali.
+    renderTipos();
+
+    // Dito uma vez, no lugar onde a pessoa vai clicar: sem isso o estagiário
+    // descobre o limite tentando arrastar um caso e não entendendo por que não
+    // vai.
+    if (el['create-hint']) {
+        el['create-hint'].classList.toggle('hidden', perfil.podeTudo);
+    }
 }
 
 /* ==========================================================================
@@ -847,7 +899,6 @@ window.addEventListener('DOMContentLoaded', () => {
     document.documentElement.setAttribute('data-theme', 'dark');
     cacheEls();
     initControles();
-    renderTipos();
     renderAll();
 
     auth.onAuthStateChanged(async (user) => {
@@ -855,10 +906,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
         const userSnap = await getDoc(doc(db, 'users', user.uid));
         const roleData = userSnap.exists() ? userSnap.data().role : 'student';
-        const roles = Array.isArray(roleData)
-            ? roleData.map(r => String(r).toLowerCase())
-            : [String(roleData || 'student').toLowerCase()];
-        canEdit = roles.some(r => ['admin', 'professor', 'pós graduando', 'pos-graduando', 'pós-graduando'].includes(r));
+        const roles = normalizeRoles(roleData);
+
+        perfil.uid = user.uid;
+        perfil.podeTudo = hasFullControl(roleData);
+        perfil.ehEstagiario = !perfil.podeTudo && roles.includes('estagiario');
 
         aplicarPermissoes();
         subscribeToTasks();
