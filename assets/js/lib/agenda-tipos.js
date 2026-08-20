@@ -47,8 +47,8 @@ export const TIPOS_AGENDA = [
          * marca. Ver a legenda da semana em hub.js — cor sem legenda é enfeite.
          */
         id: 'estagio',
-        rotulo: 'Estágio',
-        curto: 'ESTÁGIO',
+        rotulo: 'Estagiários',
+        curto: 'ESTAGS',
         cor: '#a855f7',
         corTexto: '#d8b4fe'
     },

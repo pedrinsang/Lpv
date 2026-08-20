@@ -19,6 +19,7 @@
     --pl-necropsia: #3b82f6;
     --pl-biopsia: #ec4899;
     --pl-aula: #10b981;
+    --pl-estagio: #a78bfa;
     --pl-outro: #94a3b8;
 
     --pl-accent: #38bdf8;
@@ -264,6 +265,7 @@ body {
 .pl-dot.necropsia { background: var(--pl-necropsia); }
 .pl-dot.biopsia { background: var(--pl-biopsia); }
 .pl-dot.aula { background: var(--pl-aula); }
+.pl-dot.estagio { background: var(--pl-estagio); }
 .pl-dot.outro { background: var(--pl-outro); }
 
 .pl-sep {
