@@ -405,67 +405,64 @@ document.addEventListener('keydown', (event) => {
 });
 
 /**
- * ETAPAS DO LAUDO NA FICHA
+ * ETAPAS DO LAUDO — a barra do alto da ficha.
  *
- * É daqui que o caso entra e sai das filas do Hub. As duas etapas são
- * independentes de propósito: uma amostra pode estar esperando só a análise das
- * lâminas, só a correção do texto, as duas ou nenhuma — e quem decide isso é
- * quem está com o caso na mão, não uma máquina de estados que anda sozinha.
+ * É daqui que o caso entra e sai das filas do Hub. Ela ficava seis blocos
+ * abaixo, atrás de remetente, animal, proprietário e financeiro: a ação mais
+ * frequente da ficha exigia rolar até achar. Agora abre logo sob a faixa de
+ * identidade, à vista desde o primeiro instante.
  *
- * "Tirar da fila" apaga o campo em vez de gravar um estado a mais: sair da fila
+ * Os três estados de cada fila viram três botões, e não uma lista de ações que
+ * troca de nome conforme o estado ("Colocar em análise", depois "Analisado",
+ * depois "Reabrir"): o botão aceso diz onde o caso está, e qualquer um dos
+ * outros dois está a um clique — sem ninguém precisar decorar o caminho de
+ * volta. Os rótulos são os mesmos das etiquetas do Hub e do Mural, porque são
+ * a mesma informação.
+ *
+ * As duas etapas são independentes de propósito: uma amostra pode estar
+ * esperando só a análise das lâminas, só a correção do texto, as duas ou
+ * nenhuma — e quem decide isso é quem está com o caso na mão, não uma máquina
+ * de estados que anda sozinha.
+ *
+ * "Fora da fila" apaga o campo em vez de gravar um estado a mais: sair da fila
  * e ter concluído a etapa são coisas diferentes, e o documento precisa dizer
  * qual das duas aconteceu.
  */
-function renderEtapasBloco(task, permission) {
+function renderEtapasBarra(task, permission) {
     const podeMarcar = permission.isStaff;
 
-    const botao = (chave, estado, rotulo) => {
-        const alvo = estado === null ? 'null' : `'${estado}'`;
-        return `<button type="button" class="btn btn-secondary btn-sm"
-            onclick="window.marcarEtapa('${chave}', ${alvo})">${rotulo}</button>`;
-    };
-
-    const linhas = CHAVES_ETAPA.map((chave) => {
+    const filas = CHAVES_ETAPA.map((chave) => {
         const etapa = ETAPAS[chave];
         const estado = estadoDaEtapa(task, chave);
 
-        const situacao = {
-            [PENDENTE]: { rotulo: `Na fila — ${etapa.rotuloFila}`, tom: 'is-warn' },
-            [FEITO]: { rotulo: etapa.rotuloFeito, tom: 'is-ok' }
-        }[estado] || { rotulo: 'Fora da fila', tom: '' };
-
-        let acoes = '';
-        if (podeMarcar) {
-            if (estado === null) {
-                acoes = botao(chave, PENDENTE, `<i class="fas fa-plus"></i> Colocar em ${etapa.rotulo.toLowerCase()}`);
-            } else if (estado === PENDENTE) {
-                acoes = botao(chave, FEITO, `<i class="fas fa-check"></i> ${etapa.rotuloAcao}`)
-                    + botao(chave, null, 'Tirar da fila');
-            } else {
-                acoes = botao(chave, PENDENTE, '<i class="fas fa-rotate-left"></i> Reabrir')
-                    + botao(chave, null, 'Tirar da fila');
-            }
-        }
+        const opcoes = [
+            { estado: null, rotulo: 'Fora da fila', tom: 'is-fora' },
+            { estado: PENDENTE, rotulo: etapa.rotulo, tom: `is-fila ${etapa.classe}` },
+            { estado: FEITO, rotulo: etapa.rotuloFeito, tom: 'is-feito' }
+        ].map((opcao) => {
+            const alvo = opcao.estado === null ? 'null' : `'${opcao.estado}'`;
+            const aceso = opcao.estado === estado;
+            return `<button type="button" class="tm-etapa-op ${opcao.tom}${aceso ? ' is-active' : ''}"
+                aria-pressed="${aceso}"
+                ${podeMarcar ? `onclick="window.marcarEtapa('${chave}', ${alvo})"` : 'disabled'}
+                >${opcao.rotulo}</button>`;
+        }).join('');
 
         return `
             <div class="tm-etapa">
-                <div class="tm-field-label"><i class="fas ${etapa.icone}"></i> ${esc(etapa.titulo)}</div>
-                <div class="tm-field-value ${situacao.tom}">${situacao.rotulo}</div>
-                ${acoes ? `<div class="tm-block-actions">${acoes}</div>` : ''}
+                <span class="tm-etapa-nome"><i class="fas ${etapa.icone}"></i> ${esc(etapa.titulo)}</span>
+                <div class="tm-etapa-ops" role="group" aria-label="Etapa de ${esc(etapa.titulo.toLowerCase())}">${opcoes}</div>
             </div>`;
     }).join('');
 
     return `
-        <div class="tm-section">
-            <div class="tm-section-head"><i class="fas fa-list-check"></i> Etapas do laudo</div>
-            <div class="tm-block">
-                <p class="tm-block-hint">
-                    As duas filas do Hub são independentes: o caso pode esperar só a análise,
-                    só a correção, as duas ao mesmo tempo ou nenhuma delas.
-                </p>
-                <div class="tm-etapas">${linhas}</div>
-                ${podeMarcar ? '' : '<p class="tm-block-hint">Marcar etapa: professor, pós ou admin.</p>'}
-            </div>
+        <div class="tm-etapas-bar">
+            <div class="tm-etapas">${filas}</div>
+            <p class="tm-block-hint">
+                ${podeMarcar
+                    ? 'As duas filas do Hub são independentes: o caso pode esperar só a análise, só a correção, as duas ao mesmo tempo ou nenhuma delas.'
+                    : 'Só professor, pós ou admin podem mexer nas etapas.'}
+            </p>
         </div>`;
 }
 
@@ -480,6 +477,10 @@ async function marcarEtapa(chave, estado) {
         alert('Apenas professor, pós-graduando ou admin podem mexer nas etapas.');
         return;
     }
+
+    // Clicar no botão que já está aceso não é um pedido de mudança: sem isto,
+    // cada clique de confirmação viraria uma gravação e um redesenho da ficha.
+    if (estadoDaEtapa(currentTask, chave) === estado) return;
 
     const campo = ETAPAS[chave].campo;
     try {
@@ -697,12 +698,12 @@ function renderDetails(task) {
 
     infoGrid.innerHTML = `
         ${heroHtml}
+        ${laudoLiberado ? '' : renderEtapasBarra(task, permission)}
         ${identificacaoHtml}
         ${remetenteHtml}
         ${animalHtml}
         ${proprietarioHtml}
         ${financeiroHtml}
-        ${laudoLiberado ? '' : renderEtapasBloco(task, permission)}
         ${livroHtml}
         ${actionsHtml ? `<div class="tm-actions-footer">${actionsHtml}</div>` : ''}
         <div class="tm-meta">

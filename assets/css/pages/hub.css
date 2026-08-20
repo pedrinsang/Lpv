@@ -1181,3 +1181,257 @@
         visibility: visible;
     }
 }
+
+/* =========================================
+   LAYOUTS DO PAINEL — completo e foco
+   =========================================
+
+   O mesmo HTML em dois arranjos. Quem manda é o `data-hub-layout` do <html>,
+   escrito antes da primeira pintura pelo script do cabeçalho e trocado pelo
+   botão "Layout" (ver assets/js/lib/hub-layout.js).
+
+   O arranjo "foco" passa `#cards-grid` e `#bottom-grid` para
+   `display: contents`: os invólucros somem da caixa e os cinco blocos viram
+   filhos diretos de `.hub-layout`, que então empilha só os dois que interessam.
+   Sem isso, esconder as filas gerais deixaria buracos de grade onde elas
+   estavam.
+
+   O arranjo "completo" é o que já existia; nada acima desta linha mudou. */
+
+/* -----------------------------------------
+   BOTÃO E MENU DE LAYOUT
+   ----------------------------------------- */
+
+.hub-layout-picker {
+    position: relative;
+}
+
+/* A dupla de classes vence o `.btn-icon` do global.css, que é carregado depois
+   deste arquivo e ganharia no desempate por ordem. */
+.hub-header-actions .btn-layout {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: auto;
+    height: 38px;
+    padding: 0 12px;
+    font-family: inherit;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.hub-header-actions .btn-layout:hover {
+    color: var(--text-primary);
+    border-color: var(--color-primary);
+}
+
+/* No celular sobra só o ícone: a barra não tem largura para a palavra. */
+.btn-layout-text { display: none; }
+
+@media (min-width: 720px) {
+    .btn-layout-text { display: inline; }
+}
+
+/* Sem a palavra o botão vira quadrado, do mesmo tamanho do de sair ao lado —
+   e com alvo de toque, que 38px de lado já é o mínimo do dedo. */
+@media (max-width: 719px) {
+    .hub-header-actions .btn-layout {
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        justify-content: center;
+    }
+}
+
+.layout-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 1500;
+    width: 330px;
+    max-width: calc(100vw - 32px);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    background: var(--bg-sidebar, #1e293b);
+    border: 1px solid var(--border-glass);
+    border-radius: 14px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+.layout-menu.hidden { display: none; }
+
+/* No celular o menu deixa de pender do botão e vira uma faixa presa à tela.
+
+   Pendurado à direita do botão ele tem 330px de largura contra os ~309px que
+   sobram até a borda esquerda: o painel saía 21px para fora da tela num
+   aparelho de 375px, e as miniaturas ficavam cortadas. Preso à janela, cabe em
+   qualquer largura e o alvo de toque cresce junto. */
+@media (max-width: 719px) {
+    .layout-menu {
+        position: fixed;
+        top: calc(var(--header-height) + 8px);
+        left: 12px;
+        right: 12px;
+        width: auto;
+        max-width: none;
+    }
+
+    .layout-option { padding: 12px 10px; }
+}
+
+.layout-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px;
+    text-align: left;
+    font-family: inherit;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.layout-option:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-color);
+}
+
+.layout-option.is-active {
+    background: rgba(2, 132, 199, 0.12);
+    border-color: var(--color-primary);
+}
+
+.layout-option-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.layout-option-text strong {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.layout-option-text small {
+    display: block;
+    margin-top: 3px;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    color: var(--text-tertiary);
+}
+
+.layout-option-check {
+    flex: 0 0 auto;
+    font-size: 0.75rem;
+    color: var(--color-accent);
+    opacity: 0;
+}
+
+.layout-option.is-active .layout-option-check { opacity: 1; }
+
+/* O desenho em miniatura vale mais que o nome: é a única parte do menu que
+   responde "como isso vai ficar" sem ter que clicar para descobrir. */
+.layout-preview {
+    flex: 0 0 46px;
+    width: 46px;
+    height: 34px;
+    display: grid;
+    gap: 3px;
+    padding: 3px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.layout-preview span {
+    border-radius: 2px;
+    background: var(--text-tertiary);
+    opacity: 0.45;
+}
+
+.layout-option.is-active .layout-preview span {
+    background: var(--color-accent);
+    opacity: 0.85;
+}
+
+[data-layout-preview="completo"] {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: 1fr 0.6fr;
+}
+
+[data-layout-preview="completo"] span:nth-child(4) { grid-column: 1 / -1; }
+
+[data-layout-preview="foco"] { grid-template-rows: 1fr 1fr; }
+
+/* -----------------------------------------
+   FOCO DIVIDIDO — prioridades em cima, semana embaixo
+   -----------------------------------------
+
+   Uma tela, duas metades, nada mais: o que precisa de decisão hoje e o que
+   está marcado para a semana. As filas gerais e o estoque saem — quem quer a
+   fila inteira tem o painel completo a um clique. */
+
+:root[data-hub-layout="foco"] #cards-grid,
+:root[data-hub-layout="foco"] #bottom-grid {
+    display: contents;
+}
+
+:root[data-hub-layout="foco"] .hub-card.is-biopsias,
+:root[data-hub-layout="foco"] .hub-card.is-necropsias,
+:root[data-hub-layout="foco"] .inventory-hub-panel {
+    display: none;
+}
+
+/* A altura é a da janela, e não a do conteúdo: "metade da tela para cada" só
+   existe se a tela for a medida. O que não couber rola por dentro. */
+:root[data-hub-layout="foco"] .hub-layout {
+    min-height: calc(100vh - var(--header-height));
+    gap: 14px;
+}
+
+:root[data-hub-layout="foco"] .hub-card.is-urgencias {
+    flex: 1 1 0;
+    min-height: 220px;
+}
+
+/* A trava de quatro linhas é do painel completo, onde a altura que a fila não
+   usa vira semana. Aqui a fila é metade da tela, e a lista acompanha. */
+:root[data-hub-layout="foco"] #urgent-list {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+}
+
+:root[data-hub-layout="foco"] .week-section {
+    flex: 1 1 0;
+    min-height: 240px;
+    border-top: 1px solid var(--border-glass);
+    padding-top: 16px;
+}
+
+:root[data-hub-layout="foco"] .week-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* No celular a barra flutuante de navegação cobre o rodapé da tela. */
+@media (max-width: 1024px) {
+    :root[data-hub-layout="foco"] .hub-layout {
+        min-height: calc(100vh - var(--header-height) - 100px);
+    }
+}

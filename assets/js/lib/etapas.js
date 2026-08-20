@@ -38,7 +38,6 @@ export const ETAPAS = {
         rotulo: 'Analisar',
         rotuloFeito: `Analisado ${CERTO}`,
         rotuloAcao: 'Analisado',
-        rotuloFila: 'para analisar',
         titulo: 'Análise',
         icone: 'fa-microscope',
         classe: 'is-analise'
@@ -49,7 +48,6 @@ export const ETAPAS = {
         rotulo: 'Corrigir',
         rotuloFeito: `Corrigido ${CERTO}`,
         rotuloAcao: 'Corrigido',
-        rotuloFila: 'para corrigir',
         titulo: 'Correção',
         icone: 'fa-file-signature',
         classe: 'is-correcao'

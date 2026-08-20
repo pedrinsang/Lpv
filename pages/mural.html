@@ -75,9 +75,22 @@
                     <span class="mural-toolbar-title">Laudos pendentes</span>
                     <span class="mural-toolbar-sub">Casos liberados saem daqui e vão para o Livro de Registros.</span>
                 </div>
-                <div class="mural-switch" role="group" aria-label="Filtro de amostras">
-                    <button type="button" id="filter-all" class="mural-switch-btn is-active" aria-pressed="true">Todos</button>
-                    <button type="button" id="filter-mine" class="mural-switch-btn" aria-pressed="false">Minhas</button>
+                <div class="mural-toolbar-controls">
+                    <!-- FILTRO POR ETAPA — o mesmo do Hub, com os mesmos rótulos:
+                         as duas telas mostram a mesma fila, e um recorte que se
+                         chama de um jeito aqui e de outro lá vira duas filas na
+                         cabeça de quem usa. -->
+                    <div class="mural-stage-filter" role="group" aria-label="Filtro por etapa do laudo">
+                        <span class="mural-filters-label">Mostrar</span>
+                        <button type="button" class="mural-switch-btn is-active" data-etapa="tudo">Tudo</button>
+                        <button type="button" class="mural-switch-btn" data-etapa="analise"><i class="fas fa-microscope"></i> Analisar</button>
+                        <button type="button" class="mural-switch-btn" data-etapa="correcao"><i class="fas fa-file-signature"></i> Corrigir</button>
+                    </div>
+
+                    <div class="mural-switch" role="group" aria-label="Filtro de amostras">
+                        <button type="button" id="filter-all" class="mural-switch-btn is-active" aria-pressed="true">Todos</button>
+                        <button type="button" id="filter-mine" class="mural-switch-btn" aria-pressed="false">Minhas</button>
+                    </div>
                 </div>
             </div>
 

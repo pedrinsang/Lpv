@@ -47,6 +47,33 @@
     color: var(--text-tertiary);
 }
 
+/* Os dois recortes da barra: por etapa do laudo e por quem cadastrou. Ficam
+   juntos à direita e, sem largura, quebram para a linha de baixo em vez de
+   espremer o título. */
+.mural-toolbar-controls {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+}
+
+/* Filtro por etapa — os mesmos botões e a mesma ordem do Hub. */
+.mural-stage-filter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* A palavra separa os dois grupos: sem ela, cinco botões iguais em fila
+   pareceriam um filtro só, e "Corrigir" e "Todos" não são o mesmo eixo. */
+.mural-filters-label {
+    margin-right: 2px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+}
+
 /* Switch Todos/Minhas — mesma linguagem do filtro da fila no Hub. */
 .mural-switch {
     display: flex;
@@ -55,8 +82,12 @@
 }
 
 .mural-switch-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
     height: 32px;
     padding: 0 16px;
+    white-space: nowrap;
     font-family: inherit;
     font-size: 0.78rem;
     font-weight: 600;
@@ -67,6 +98,8 @@
     cursor: pointer;
     transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
+
+.mural-switch-btn i { font-size: 0.72rem; }
 
 .mural-switch-btn:hover {
     color: var(--text-primary);
@@ -326,6 +359,55 @@
     text-transform: uppercase;
     color: var(--text-secondary);
     opacity: 0.7;
+}
+
+/* ETIQUETAS DE ETAPA
+
+   Mesmas cores e mesmos rótulos das etiquetas do Hub (`.u-tag`), porque são a
+   mesma informação: azul enquanto falta analisar, âmbar enquanto falta
+   corrigir, verde com o certo quando já foi. A linha só aparece no cartão que
+   tem etapa marcada. */
+.m-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.m-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    border: 1px solid;
+    border-radius: 6px;
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.m-tag i { font-size: 0.6rem; }
+
+.m-tag.is-analise {
+    color: var(--color-accent);
+    border-color: rgba(56, 189, 248, 0.4);
+    background: rgba(56, 189, 248, 0.1);
+}
+
+.m-tag.is-correcao {
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+/* Etapa concluída fica verde e sem ícone: o certo já diz o que aconteceu, e a
+   cor separa de relance o que falta do que foi. */
+.m-tag.is-done {
+    color: #6ee7b7;
+    border-color: rgba(16, 185, 129, 0.35);
+    background: rgba(16, 185, 129, 0.1);
+    letter-spacing: 0.02em;
 }
 
 .mural-card-meta {

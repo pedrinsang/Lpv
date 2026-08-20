@@ -13,6 +13,7 @@ import {
     etiquetasDeEtapa
 } from '../lib/etapas.js';
 import { TIPOS_AGENDA, infoDoTipo, pintarPorTipo, tipoDaAgenda } from '../lib/agenda-tipos.js';
+import { aplicarLayout, initSeletorDeLayout } from '../lib/hub-layout.js';
 import {
     describeDeadline,
     formatDate,
@@ -60,18 +61,59 @@ onAuthStateChanged(auth, async (user) => {
 
 document.getElementById('logout-btn')?.addEventListener('click', () => signOut(auth));
 
+// O menu já responde enquanto a fila carrega. A gravação na conta é que
+// espera o login: antes dele, a escolha vale só neste aparelho.
+initSeletorDeLayout(salvarLayoutNaConta);
+
 // 3. CARREGAR PERFIL
 async function loadUserProfile(uid) {
     try {
         const docSnap = await getDoc(doc(db, "users", uid));
         if (docSnap.exists()) {
             currentUserData = docSnap.data();
+            aplicarLayoutDaConta(currentUserData.hubLayout);
             updateUserBadge(currentUserData.role);
             setupStageFilters();
             setupQueueFilters();
 
         }
     } catch (e) { console.error(e); }
+}
+
+// LAYOUT DO PAINEL — a escolha mora na conta
+//
+// O arranjo é preferência de quem usa, e não do computador: quem gosta do
+// foco dividido o encontra assim em qualquer máquina do laboratório, sem ter
+// que reescolher. O `hubLayout` do documento do usuário é o dono da escolha;
+// o localStorage é só a cópia que evita a tela pular de arranjo enquanto o
+// login ainda está resolvendo.
+
+/**
+ * Conta sem escolha guardada não desfaz o que está na tela: vale o que o
+ * aparelho tinha, e a conta só passa a mandar depois da primeira escolha.
+ *
+ * Num computador compartilhado a tela pode abrir no arranjo de quem usou por
+ * último e trocar quando o perfil chega. É o preço de não segurar a primeira
+ * pintura esperando o Firestore — e acontece uma vez, no login.
+ */
+function aplicarLayoutDaConta(layout) {
+    if (layout) aplicarLayout(layout);
+}
+
+async function salvarLayoutNaConta(layout) {
+    const uid = auth.currentUser?.uid;
+    // Menu usado antes do login resolver: a escolha já valeu na tela e ficou
+    // no aparelho; sem uid não há onde gravar.
+    if (!uid) return;
+
+    try {
+        await updateDoc(doc(db, 'users', uid), { hubLayout: layout });
+        if (currentUserData) currentUserData.hubLayout = layout;
+    } catch (erro) {
+        // Falhar aqui não desfaz a troca: o layout já está na tela e no
+        // aparelho. O que se perde é o "em qualquer máquina".
+        console.warn('Não foi possível guardar o layout na conta:', erro.message);
+    }
 }
 
 function updateUserBadge(role) {
