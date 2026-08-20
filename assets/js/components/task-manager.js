@@ -1,7 +1,8 @@
 import { db, auth } from '../core.js';
 import { infoDoNivel } from '../lib/prioridade.js';
-import { 
-    doc, getDoc, updateDoc, deleteDoc
+import { CHAVES_ETAPA, ETAPAS, FEITO, PENDENTE, estadoDaEtapa } from '../lib/etapas.js';
+import {
+    doc, getDoc, updateDoc, deleteDoc, deleteField
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 import {
@@ -404,6 +405,99 @@ document.addEventListener('keydown', (event) => {
 });
 
 /**
+ * ETAPAS DO LAUDO NA FICHA
+ *
+ * É daqui que o caso entra e sai das filas do Hub. As duas etapas são
+ * independentes de propósito: uma amostra pode estar esperando só a análise das
+ * lâminas, só a correção do texto, as duas ou nenhuma — e quem decide isso é
+ * quem está com o caso na mão, não uma máquina de estados que anda sozinha.
+ *
+ * "Tirar da fila" apaga o campo em vez de gravar um estado a mais: sair da fila
+ * e ter concluído a etapa são coisas diferentes, e o documento precisa dizer
+ * qual das duas aconteceu.
+ */
+function renderEtapasBloco(task, permission) {
+    const podeMarcar = permission.isStaff;
+
+    const botao = (chave, estado, rotulo) => {
+        const alvo = estado === null ? 'null' : `'${estado}'`;
+        return `<button type="button" class="btn btn-secondary btn-sm"
+            onclick="window.marcarEtapa('${chave}', ${alvo})">${rotulo}</button>`;
+    };
+
+    const linhas = CHAVES_ETAPA.map((chave) => {
+        const etapa = ETAPAS[chave];
+        const estado = estadoDaEtapa(task, chave);
+
+        const situacao = {
+            [PENDENTE]: { rotulo: `Na fila — ${etapa.rotuloFila}`, tom: 'is-warn' },
+            [FEITO]: { rotulo: etapa.rotuloFeito, tom: 'is-ok' }
+        }[estado] || { rotulo: 'Fora da fila', tom: '' };
+
+        let acoes = '';
+        if (podeMarcar) {
+            if (estado === null) {
+                acoes = botao(chave, PENDENTE, `<i class="fas fa-plus"></i> Colocar em ${etapa.rotulo.toLowerCase()}`);
+            } else if (estado === PENDENTE) {
+                acoes = botao(chave, FEITO, `<i class="fas fa-check"></i> ${etapa.rotuloAcao}`)
+                    + botao(chave, null, 'Tirar da fila');
+            } else {
+                acoes = botao(chave, PENDENTE, '<i class="fas fa-rotate-left"></i> Reabrir')
+                    + botao(chave, null, 'Tirar da fila');
+            }
+        }
+
+        return `
+            <div class="tm-etapa">
+                <div class="tm-field-label"><i class="fas ${etapa.icone}"></i> ${esc(etapa.titulo)}</div>
+                <div class="tm-field-value ${situacao.tom}">${situacao.rotulo}</div>
+                ${acoes ? `<div class="tm-block-actions">${acoes}</div>` : ''}
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="tm-section">
+            <div class="tm-section-head"><i class="fas fa-list-check"></i> Etapas do laudo</div>
+            <div class="tm-block">
+                <p class="tm-block-hint">
+                    As duas filas do Hub são independentes: o caso pode esperar só a análise,
+                    só a correção, as duas ao mesmo tempo ou nenhuma delas.
+                </p>
+                <div class="tm-etapas">${linhas}</div>
+                ${podeMarcar ? '' : '<p class="tm-block-hint">Marcar etapa: professor, pós ou admin.</p>'}
+            </div>
+        </div>`;
+}
+
+/**
+ * Grava o marcador de uma etapa. `estado` null apaga o campo — é o "tirar da
+ * fila", que não é a mesma coisa que concluir.
+ */
+async function marcarEtapa(chave, estado) {
+    if (!currentTask || !ETAPAS[chave]) return;
+
+    if (!getPermissionContext(currentTask).isStaff) {
+        alert('Apenas professor, pós-graduando ou admin podem mexer nas etapas.');
+        return;
+    }
+
+    const campo = ETAPAS[chave].campo;
+    try {
+        await updateDoc(doc(db, "tasks", currentTask.id), {
+            [campo]: estado === null ? deleteField() : estado
+        });
+
+        if (estado === null) delete currentTask[campo];
+        else currentTask[campo] = estado;
+
+        renderDetails(currentTask);
+    } catch (erro) {
+        console.error(erro);
+        alert('Não foi possível atualizar a etapa.');
+    }
+}
+
+/**
  * FICHA COMPLETA DA AMOSTRA
  *
  * A ficha mostra tudo o que a entrada cadastrou, nos mesmos blocos e com os
@@ -608,6 +702,7 @@ function renderDetails(task) {
         ${animalHtml}
         ${proprietarioHtml}
         ${financeiroHtml}
+        ${laudoLiberado ? '' : renderEtapasBloco(task, permission)}
         ${livroHtml}
         ${actionsHtml ? `<div class="tm-actions-footer">${actionsHtml}</div>` : ''}
         <div class="tm-meta">
@@ -1051,3 +1146,4 @@ window.triggerEditEntry = function() {
 window.openTaskManager = openTaskManager;
 window.openReleaseForm = openReleaseForm;
 window.toggleFinancialStatus = toggleFinancialStatus;
+window.marcarEtapa = marcarEtapa;

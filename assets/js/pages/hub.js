@@ -1,8 +1,17 @@
-import { auth, db, normalizeRoles, hasAnyRole } from '../core.js';
+import { auth, db, normalizeRoles, hasAnyRole, hasFullControl } from '../core.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { doc, getDoc, collection, query, onSnapshot, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { doc, getDoc, updateDoc, collection, query, onSnapshot, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { pesoProtocolo } from '../lib/protocolo.js';
 import { NIVEIS, bandeiraDoNivel, classeDoNivel, nivelDaAmostra, pesoPrioridade } from '../lib/prioridade.js';
+import {
+    CHAVES_ETAPA,
+    ETAPAS,
+    FEITO,
+    estaNaEtapa,
+    etapaPendente,
+    etapasDaAmostra,
+    etiquetasDeEtapa
+} from '../lib/etapas.js';
 import {
     describeDeadline,
     formatDate,
@@ -14,18 +23,25 @@ import {
 // 1. MAPEAMENTO DOS ELEMENTOS
 const els = {
     userBadge: document.getElementById('user-role-badge'),
+    statAnalisar: document.getElementById('stat-analisar'),
+    statCorrigir: document.getElementById('stat-corrigir'),
     urgentList: document.getElementById('urgent-list'),
     urgentCount: document.getElementById('urgent-count'),
-    priorityCount: document.getElementById('priority-count'),
+    urgentSubtitle: document.getElementById('urgent-subtitle'),
+    listaBiopsias: document.getElementById('list-biopsias'),
+    countBiopsias: document.getElementById('count-biopsias'),
+    listaNecropsias: document.getElementById('list-necropsias'),
+    countNecropsias: document.getElementById('count-necropsias'),
+    stageFilters: document.querySelectorAll('.stage-filter-btn'),
     queueFilterContainer: document.getElementById('queue-filter-container'),
     queueFilterAll: document.getElementById('queue-filter-all'),
     queueFilterMine: document.getElementById('queue-filter-mine')
 };
- 
+
 let currentUserData = null;
-let unsubscribeTasks = null;
 let queueSourceTasks = [];
 let queueFilterMode = 'all';
+let etapaFilterMode = 'tudo';    // 'tudo' | 'analise' | 'correcao'
 
 // 2. INICIALIZAÇÃO
 onAuthStateChanged(auth, async (user) => {
@@ -50,6 +66,7 @@ async function loadUserProfile(uid) {
         if (docSnap.exists()) {
             currentUserData = docSnap.data();
             updateUserBadge(currentUserData.role);
+            setupStageFilters();
             setupQueueFilters();
 
         }
@@ -127,50 +144,79 @@ function renderInventoryAlerts(list, subtitle, alerts) {
         : '');
 }
 
-// 4. DASHBOARD (LÓGICA CORRIGIDA COM FILTRO)
+// 4. AS TRÊS FILAS DO PAINEL
+//
+// O Hub mostra a fila inteira de laudo pendente, repartida em três cartões:
+// urgências e prioridades de um lado (biópsia e necropsia juntas, porque o que
+// importa ali é o prazo), e as duas filas gerais por tipo do outro. As três
+// saem da mesma leitura — o corte é feito aqui, não no Firestore.
+//
+// Só a janela recente do acervo é lida, pelo mesmo motivo do Mural: o Firestore
+// não sabe consultar "documento sem o campo X", e é a ausência de `releasedAt`
+// que marca o laudo pendente. Ler a coleção inteira para descobrir isso puxaria
+// todo o acervo já laudado a cada abertura. O ano do protocolo é indexado, então
+// a consulta corta por ele — sem teto, para que série futura ou virada de ano
+// entrem sozinhas.
+const PRIMEIRO_ANO_ATIVO = () => new Date().getFullYear() - 1;
 
-/**
- * Uma consulta por marcador, e não um `or()` sobre os dois campos: o Firestore
- * só devolve documento que TEM o campo consultado, e `isPriority` nasceu depois
- * — a disjunção deixaria de fora justamente os casos urgentes antigos, que é
- * quem mais precisa aparecer aqui. Cada consulta guarda o seu resultado e o
- * painel é redesenhado com a união das duas.
- */
-const filaPorFonte = { urgentes: [], prioritarias: [] };
+// Caso com protocolo ilegível (`protocoloAno: 0`) fica abaixo do corte e vem de
+// uma segunda consulta: a entrada hoje exige ano, mas o que foi cadastrado antes
+// disso não pode sumir da fila.
+const filaPorFonte = { recentes: [], semAno: [] };
 
 function initRealTimeDashboard() {
-    // O filtro vai na consulta e não depois: o acervo de laudos liberados não
-    // precisa sair do Firestore para ser descartado aqui — e leitura é o
-    // recurso que acaba.
     const consultas = {
-        urgentes: query(collection(db, "tasks"), where("isUrgent", "==", true)),
-        prioritarias: query(collection(db, "tasks"), where("isPriority", "==", true))
+        recentes: query(collection(db, "tasks"), where("protocoloAno", ">=", PRIMEIRO_ANO_ATIVO())),
+        semAno: query(collection(db, "tasks"), where("protocoloAno", "==", 0))
     };
 
-    const cancelamentos = Object.entries(consultas).map(([fonte, q]) => onSnapshot(q, (snapshot) => {
+    Object.entries(consultas).forEach(([fonte, q]) => onSnapshot(q, (snapshot) => {
         filaPorFonte[fonte] = snapshot.docs
-            .map((doc) => ({ id: doc.id, ...doc.data() }))
-            // Tarefa exclusiva do Planner não polui o Hub.
-            .filter((task) => task.type !== 'agendamento_rapido' && isTaskRelevant(task));
+            .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+            .filter(isTaskRelevant);
 
-        // As duas fontes podem trazer o mesmo caso (dado antigo com os dois
-        // campos marcados); o id manda e o caso entra uma vez só.
+        // As duas consultas não se sobrepõem, mas o id manda — nunca duplica.
         const porId = new Map();
-        [...filaPorFonte.urgentes, ...filaPorFonte.prioritarias]
+        [...filaPorFonte.recentes, ...filaPorFonte.semAno]
             .forEach((task) => porId.set(task.id, task));
 
         queueSourceTasks = [...porId.values()];
         applyQueueFilter();
 
-    }, (error) => console.warn(error)));
-
-    unsubscribeTasks = () => cancelamentos.forEach((cancelar) => cancelar());
+    }, (error) => console.warn('Fila do Hub indisponível:', error.message)));
 }
 
-// Entra na fila a amostra marcada como urgente ou como prioritária na entrada;
-// o laudo liberado tira o caso da fila.
+// Laudo liberado sai do painel; agendamento exclusivo do Planner nunca entrou.
 function isTaskRelevant(task) {
-    return !task.releasedAt && nivelDaAmostra(task) !== null;
+    if (task.releasedAt) return false;
+    if (task.status === 'concluido' || task.status === 'arquivado') return false;
+    if (task.type === 'agendamento_rapido') return false;
+    return true;
+}
+
+// --- FILTRO POR ETAPA ---
+//
+// O filtro pergunta "está nesta fila?", e não "ainda falta?": marcar como feito
+// não pode fazer o cartão sumir debaixo do cursor de quem acabou de clicar. O
+// que muda é a etiqueta — e os contadores do cabeçalho, que só contam o que
+// falta.
+function setupStageFilters() {
+    els.stageFilters.forEach((btn) => {
+        if (btn.dataset.bound) return;
+        btn.addEventListener('click', () => {
+            etapaFilterMode = btn.dataset.etapa || 'tudo';
+            updateStageFilterButtons();
+            applyQueueFilter();
+        });
+        btn.dataset.bound = 'true';
+    });
+    updateStageFilterButtons();
+}
+
+function updateStageFilterButtons() {
+    els.stageFilters.forEach((btn) => {
+        btn.classList.toggle('is-active', (btn.dataset.etapa || 'tudo') === etapaFilterMode);
+    });
 }
 
 function setupQueueFilters() {
@@ -223,10 +269,45 @@ function applyQueueFilter() {
         }
     }
 
-    renderUrgentList(tasksToRender);
+    // Os contadores do cabeçalho contam a fila do laboratório que aquela pessoa
+    // vê, mas sem o recorte por etapa — senão o número mudaria ao clicar no
+    // próprio filtro que ele deveria explicar.
+    renderStageStats(tasksToRender);
+
+    const visiveis = etapaFilterMode === 'tudo'
+        ? tasksToRender
+        : tasksToRender.filter((task) => estaNaEtapa(task, etapaFilterMode));
+
+    renderUrgentList(visiveis.filter((task) => nivelDaAmostra(task) !== null));
+    renderTypeQueue(
+        els.listaBiopsias,
+        els.countBiopsias,
+        visiveis.filter((task) => !isNecropsiaTask(task)),
+        'Fila de biópsias vazia.'
+    );
+    renderTypeQueue(
+        els.listaNecropsias,
+        els.countNecropsias,
+        visiveis.filter(isNecropsiaTask),
+        'Fila de necropsias vazia.'
+    );
 }
 
-// 7. RENDERIZAR AS URGÊNCIAS
+function renderStageStats(tasks) {
+    const alvos = { analise: els.statAnalisar, correcao: els.statCorrigir };
+
+    CHAVES_ETAPA.forEach((chave) => {
+        const alvo = alvos[chave];
+        if (!alvo) return;
+        const total = tasks.filter((task) => etapaPendente(task, chave)).length;
+        alvo.querySelector('strong').textContent = total;
+        // Zerado o contador continua de pé, só apagado: some e a barra pula de
+        // largura toda vez que a última pendência é resolvida.
+        alvo.classList.toggle('is-clear', total === 0);
+    });
+}
+
+// 5. RENDERIZAR AS FILAS
 // Prazo de entrega em dias corridos contados a partir da data de entrada.
 const DEADLINE_DAYS = { necropsia: 40, biopsia: 15 };
 
@@ -272,23 +353,29 @@ function renderDeadlineCell(info) {
 }
 
 /**
- * Contadores do cabeçalho: um por nível, cada um na sua cor. Com a fila vazia
- * sobra um só, em verde — dois zeros lado a lado não dizem nada.
+ * Subtítulo do cartão de prioridades: um número por nível, cada um na sua cor.
+ * Com a fila vazia sobra a frase de descanso — dois zeros lado a lado não dizem
+ * nada.
  */
 function renderPriorityCounts(urgentes, prioritarias) {
     const total = urgentes + prioritarias;
+
+    if (els.urgentCount) els.urgentCount.textContent = total;
+
+    if (!els.urgentSubtitle) return;
+
+    if (total === 0) {
+        els.urgentSubtitle.innerHTML = 'Nada urgente nem prioritário agora';
+        return;
+    }
+
     const rotular = (n, nivel) =>
         `${n} ${n === 1 ? NIVEIS[nivel].rotulo.toLowerCase() : NIVEIS[nivel].plural}`;
 
-    if (els.urgentCount) {
-        els.urgentCount.textContent = total === 0 ? 'Nada na fila' : rotular(urgentes, 'urgente');
-        els.urgentCount.classList.toggle('is-clear', total === 0);
-    }
-
-    if (els.priorityCount) {
-        els.priorityCount.hidden = total === 0;
-        els.priorityCount.textContent = rotular(prioritarias, 'prioritaria');
-    }
+    els.urgentSubtitle.innerHTML = [
+        `<span class="is-urgent">${rotular(urgentes, 'urgente')}</span>`,
+        `<span class="is-priority">${rotular(prioritarias, 'prioritaria')}</span>`
+    ].join(' · ');
 }
 
 // Urgente antes de prioritária, sempre: é a ordem da escala, e um prazo
@@ -321,48 +408,144 @@ function renderUrgentList(tasks) {
     els.urgentList.classList.toggle('is-empty', rows.length === 0);
 
     if (rows.length === 0) {
-        els.urgentList.innerHTML = `
-            <div class="urgent-empty">
-                <i class="far fa-check-circle fa-2x"></i>
-                <p>Nenhuma amostra urgente ou prioritária no momento.</p>
-            </div>`;
+        els.urgentList.appendChild(buildEmpty('Nenhuma amostra urgente ou prioritária no momento.'));
         return;
     }
 
-    rows.forEach((task) => {
-        const isNecropsia = isNecropsiaTask(task);
-        const typeClass = isNecropsia ? 'type-necro' : 'type-bio';
+    rows.forEach((task) => els.urgentList.appendChild(buildUrgentCard(task)));
+}
 
-        const card = document.createElement('div');
-        card.className = `urgent-card ${classeDoNivel(task)} ${typeClass}`;
-        card.setAttribute('role', 'button');
-        card.setAttribute('tabindex', '0');
-        card.title = `${task.protocolo || ''} — ${task.animalNome || ''}`;
+/**
+ * Fila geral de um tipo: mais antigo primeiro. Aqui não existe recorte por
+ * prioridade — o cartão ao lado já cuida disso, e o que esta lista responde é
+ * "o que está encalhado há mais tempo". O protocolo é sequencial no tempo, então
+ * é ele que ordena.
+ */
+function renderTypeQueue(list, counter, tasks, mensagemVazia) {
+    if (!list) return;
 
-        const openDetails = () => openTaskManagerWithRetry(task.id);
-        card.addEventListener('click', openDetails);
-        card.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                openDetails();
-            }
-        });
+    const rows = [...tasks].sort((a, b) => pesoProtocolo(a.protocolo) - pesoProtocolo(b.protocolo));
 
-        const dataEntrada = task.dataEntrada
-            ? new Date(task.dataEntrada + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-            : '—';
+    if (counter) counter.textContent = rows.length;
 
-        card.innerHTML = `
-            <span class="u-prot">${bandeiraDoNivel(task, 'u-flag')}${escapeHtml(task.protocolo || '---')}</span>
-            <span class="u-animal"><strong>${escapeHtml(task.animalNome || 'Sem Nome')}</strong>
-                <span class="u-species">(${escapeHtml(task.especie || '?')})</span></span>
-            <span class="u-type ${typeClass}">${isNecropsia ? 'NECROPSIA' : 'BIÓPSIA'}</span>
-            <span class="u-date"><i class="far fa-calendar"></i>${dataEntrada}</span>
-            <span class="u-resp"><i class="fas fa-user-graduate"></i>${escapeHtml(getShortName(task.posGraduando || 'Sem Pós'))}</span>
-            ${renderDeadlineCell(getDeadlineInfo(task))}`;
+    list.innerHTML = '';
+    list.classList.toggle('is-empty', rows.length === 0);
 
-        els.urgentList.appendChild(card);
+    if (rows.length === 0) {
+        list.appendChild(buildEmpty(mensagemVazia));
+        return;
+    }
+
+    rows.forEach((task) => list.appendChild(buildQueueCard(task)));
+}
+
+function buildEmpty(mensagem) {
+    const box = document.createElement('div');
+    box.className = 'hub-card-empty';
+    box.innerHTML = `
+        <i class="far fa-check-circle fa-lg"></i>
+        <p>${escapeHtml(mensagem)}</p>`;
+    return box;
+}
+
+/** Abrir a ficha é o que todo cartão do painel faz — clique ou Enter/Espaço. */
+function makeCardOpenable(card, task) {
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.title = `${task.protocolo || ''} — ${task.animalNome || ''}`;
+
+    const openDetails = () => openTaskManagerWithRetry(task.id);
+    card.addEventListener('click', openDetails);
+    card.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openDetails();
+        }
     });
+}
+
+function buildUrgentCard(task) {
+    const isNecropsia = isNecropsiaTask(task);
+    const typeClass = isNecropsia ? 'type-necro' : 'type-bio';
+
+    const card = document.createElement('div');
+    card.className = `hub-row is-prioridade ${classeDoNivel(task)} ${typeClass}`;
+    makeCardOpenable(card, task);
+
+    card.innerHTML = `
+        <span class="u-prot">${bandeiraDoNivel(task, 'u-flag')}${escapeHtml(task.protocolo || '---')}</span>
+        <span class="u-tags">${etiquetasDeEtapa(task, 'u-tag')}</span>
+        <span class="u-animal"><strong>${escapeHtml(task.animalNome || 'Sem Nome')}</strong>
+            <span class="u-species">(${escapeHtml(task.especie || '?')})</span></span>
+        <span class="u-type ${typeClass}">${isNecropsia ? 'NECROPSIA' : 'BIÓPSIA'}</span>
+        <span class="u-resp"><i class="fas fa-user-graduate"></i>${escapeHtml(getShortName(task.posGraduando || 'Sem Pós'))}</span>
+        ${renderDeadlineCell(getDeadlineInfo(task))}`;
+
+    return card;
+}
+
+function buildQueueCard(task) {
+    const typeClass = isNecropsiaTask(task) ? 'type-necro' : 'type-bio';
+
+    const card = document.createElement('div');
+    card.className = `hub-row is-fila ${typeClass}`;
+    makeCardOpenable(card, task);
+
+    const dataEntrada = task.dataEntrada
+        ? new Date(task.dataEntrada + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+        : '—';
+
+    // O canto de baixo à direita é do botão de concluir enquanto houver etapa
+    // pendente; sem nenhuma, o espaço volta a mostrar o prazo.
+    const pendentes = etapasDaAmostra(task).filter((etapa) => etapa.estado !== FEITO);
+    const acoes = pendentes.length > 0
+        ? `<span class="u-done">${pendentes.map((etapa) => `
+            <button type="button" class="btn-done" data-etapa="${etapa.chave}" data-task="${escapeHtml(task.id)}"
+                title="Marcar ${etapa.titulo.toLowerCase()} como concluída">${escapeHtml(etapa.rotuloAcao)}</button>`).join('')}</span>`
+        : renderDeadlineCell(getDeadlineInfo(task));
+
+    card.innerHTML = `
+        <span class="u-prot">${escapeHtml(task.protocolo || '---')}</span>
+        <span class="u-tags">${etiquetasDeEtapa(task, 'u-tag')}</span>
+        <span class="u-animal"><strong>${escapeHtml(task.animalNome || 'Sem Nome')}</strong>
+            <span class="u-species">(${escapeHtml(task.especie || '?')})</span></span>
+        <span class="u-date"><i class="far fa-calendar"></i>${dataEntrada}</span>
+        <span class="u-resp"><i class="fas fa-user-graduate"></i>${escapeHtml(getShortName(task.posGraduando || 'Sem Pós'))}</span>
+        ${acoes}`;
+
+    card.querySelectorAll('.btn-done').forEach((botao) => {
+        botao.addEventListener('click', (event) => {
+            // O cartão inteiro abre a ficha; o botão não pode abrir junto.
+            event.stopPropagation();
+            concluirEtapa(botao.dataset.task, botao.dataset.etapa, botao);
+        });
+    });
+
+    return card;
+}
+
+/**
+ * Marca a etapa como feita. O caso continua na fila — quem tira um caso do
+ * painel é a liberação do laudo. O que muda é a etiqueta, que passa a mostrar o
+ * certo, e o contador do cabeçalho, que perde uma pendência.
+ */
+async function concluirEtapa(taskId, chave, botao) {
+    if (!taskId || !ETAPAS[chave]) return;
+
+    if (!hasFullControl(currentUserData?.role)) {
+        alert('Apenas professor, pós-graduando ou admin podem concluir etapas.');
+        return;
+    }
+
+    botao.disabled = true;
+    try {
+        await updateDoc(doc(db, "tasks", taskId), { [ETAPAS[chave].campo]: FEITO });
+        // O onSnapshot redesenha sozinho; nada a fazer aqui.
+    } catch (erro) {
+        console.error(erro);
+        botao.disabled = false;
+        alert('Não foi possível marcar a etapa como concluída.');
+    }
 }
 
 async function openTaskManagerWithRetry(taskId) {
@@ -386,7 +569,7 @@ async function openTaskManagerWithRetry(taskId) {
 function getShortName(fullName) {
     if (!fullName) return '-';
     const parts = fullName.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0]; 
+    if (parts.length === 1) return parts[0];
     return `${parts[0]} ${parts[1][0]}.`;
 }
 

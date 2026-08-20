@@ -67,8 +67,15 @@
                     <span id="user-role-badge" class="user-badge">...</span>
                 </div>
                 <span class="page-title">Dashboard</span>
-            </div>    
-            <div style="display: flex; gap: 10px;">
+            </div>
+            <div class="hub-header-actions">
+                <!-- O que falta fazer, em número, antes de qualquer rolagem. -->
+                <span id="stat-analisar" class="hub-stat is-analise">
+                    <i class="fas fa-microscope"></i><strong>0</strong> para analisar
+                </span>
+                <span id="stat-corrigir" class="hub-stat is-correcao">
+                    <i class="fas fa-file-signature"></i><strong>0</strong> para corrigir
+                </span>
                 <button id="logout-btn" class="btn-icon" style="color: var(--color-error);"><i class="fas fa-sign-out-alt"></i></button>
             </div>
         </header>
@@ -76,23 +83,81 @@
         <main class="main-container hub-main">
             <div class="hub-layout">
 
-                <!-- PRIORIDADES (urgentes + prioritárias) -->
-                <section class="urgent-section">
-                    <div class="section-header">
-                        <div class="section-heading">
-                            <h3 class="section-title">Prioridades</h3>
-                            <span id="urgent-count" class="urgent-count">0 urgentes</span>
-                            <span id="priority-count" class="urgent-count is-priority" hidden>0 prioritárias</span>
-                        </div>
-                        <div id="queue-filter-container" class="queue-filter hidden" aria-label="Filtro da fila">
-                            <button id="queue-filter-mine" type="button" class="queue-filter-btn">Minhas</button>
-                            <button id="queue-filter-all" type="button" class="queue-filter-btn is-active">Todas</button>
-                        </div>
+                <!-- FILTRO POR ETAPA — recorta as três filas de uma vez -->
+                <div class="hub-filters">
+                    <span class="hub-filters-label">Mostrar</span>
+                    <div class="stage-filter" role="group" aria-label="Filtro por etapa do laudo">
+                        <button id="stage-filter-tudo" type="button" class="stage-filter-btn is-active" data-etapa="tudo">Tudo</button>
+                        <button id="stage-filter-analise" type="button" class="stage-filter-btn" data-etapa="analise"><i class="fas fa-microscope"></i> Analisar</button>
+                        <button id="stage-filter-correcao" type="button" class="stage-filter-btn" data-etapa="correcao"><i class="fas fa-file-signature"></i> Corrigir</button>
                     </div>
-                    <div id="urgent-list" class="urgent-list"></div>
-                </section>
+                    <div id="queue-filter-container" class="queue-filter hidden" aria-label="Filtro da fila">
+                        <button id="queue-filter-mine" type="button" class="queue-filter-btn">Minhas</button>
+                        <button id="queue-filter-all" type="button" class="queue-filter-btn is-active">Todas</button>
+                    </div>
+                </div>
 
-                <aside class="hub-rail">
+                <div id="cards-grid" class="hub-cards-grid">
+
+                    <!-- PRIORIDADES — urgentes e prioritárias, biópsia e necropsia juntas -->
+                    <section class="hub-card is-urgencias">
+                        <div class="hub-card-head">
+                            <span class="hub-card-icon"><i class="fas fa-triangle-exclamation"></i></span>
+                            <div class="hub-card-title">
+                                <h3>Urgências &amp; prioridades</h3>
+                                <p id="urgent-subtitle">Biópsias e necropsias juntas · prazo curto</p>
+                            </div>
+                            <span id="urgent-count" class="hub-card-count">0</span>
+                        </div>
+                        <div id="urgent-list" class="hub-card-list"></div>
+                    </section>
+
+                    <!-- BIÓPSIAS — fila geral de laudo pendente -->
+                    <section class="hub-card is-biopsias">
+                        <div class="hub-card-head">
+                            <span class="hub-card-icon"><i class="fas fa-vial"></i></span>
+                            <div class="hub-card-title">
+                                <h3>Biópsias</h3>
+                                <p>Fila geral · mais antigo primeiro</p>
+                            </div>
+                            <span id="count-biopsias" class="hub-card-count">0</span>
+                        </div>
+                        <div id="list-biopsias" class="hub-card-list"></div>
+                    </section>
+
+                    <!-- NECROPSIAS — fila geral de laudo pendente -->
+                    <section class="hub-card is-necropsias">
+                        <div class="hub-card-head">
+                            <span class="hub-card-icon"><i class="fas fa-paw"></i></span>
+                            <div class="hub-card-title">
+                                <h3>Necropsias</h3>
+                                <p>Fila geral · mais antigo primeiro</p>
+                            </div>
+                            <span id="count-necropsias" class="hub-card-count">0</span>
+                        </div>
+                        <div id="list-necropsias" class="hub-card-list"></div>
+                    </section>
+
+                </div>
+
+                <div id="bottom-grid" class="hub-bottom">
+                    <!-- SEMANA -->
+                    <section class="week-section">
+                        <div class="section-header">
+                            <div class="section-heading">
+                                <h3 class="section-title">Semana</h3>
+                                <a href="planner.html" class="week-link">Abrir planner <i class="fas fa-arrow-right"></i></a>
+                            </div>
+                            <div class="week-nav">
+                                <button id="week-prev" class="btn-week-nav" type="button" aria-label="Semana anterior"><i class="fas fa-chevron-left"></i></button>
+                                <span id="week-range-label" class="week-range-label">---</span>
+                                <button id="week-next" class="btn-week-nav" type="button" aria-label="Próxima semana"><i class="fas fa-chevron-right"></i></button>
+                                <button id="week-today" class="btn-week-today" type="button">Hoje</button>
+                            </div>
+                        </div>
+                        <div id="week-grid" class="week-grid"></div>
+                    </section>
+
                     <!-- ESTOQUE -->
                     <a href="estoque.html" class="inventory-hub-panel">
                         <div class="inventory-hub-heading">
@@ -105,24 +170,7 @@
                         </div>
                         <div id="hub-stock-alerts" class="inventory-hub-alerts"></div>
                     </a>
-                </aside>
-
-                <!-- SEMANA -->
-                <section class="week-section">
-                    <div class="section-header">
-                        <div class="section-heading">
-                            <h3 class="section-title">Semana</h3>
-                            <a href="planner.html" class="week-link">Abrir planner <i class="fas fa-arrow-right"></i></a>
-                        </div>
-                        <div class="week-nav">
-                            <button id="week-prev" class="btn-week-nav" type="button" aria-label="Semana anterior"><i class="fas fa-chevron-left"></i></button>
-                            <span id="week-range-label" class="week-range-label">---</span>
-                            <button id="week-next" class="btn-week-nav" type="button" aria-label="Próxima semana"><i class="fas fa-chevron-right"></i></button>
-                            <button id="week-today" class="btn-week-today" type="button">Hoje</button>
-                        </div>
-                    </div>
-                    <div id="week-grid" class="week-grid"></div>
-                </section>
+                </div>
             </div>
 
         </main>
@@ -179,7 +227,7 @@
     <script type="module" src="../assets/js/components/entry-form.js"></script>
     <script type="module" src="../assets/js/components/entry-modal.js"></script>
     <script type="module" src="../assets/js/core.js"></script>
-    <script type="module" src="../assets/js/components/task-manager.js"></script> 
+    <script type="module" src="../assets/js/components/task-manager.js"></script>
     <script type="module" src="../assets/js/pages/hub.js"></script>
 
 

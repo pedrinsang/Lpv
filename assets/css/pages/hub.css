@@ -1,52 +1,591 @@
 /* =========================================
-   LAYOUT DO HUB — coluna de trabalho + trilha lateral
+   LAYOUT DO HUB — filtro, três filas e o rodapé (semana + estoque)
    ========================================= */
 
-/* O dashboard ocupa a altura da janela para a agenda poder ancorar embaixo. */
-.hub-main {
-    flex: 1;
-    min-height: 0;
+/* O painel ocupa a janela inteira, e o que sobra de altura vai para a agenda.
+ *
+ * `flex: 1 0 auto` da cadeia toda — main, layout, rodapé, grade da semana — é o
+ * que faz isso nos dois sentidos: cresce quando sobra espaço (janela alta: a
+ * semana estica em vez de deixar uma faixa morta embaixo) e não encolhe quando
+ * falta (janela baixa: a semana fica no tamanho dela e quem rola é a página).
+ * Com `flex: 1` puro, que encolhe, a agenda era espremida e cortada. */
+.main-container.hub-main {
+    flex: 1 0 auto;
     display: flex;
     flex-direction: column;
+    /* O painel tem três colunas de cartão lado a lado; a largura padrão do
+       .main-container (1200px) já as espremeria a duas no desktop comum. */
+    max-width: 1560px;
 }
 
-/* Urgências e estoque dividem a faixa de cima e esticam até encostar na
-   agenda, que fica fixa no rodapé ocupando a largura toda. */
 .hub-layout {
     --hub-muted: #94a3b8;
-    flex: 1;
-    min-height: 0;
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 16px 24px;
+}
+
+/* =========================================
+   CONTADORES DO CABEÇALHO
+   ========================================= */
+
+.hub-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* O número do que falta, antes de qualquer rolagem. Some no celular: a barra
+   não tem largura para ele e o mesmo número está nos cartões. */
+.hub-stat {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 12px;
+    border: 1px solid;
+    border-radius: 10px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.hub-stat i { font-size: 0.7rem; }
+.hub-stat strong { font-weight: 800; }
+
+.hub-stat.is-analise {
+    color: var(--color-accent);
+    border-color: rgba(56, 189, 248, 0.25);
+    background: rgba(56, 189, 248, 0.08);
+}
+
+.hub-stat.is-correcao {
+    color: #fbbf24;
+    border-color: rgba(251, 191, 36, 0.25);
+    background: rgba(245, 158, 11, 0.08);
+}
+
+/* Zerado o contador continua de pé, só apagado — sem ele a barra pularia de
+   largura toda vez que a última pendência é resolvida. */
+.hub-stat.is-clear {
+    color: var(--text-tertiary);
+    border-color: var(--border-glass);
+    background: transparent;
+}
+
+@media (min-width: 1024px) {
+    .hub-stat { display: inline-flex; }
+}
+
+/* =========================================
+   FILTRO POR ETAPA
+   ========================================= */
+
+.hub-filters {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.hub-filters-label {
+    margin-right: 2px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--hub-muted);
+}
+
+.stage-filter,
+.queue-filter {
+    display: flex;
+    gap: 6px;
+}
+
+/* A trilha Minhas/Todas do pós é outro eixo de filtro; separa das etapas em vez
+   de virar um quarto botão da mesma fileira. */
+.queue-filter {
+    margin-left: auto;
+}
+
+.stage-filter-btn,
+.queue-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 30px;
+    padding: 0 12px;
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.stage-filter-btn i { font-size: 0.66rem; }
+
+.stage-filter-btn:hover,
+.queue-filter-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--color-primary);
+}
+
+.stage-filter-btn.is-active,
+.queue-filter-btn.is-active {
+    color: #fff;
+    background: var(--gradient-main);
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+}
+
+/* =========================================
+   AS TRÊS FILAS
+   ========================================= */
+
+.hub-cards-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 324px;
-    grid-template-rows: minmax(0, 1fr) auto;
-    grid-template-areas:
-        "urgent rail"
-        "week   week";
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: stretch;
-    gap: 24px;
-    padding: 24px 12px 32px;
+    gap: 16px;
 }
 
-.urgent-section {
-    grid-area: urgent;
+/* Tamanho travado, e não tamanho do conteúdo.
+ *
+ * A fila muda o tempo todo — a cada filtro, a cada laudo liberado, a cada
+ * amostra que entra. Com a altura livre os três cartões subiam e desciam juntos
+ * e a semana lá embaixo mudava de lugar no meio da leitura. Parado, o painel
+ * pode ser lido: o que não cabe rola por dentro do cartão.
+ *
+ * A trava está na lista (`--linhas-visiveis`) e não numa altura do cartão: a do
+ * cartão obrigaria a chutar quantos pixels o cabeçalho ocupa, e o chute erra na
+ * primeira mudança de fonte. Somado ao cabeçalho de linha única abaixo, dá a
+ * mesma altura nos três — sem número mágico nenhum. */
+.hub-card {
+    --card-tint: transparent;
+    --card-accent: var(--color-other);
+    --card-wash: rgba(255, 255, 255, 0.06);
     min-width: 0;
-    min-height: 0;
     display: flex;
     flex-direction: column;
+    background: linear-gradient(180deg, var(--card-tint), transparent 180px), var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 18px;
+    overflow: hidden;
 }
 
-.hub-rail {
-    grid-area: rail;
+/* A moldura vermelha é só do cartão de prioridades: é o único que pede uma
+   decisão hoje. */
+.hub-card.is-urgencias {
+    --card-tint: rgba(239, 68, 68, 0.09);
+    --card-accent: #f87171;
+    --card-wash: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.hub-card.is-biopsias {
+    --card-tint: rgba(236, 72, 153, 0.07);
+    --card-accent: #f9a8d4;
+    --card-wash: rgba(236, 72, 153, 0.15);
+}
+
+.hub-card.is-necropsias {
+    --card-tint: rgba(59, 130, 246, 0.08);
+    --card-accent: #93bbfd;
+    --card-wash: rgba(59, 130, 246, 0.15);
+}
+
+.hub-card-head {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 13px 9px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.hub-card-icon {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    font-size: 0.9rem;
+    color: var(--card-accent);
+    background: var(--card-wash);
+}
+
+.hub-card-title {
+    flex: 1;
     min-width: 0;
-    min-height: 0;
+}
+
+/* Título e subtítulo em uma linha só, cortando com reticências: é o que garante
+   que o cabeçalho tenha sempre a mesma altura nos três cartões — e, com a lista
+   travada logo abaixo, que os três tenham o mesmo tamanho. */
+.hub-card-title h3,
+.hub-card-title p {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hub-card-title h3 {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+}
+
+.hub-card-title p {
+    margin-top: 2px;
+    font-size: 0.63rem;
+    color: var(--text-tertiary);
+}
+
+/* No cartão de prioridades o subtítulo é dinâmico: quantas urgentes e quantas
+   prioritárias, cada uma na sua cor. */
+.hub-card-title p .is-urgent { color: #f87171; font-weight: 700; }
+.hub-card-title p .is-priority { color: #fbbf24; font-weight: 700; }
+
+.hub-card-count {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--card-accent);
+}
+
+/* Cinco linhas de fila, sempre — o resto rola por dentro.
+ *
+ * Os três números seguem o desenho da linha: `--linha-fila` é o
+ * `grid-auto-rows` de .hub-row somado ao padding e à borda dela, e o intervalo
+ * é o `gap` daqui. Mexer num deles pede mexer no outro. */
+.hub-card-list {
+    --linha-fila: 84px;
+    --intervalo: 6px;
+    --linhas-visiveis: 5;
+    flex: 0 0 auto;
+    height: calc(
+        (var(--linha-fila) * var(--linhas-visiveis))
+        + (var(--intervalo) * (var(--linhas-visiveis) - 1))
+        + 18px                                              /* padding de cima e de baixo */
+    );
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: var(--intervalo);
+    padding: 9px;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
 }
 
-.week-section {
-    grid-area: week;
+.hub-card-list::-webkit-scrollbar { width: 5px; }
+.hub-card-list::-webkit-scrollbar-track { background: transparent; }
+.hub-card-list::-webkit-scrollbar-thumb {
+    background: var(--card-accent);
+    border-radius: 10px;
+}
+
+/* `margin: auto` centra o aviso na altura travada — encostado no topo de um
+   cartão vazio de 500px ele parecia conteúdo cortado. */
+.hub-card-empty {
+    margin: auto;
+    width: 100%;
+    padding: 1.2rem 1rem;
+    text-align: center;
+    color: var(--hub-muted);
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
+}
+
+.hub-card-empty i {
+    display: block;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.hub-card-empty p { font-size: 0.8rem; }
+
+/* =========================================
+   LINHA DA FILA
+   ========================================= */
+
+/* Duas colunas e três linhas: à esquerda o que identifica o caso (protocolo,
+   animal, responsável), à direita o que decide a ordem de atacar (etapa, tipo
+   ou data, prazo ou botão). É o mesmo desenho nas três filas — trocar de cartão
+   não deve exigir reaprender a ler a linha. */
+.hub-row {
+    --row-accent: var(--color-other);
+    /* A lista é flex de altura travada: sem isto as linhas se espremem para
+       caber em vez de a lista rolar. */
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    /* Altura de linha travada nas tres faixas: sem isso o cartao com botao de
+       concluir fica 12px mais alto que o vizinho sem botao, e a lista vira uma
+       escada. */
+    grid-auto-rows: 20px;
+    align-items: center;
+    gap: 3px 9px;
+    padding: 8px 10px;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid var(--border-glass);
+    border-left: 4px solid var(--row-accent);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform var(--duration-fast) ease, border-color var(--duration-fast) ease,
+                box-shadow var(--duration-fast) ease;
+}
+
+.hub-row:hover,
+.hub-row:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    outline: none;
+}
+
+.hub-row:focus-visible { border-color: var(--color-primary); }
+
+/* Na fila geral a barra diz o tipo; no cartão de prioridades ela diz o nível,
+   que é a informação que manda ali. */
+.hub-row.is-fila.type-necro { --row-accent: var(--color-necro); }
+.hub-row.is-fila.type-bio { --row-accent: var(--color-bio); }
+
+.hub-row.is-fila.type-necro:hover { border-color: rgba(59, 130, 246, 0.45); }
+.hub-row.is-fila.type-bio:hover { border-color: rgba(236, 72, 153, 0.45); }
+
+.hub-row.is-prioridade.is-urgent {
+    --row-accent: #ef4444;
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.02) 45%, transparent 75%),
+                rgba(15, 23, 42, 0.55);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.hub-row.is-prioridade.is-urgent:hover,
+.hub-row.is-prioridade.is-urgent:focus-visible {
+    border-color: rgba(239, 68, 68, 0.6);
+}
+
+/* Prioritária: o mesmo desenho em âmbar, mais discreto — a fila já a colocou
+   acima das comuns, a linha só precisa dizer por quê. */
+.hub-row.is-prioridade.is-priority {
+    --row-accent: #f59e0b;
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.09), rgba(245, 158, 11, 0.02) 45%, transparent 75%),
+                rgba(15, 23, 42, 0.55);
+    border-color: rgba(245, 158, 11, 0.26);
+}
+
+.hub-row.is-prioridade.is-priority:hover,
+.hub-row.is-prioridade.is-priority:focus-visible {
+    border-color: rgba(245, 158, 11, 0.55);
+}
+
+.u-prot {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.u-flag {
+    margin-right: 7px;
+    font-size: 0.74rem;
+    color: #ef4444;
+}
+
+/* Só a urgente pisca: se tudo pisca, nada chama atenção. */
+.u-flag.is-urgent {
+    animation: urgentPulse 1.8s ease-in-out infinite;
+}
+
+.u-flag.is-priority { color: #f59e0b; }
+
+@keyframes urgentPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .u-flag { animation: none; }
+}
+
+.u-animal {
     min-width: 0;
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.u-species {
+    opacity: 0.55;
+    font-size: 0.69rem;
+}
+
+.u-resp {
+    min-width: 0;
+    font-size: 0.66rem;
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.u-date {
+    font-size: 0.66rem;
+    color: var(--hub-muted);
+    white-space: nowrap;
+}
+
+.u-date i,
+.u-resp i {
+    opacity: 0.55;
+    margin-right: 5px;
+}
+
+/* Coluna da direita — tudo alinhado na borda para as três linhas lerem juntas. */
+.u-tags,
+.u-type,
+.u-date,
+.u-prazo,
+.u-done {
+    justify-self: end;
+}
+
+.u-tags,
+.u-done {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.u-type {
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    padding: 2px 7px;
+    border: 1px solid;
+    border-radius: 5px;
+    white-space: nowrap;
+}
+
+.u-type.type-necro {
+    color: var(--color-necro);
+    border-color: rgba(59, 130, 246, 0.35);
+}
+
+.u-type.type-bio {
+    color: var(--color-bio);
+    border-color: rgba(236, 72, 153, 0.35);
+}
+
+/* Prazo: verde enquanto sobra tempo, vermelho depois de vencido. */
+.u-prazo {
+    font-size: 0.66rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.u-prazo i {
+    margin-right: 5px;
+    font-size: 0.64rem;
+    opacity: 0.85;
+}
+
+.u-prazo.is-ok { color: #34d399; }
+.u-prazo.is-late { color: #f87171; }
+
+.u-prazo.is-unknown {
+    font-weight: 700;
+    color: var(--text-tertiary);
+    opacity: 0.6;
+}
+
+/* =========================================
+   ETIQUETAS DE ETAPA E BOTÃO DE CONCLUIR
+   ========================================= */
+
+.u-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 7px;
+    border: 1px solid;
+    border-radius: 6px;
+    font-size: 0.57rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.u-tag i { font-size: 0.58rem; }
+
+.u-tag.is-analise {
+    color: var(--color-accent);
+    border-color: rgba(56, 189, 248, 0.4);
+    background: rgba(56, 189, 248, 0.1);
+}
+
+.u-tag.is-correcao {
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+/* Etapa concluída fica verde e sem ícone: o certo já diz o que aconteceu, e a
+   cor separa de relance o que falta do que foi. */
+.u-tag.is-done {
+    color: #6ee7b7;
+    border-color: rgba(16, 185, 129, 0.35);
+    background: rgba(16, 185, 129, 0.1);
+    letter-spacing: 0.02em;
+}
+
+.btn-done {
+    height: 20px;
+    padding: 0 9px;
+    font-family: inherit;
+    font-size: 0.62rem;
+    font-weight: 800;
+    color: #6ee7b7;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 7px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background var(--duration-fast) ease;
+}
+
+.btn-done:hover { background: rgba(16, 185, 129, 0.24); }
+
+.btn-done:disabled {
+    opacity: 0.5;
+    cursor: progress;
+}
+
+/* =========================================
+   RODAPÉ — SEMANA + ESTOQUE
+   ========================================= */
+
+.hub-bottom {
+    flex: 1 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    /* `stretch` para a semana receber a altura que sobrou; o estoque continua
+       colado no topo, com a altura do conteúdo dele. */
+    align-items: stretch;
+    gap: 16px;
+    border-top: 1px solid var(--border-glass);
+    padding-top: 20px;
+}
+
+.hub-bottom .inventory-hub-panel {
+    align-self: start;
 }
 
 /* Cabeçalho de seção — o título fica solto sobre o fundo, sem moldura. */
@@ -74,289 +613,13 @@
 }
 
 /* =========================================
-   URGÊNCIAS
-   ========================================= */
-
-.urgent-count {
-    font-size: 0.7rem;
-    font-weight: 800;
-    white-space: nowrap;
-    color: #f87171;
-    background: rgba(239, 68, 68, 0.12);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    padding: 2px 8px;
-    border-radius: 20px;
-}
-
-/* Prioritária: âmbar, entre o vermelho da urgente e o cinza da comum. */
-.urgent-count.is-priority {
-    color: #fbbf24;
-    background: rgba(245, 158, 11, 0.12);
-    border-color: rgba(245, 158, 11, 0.3);
-}
-
-.urgent-count.is-clear {
-    color: #6ee7b7;
-    background: rgba(16, 185, 129, 0.12);
-    border-color: rgba(16, 185, 129, 0.3);
-}
-
-.queue-filter {
-    display: flex;
-    gap: 6px;
-}
-
-.queue-filter-btn {
-    height: 30px;
-    padding: 0 12px;
-    font-family: inherit;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    background: var(--bg-glass);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
-}
-
-.queue-filter-btn:hover {
-    color: var(--text-primary);
-    border-color: var(--color-primary);
-}
-
-.queue-filter-btn.is-active {
-    font-weight: 700;
-    color: #fff;
-    background: var(--gradient-main);
-    border-color: transparent;
-}
-
-/* Cabe no mínimo 4 cartões e cresce até encostar na agenda; o que passar disso
-   rola por dentro da caixa. */
-.urgent-list {
-    --urgent-row: 51px;
-    --urgent-gap: 8px;
-    flex: 1;
-    min-height: calc(var(--urgent-row) * 4 + var(--urgent-gap) * 3);
-    display: flex;
-    flex-direction: column;
-    gap: var(--urgent-gap);
-    overflow-y: auto;
-    padding-right: 4px;
-    scrollbar-gutter: stable;
-}
-
-.urgent-list::-webkit-scrollbar { width: 5px; }
-.urgent-list::-webkit-scrollbar-track { background: transparent; }
-.urgent-list::-webkit-scrollbar-thumb {
-    background: rgba(239, 68, 68, 0.45);
-    border-radius: 10px;
-}
-
-/* minmax em vez de larguras fixas: com seis colunas, valores fixos fariam a
-   coluna do animal colapsar antes de o layout empilhar. */
-.urgent-card {
-    --card-accent: var(--color-other);
-    display: grid;
-    grid-template-columns:
-        92px
-        minmax(90px, 1fr)
-        minmax(88px, 112px)
-        76px
-        minmax(78px, 104px)
-        88px;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    background: var(--bg-glass);
-    border: 1px solid var(--border-glass);
-    border-left: 4px solid var(--card-accent);
-    border-radius: 14px;
-    cursor: pointer;
-    transition: transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease,
-                border-color var(--duration-fast) ease;
-}
-
-.urgent-card.type-necro { --card-accent: var(--color-necro); }
-.urgent-card.type-bio { --card-accent: var(--color-bio); }
-
-/* Sinal de urgência: barra e fundo em vermelho. O tipo continua legível na
-   pílula NECROPSIA/BIÓPSIA, então o vermelho fica livre para gritar. */
-.urgent-card.is-urgent {
-    --card-accent: #ef4444;
-    background: linear-gradient(90deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.02) 45%, transparent 75%),
-                var(--bg-glass);
-    border-color: rgba(239, 68, 68, 0.3);
-}
-
-.urgent-card.is-urgent:hover,
-.urgent-card.is-urgent:focus-visible {
-    border-color: rgba(239, 68, 68, 0.6);
-    box-shadow: 0 6px 18px rgba(239, 68, 68, 0.18);
-}
-
-/* Prioritária: o mesmo desenho em âmbar, mais discreto — a fila já a colocou
-   acima das comuns, o cartão só precisa dizer por quê. */
-.urgent-card.is-priority {
-    --card-accent: #f59e0b;
-    background: linear-gradient(90deg, rgba(245, 158, 11, 0.09), rgba(245, 158, 11, 0.02) 45%, transparent 75%),
-                var(--bg-glass);
-    border-color: rgba(245, 158, 11, 0.28);
-}
-
-.urgent-card.is-priority:hover,
-.urgent-card.is-priority:focus-visible {
-    border-color: rgba(245, 158, 11, 0.55);
-    box-shadow: 0 6px 18px rgba(245, 158, 11, 0.16);
-}
-
-.u-flag {
-    margin-right: 7px;
-    font-size: 0.8rem;
-    color: #ef4444;
-}
-
-/* Só a urgente pisca: se tudo pisca, nada chama atenção. */
-.u-flag.is-urgent {
-    animation: urgentPulse 1.8s ease-in-out infinite;
-}
-
-.u-flag.is-priority {
-    color: #f59e0b;
-}
-
-@keyframes urgentPulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.35; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .u-flag { animation: none; }
-}
-
-.urgent-card:hover,
-.urgent-card:focus-visible {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    outline: none;
-}
-
-.urgent-card:focus-visible {
-    border-color: var(--color-primary);
-}
-
-/* Sem quebra: a altura da linha precisa ser constante para a caixa caber
-   exatamente quatro amostras. */
-.u-prot {
-    font-size: 0.95rem;
-    font-weight: 800;
-    color: var(--text-primary);
-    white-space: nowrap;
-}
-
-.u-animal {
-    min-width: 0;
-    font-size: 0.9rem;
-    color: var(--text-primary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.u-species {
-    opacity: 0.6;
-    font-size: 0.8rem;
-}
-
-.u-type {
-    justify-self: start;
-    font-size: 0.65rem;
-    font-weight: 800;
-    letter-spacing: 0.05em;
-    padding: 3px 8px;
-    border: 1px solid;
-    border-radius: 5px;
-    white-space: nowrap;
-}
-
-.u-type.type-necro {
-    color: var(--color-necro);
-    border-color: rgba(59, 130, 246, 0.35);
-}
-
-.u-type.type-bio {
-    color: var(--color-bio);
-    border-color: rgba(236, 72, 153, 0.35);
-}
-
-.u-date {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-}
-
-.u-resp {
-    min-width: 0;
-    font-size: 0.75rem;
-    color: var(--text-tertiary);
-    text-align: right;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.u-date i,
-.u-resp i {
-    opacity: 0.6;
-    margin-right: 5px;
-}
-
-/* Prazo: verde enquanto sobra tempo, vermelho depois de vencido. */
-.u-prazo {
-    font-size: 0.75rem;
-    font-weight: 800;
-    text-align: right;
-    white-space: nowrap;
-}
-
-.u-prazo i {
-    margin-right: 5px;
-    font-size: 0.7rem;
-    opacity: 0.85;
-}
-
-.u-prazo.is-ok { color: #34d399; }
-.u-prazo.is-late { color: #f87171; }
-
-.u-prazo.is-unknown {
-    font-weight: 700;
-    color: var(--text-tertiary);
-    opacity: 0.6;
-}
-
-.urgent-empty {
-    padding: 2.5rem 1rem;
-    text-align: center;
-    color: var(--text-tertiary);
-    background: var(--bg-glass);
-    border: 1px solid var(--border-glass);
-    border-radius: 14px;
-}
-
-.urgent-empty i {
-    display: block;
-    margin-bottom: 10px;
-    opacity: 0.5;
-}
-
-/* =========================================
    SEMANA
    ========================================= */
 
-/* Linha discreta separando as urgências da agenda. */
 .week-section {
-    border-top: 1px solid var(--border-glass);
-    padding-top: 20px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .week-nav {
@@ -414,14 +677,17 @@
 }
 
 .week-grid {
+    flex: 1 0 auto;
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 8px;
 }
 
+/* `min-height` é o piso, não a altura: as colunas do dia esticam com a grade
+   quando sobra janela, e param aqui quando não sobra. */
 .week-day {
     min-width: 0;
-    min-height: 236px;
+    min-height: 132px;
     display: flex;
     flex-direction: column;
     background: var(--bg-glass);
@@ -601,12 +867,10 @@
 }
 
 /* =========================================
-   TRILHA — ESTOQUE
+   ESTOQUE
    ========================================= */
 
 .inventory-hub-panel {
-    flex: 1;
-    min-height: 0;
     display: flex;
     flex-direction: column;
     padding: 16px;
@@ -674,18 +938,13 @@
 }
 
 .inventory-hub-alerts {
-    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 7px;
 }
 
-/* Uma linha por produto perto do fim do prazo previsto. A trilha tem só este
-   cartão, então a lista ocupa a coluna na vertical. */
+/* Uma linha por produto perto do fim do prazo previsto. */
 .inventory-hub-alert {
-    flex: 1 1 auto;
-    min-height: 44px;
-    max-height: 62px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -721,7 +980,7 @@
 }
 
 .inventory-hub-alert-text strong {
-    font-size: 0.82rem;
+    font-size: 0.75rem;
     color: var(--text-primary);
 }
 
@@ -751,7 +1010,6 @@
 }
 
 .inventory-hub-empty {
-    flex: 1;
     min-height: 44px;
     display: flex;
     align-items: center;
@@ -771,60 +1029,51 @@
 }
 
 /* =========================================
-   RESPONSIVO — EMPILHA A TRILHA
+   RESPONSIVO
    ========================================= */
 
-/* Empilha cedo: abaixo disso a coluna da esquerda não comporta as seis
-   colunas do cartão de urgência sem espremer o nome do animal. */
-@media (max-width: 1300px) {
-    /* Empilhado, o dashboard volta a rolar com a página: nada de ancorar a
-       agenda no rodapé nem de esticar os painéis. */
-    .hub-main {
-        display: block;
+/* Os cortes contam a largura do painel, não a da janela: a barra lateral come
+   260px fixos até 1024px, então uma janela de 1340px deixa ~1080px para os
+   cartões — que é onde a terceira coluna para de caber sem espremer a linha. */
+@media (max-width: 1340px) {
+    .hub-cards-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+}
 
-    .hub-layout {
+/* A semana precisa de uns 500px para as cinco colunas caberem ao lado do
+   estoque; abaixo disso os dois empilham e ela passa a rolar na horizontal. */
+@media (max-width: 1100px) {
+    .hub-bottom {
         grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: none;
-        grid-template-areas: none;
-        gap: 22px;
     }
 
-    .urgent-section,
-    .hub-rail,
-    .week-section {
-        grid-area: auto;
+    .week-grid {
+        display: flex;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+        padding-bottom: 4px;
     }
 
-    .urgent-section { order: 1; }
-    .hub-rail { order: 2; }
-    .week-section { order: 3; }
+    .week-grid::-webkit-scrollbar { display: none; }
 
-    /* Volta a caixa fechada de 4 amostras — sem a coluna ao lado não há altura
-       sobrando para distribuir. */
-    .urgent-list {
-        flex: 0 0 auto;
-        max-height: calc(var(--urgent-row) * 4 + var(--urgent-gap) * 3);
+    .week-day {
+        flex: 0 0 148px;
+        scroll-snap-align: start;
+    }
+}
+
+@media (max-width: 820px) {
+    .hub-cards-grid {
+        grid-template-columns: minmax(0, 1fr);
     }
 
-    .inventory-hub-panel {
-        flex: 0 0 auto;
-    }
-
-    /* Empilhado o cartão é largo: os alertas voltam a ficar lado a lado. */
-    .inventory-hub-alerts {
-        flex-direction: row;
-        flex-wrap: wrap;
-    }
-
-    .inventory-hub-alert {
-        flex: 1 1 calc(50% - 4px);
-        min-width: 0;
-        max-height: none;
-    }
-
-    .inventory-hub-more {
-        flex: 1 1 100%;
+    /* Empilhado, a altura volta a ser a do conteúdo: no celular, uma caixa de
+       rolagem dentro da rolagem da página é armadilha, não economia de espaço. */
+    .hub-card-list {
+        height: auto;
+        overflow-y: visible;
     }
 }
 
@@ -836,62 +1085,15 @@
 
 @media (max-width: 900px) {
     .hub-layout {
-        gap: 18px;
-        padding: 16px 10px 24px;
+        gap: 10px;
+        padding: 12px 10px 24px;
     }
 
-    /* O cartão de urgência vira bloco: protocolo e prazo na primeira linha,
-       que são os dois campos que se lê primeiro. */
-    .urgent-card {
-        grid-template-columns: minmax(0, 1fr) auto;
-        grid-template-areas:
-            "prot   prazo"
-            "animal animal"
-            "type   date"
-            "resp   resp";
-        gap: 6px 12px;
-        padding: 13px 14px;
-    }
-
-    /* O cartão empilhado é bem mais alto — a caixa cresce junto para continuar
-       mostrando quatro amostras antes de rolar. */
-    .urgent-list {
-        --urgent-row: 124px;
-    }
-
-    .u-prot { grid-area: prot; }
-    .u-animal { grid-area: animal; }
-    .u-type { grid-area: type; }
-    .u-date { grid-area: date; text-align: right; }
-    .u-resp { grid-area: resp; }
-    .u-prazo { grid-area: prazo; }
-
-    /* A semana rola na horizontal em vez de espremer 5 colunas na tela */
-    .week-grid {
-        display: flex;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scroll-snap-type: x proximity;
-        padding-bottom: 4px;
-    }
-
-    .week-grid::-webkit-scrollbar {
-        display: none;
-    }
-
-    .week-day {
-        flex: 0 0 148px;
-        scroll-snap-align: start;
-    }
-
-    /* No celular a tela é estreita: nome do produto e prazo só cabem numa
-       linha inteira por alerta. */
-    .inventory-hub-alerts {
-        flex-direction: column;
-    }
-
-    .inventory-hub-alert {
-        flex: 0 0 auto;
+    /* A trilha Minhas/Todas desce para a linha de baixo em vez de espremer os
+       três botões de etapa. */
+    .queue-filter {
+        margin-left: 0;
+        flex-basis: 100%;
     }
 
     /* 1. Botão Hambúrguer Visível */
