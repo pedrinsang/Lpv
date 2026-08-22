@@ -459,22 +459,116 @@
 
 .tm-block-actions .btn-sm { align-self: flex-start; }
 
-/* --- Etapas do laudo: uma coluna por fila, lado a lado --- */
+/* --- Etapas do laudo: a barra do alto da ficha ---
+
+   Mora logo abaixo da faixa de identidade porque é a ação mais frequente da
+   ficha; embaixo, atrás dos blocos de cadastro, dava para abrir a amostra e
+   nem ver que existia.
+
+   Cada fila é um trio de botões: o aceso diz onde o caso está, os outros dois
+   levam para lá com um clique. As cores do aceso são as mesmas das etiquetas
+   do Hub e do Mural — azul enquanto falta analisar, âmbar enquanto falta
+   corrigir, verde quando já foi. */
+.tm-etapas-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--bg-body);
+  border: 1px solid var(--border-glass);
+  border-radius: 14px;
+}
+
 .tm-etapas {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px 22px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px 22px;
 }
 
 .tm-etapa {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
 }
 
-.tm-etapa .tm-field-label { margin-bottom: 0; }
-.tm-etapa .tm-field-value { font-size: 0.88rem; }
+.tm-etapa-nome {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.tm-etapa-nome i { font-size: 0.75rem; }
+
+.tm-etapa-ops {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+}
+
+.tm-etapa-op {
+  /* Base pelo conteúdo, e não fatia igual: com `flex: 1` os três botões
+     ficavam do mesmo tamanho e "Analisado" — o rótulo mais longo — era o único
+     a sair cortado com reticências. */
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+  padding: 0 9px;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease,
+              border-color var(--duration-fast) ease;
+}
+
+.tm-etapa-op:hover:not(:disabled):not(.is-active) {
+  color: var(--text-primary);
+  background: rgba(148, 163, 184, 0.14);
+}
+
+/* Sem permissão os botões continuam à vista, só apagados: quem não pode marcar
+   ainda precisa saber em que fila o caso está. */
+.tm-etapa-op:disabled { cursor: default; opacity: 0.7; }
+
+.tm-etapa-op.is-fora.is-active {
+  color: var(--text-primary);
+  background: rgba(148, 163, 184, 0.2);
+  border-color: var(--border-color);
+}
+
+.tm-etapa-op.is-fila.is-analise.is-active {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+.tm-etapa-op.is-fila.is-correcao.is-active {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.tm-etapa-op.is-feito.is-active {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.45);
+}
 
 /* --- Histórico de versões dos arquivos --- */
 .tm-file-history {

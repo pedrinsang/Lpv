@@ -7,12 +7,18 @@
  *
  * O switch Todos/Minhas troca entre a fila do laboratório inteiro e a fila de
  * quem está logado (as entradas que a pessoa cadastrou, `createdBy`).
+ *
+ * O filtro por etapa (Tudo / Analisar / Corrigir) e as etiquetas dos cartões
+ * saem da mesma tabela do Hub (lib/etapas.js). São a mesma fila vista de duas
+ * telas: se cada uma inventasse o próprio rótulo, "para analisar" passaria a
+ * significar coisas diferentes conforme onde se olha.
  */
 import { auth, db } from '../core.js';
 import { collection, query, where, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import { pesoProtocolo } from '../lib/protocolo.js';
 import { bandeiraDoNivel, classeDoNivel, pesoPrioridade } from '../lib/prioridade.js';
+import { estaNaEtapa, etiquetasDeEtapa } from '../lib/etapas.js';
 import {
     CAMPO_REABERTO,
     estaReaberto,
@@ -25,7 +31,8 @@ const els = {
     board: document.getElementById('mural-board'),
     dots: document.getElementById('carousel-dots'),
     switchAll: document.getElementById('filter-all'),
-    switchMine: document.getElementById('filter-mine')
+    switchMine: document.getElementById('filter-mine'),
+    stageFilters: document.querySelectorAll('.mural-stage-filter [data-etapa]')
 };
 
 // Um painel por tipo de amostra. O `wrap` é o alvo do carrossel no mobile.
@@ -51,6 +58,7 @@ const DEADLINE_DAYS = { necropsia: 40, biopsia: 15 };
 
 let allTasks = [];
 let currentFilter = 'all';       // 'all' | 'mine'
+let etapaFilter = 'tudo';        // 'tudo' | 'analise' | 'correcao'
 let currentUid = null;
 
 // --- INICIALIZAÇÃO ---
@@ -72,6 +80,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     initSwitch();
+    initStageFilter();
     initBoard();
     initMobileCarousel();
 });
@@ -150,9 +159,16 @@ function isNecropsiaTask(task) {
 }
 
 function renderBoard() {
-    const visiveis = currentFilter === 'mine'
+    const daPessoa = currentFilter === 'mine'
         ? allTasks.filter((task) => task.createdBy && task.createdBy === currentUid)
         : allTasks;
+
+    // O filtro pergunta "está nesta fila?", e não "ainda falta?" — igual ao Hub.
+    // Marcar a etapa como feita não pode fazer o cartão sumir debaixo do cursor
+    // de quem acabou de clicar; o que muda é a etiqueta.
+    const visiveis = etapaFilter === 'tudo'
+        ? daPessoa
+        : daPessoa.filter((task) => estaNaEtapa(task, etapaFilter));
 
     const grupos = { necropsia: [], biopsia: [] };
     visiveis.forEach((task) => {
@@ -233,6 +249,11 @@ function buildCard(task, index) {
         ? new Date(`${task.dataEntrada}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
         : '—';
 
+    // Caso comum não tem etapa marcada e não ganha linha nenhuma: uma faixa
+    // vazia em todo cartão custaria altura sem dizer nada. A reabertura vem
+    // primeiro porque é o estado do caso — as etapas dizem o trabalho dele.
+    const etiquetas = etiquetaReaberto(task, 'm-tag') + etiquetasDeEtapa(task, 'm-tag');
+
     card.innerHTML = `
         <div class="mural-card-top">
             <span class="m-prot">
@@ -241,11 +262,11 @@ function buildCard(task, index) {
             </span>
             ${renderPrazo(task)}
         </div>
-        ${etiquetaReaberto(task, 'm-tag')}
         <div class="m-animal">
             <strong>${escapeHtml(task.animalNome || 'Sem Nome')}</strong>
             <span class="m-species">${escapeHtml(task.especie || 'Espécie não informada')}</span>
         </div>
+        ${etiquetas ? `<div class="m-tags">${etiquetas}</div>` : ''}
         <div class="mural-card-meta">
             <span class="m-resp"><i class="fas fa-user-graduate"></i>${escapeHtml(getShortName(task.posGraduando))}</span>
             <span class="m-date"><i class="far fa-calendar"></i>${dataEntrada}</span>
@@ -314,6 +335,24 @@ function renderFinanceiro(task) {
         return '<span class="m-fin is-didatico"><i class="fas fa-graduation-cap"></i>DIDÁTICO</span>';
     }
     return '<span class="m-fin is-pendente"><i class="fas fa-clock"></i>PENDENTE</span>';
+}
+
+// --- FILTRO POR ETAPA ---
+function initStageFilter() {
+    els.stageFilters.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            etapaFilter = btn.dataset.etapa || 'tudo';
+            updateStageFilter();
+            renderBoard();
+        });
+    });
+    updateStageFilter();
+}
+
+function updateStageFilter() {
+    els.stageFilters.forEach((btn) => {
+        btn.classList.toggle('is-active', (btn.dataset.etapa || 'tudo') === etapaFilter);
+    });
 }
 
 // --- SWITCH TODOS / MINHAS ---

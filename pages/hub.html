@@ -7,8 +7,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Hub Laboratório | LPV</title>
     <script>
+        // O layout entra antes da primeira pintura, junto com o tema. O dono da
+        // escolha é a conta (`hubLayout` em users/{uid}), mas ela só chega depois
+        // do login resolver — esta é a cópia local do último arranjo usado neste
+        // aparelho, que evita a tela abrir no padrão e pular para o certo.
         (function() {
             document.documentElement.setAttribute('data-theme', 'dark');
+
+            var LAYOUTS = ['completo', 'foco'];
+            var escolhido = 'completo';
+            try {
+                var salvo = localStorage.getItem('lpv-hub-layout');
+                if (LAYOUTS.indexOf(salvo) !== -1) escolhido = salvo;
+            } catch (e) { /* aparelho sem armazenamento */ }
+            document.documentElement.setAttribute('data-hub-layout', escolhido);
         })();
     </script>
     <link rel="stylesheet" href="../assets/css/pages/hub.css">
@@ -76,6 +88,16 @@
                 <span id="stat-corrigir" class="hub-stat is-correcao">
                     <i class="fas fa-file-signature"></i><strong>0</strong> para corrigir
                 </span>
+
+                <!-- ESCOLHA DO LAYOUT — dois arranjos do mesmo painel -->
+                <div class="hub-layout-picker">
+                    <button id="layout-btn" class="btn-icon btn-layout" type="button"
+                            aria-haspopup="true" aria-expanded="false" title="Escolher o layout do painel">
+                        <i class="fas fa-table-columns"></i><span class="btn-layout-text">Layout</span>
+                    </button>
+                    <div id="layout-menu" class="layout-menu hidden" role="menu" aria-labelledby="layout-btn"></div>
+                </div>
+
                 <button id="logout-btn" class="btn-icon" style="color: var(--color-error);"><i class="fas fa-sign-out-alt"></i></button>
             </div>
         </header>
