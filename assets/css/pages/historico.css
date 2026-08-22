@@ -463,6 +463,15 @@
 }
 .lr-laudo.is-aberto i { font-size: 0.66rem; opacity: 0.8; }
 
+/* Caso reaberto: a linha do livro não muda (o laudo saiu e continua saído), só
+   ganha o aviso de que ele está de volta nas filas do Mural e do Hub. */
+.lr-reaberta {
+    margin-left: 5px;
+    font-size: 0.64rem;
+    color: #8b5cf6;
+    cursor: help;
+}
+
 .ledger-row.is-aberto .lr-protocolo,
 .ledger-row.is-aberto .lr-animal strong { opacity: 0.82; }
 

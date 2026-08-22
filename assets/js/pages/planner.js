@@ -17,13 +17,19 @@ const T = TIPO_AGENDA;
 const TIPO_ESTAGIO = 'estagio';
 
 const DOW_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const DOW_LONGO = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira',
+                   'Quinta-feira', 'Sexta-feira', 'Sábado'];
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
 const TURNOS = {
-    manha: { ini: 8 * 60,  fim: 12 * 60, rotulo: 'Manhã' },
-    tarde: { ini: 13 * 60, fim: 18 * 60, rotulo: 'Tarde' },
+    manha: { ini: 8 * 60,  fim: 12 * 60, rotulo: 'Manhã', icone: 'fa-sun',  cor: '#fbbf24' },
+    tarde: { ini: 13 * 60, fim: 18 * 60, rotulo: 'Tarde', icone: 'fa-moon', cor: '#818cf8' },
 };
+
+/** "08–12h" — sai do próprio turno, para o rótulo não divergir da faixa. */
+const horasDoTurno = (turno) =>
+    `${hhmm(TURNOS[turno].ini).slice(0, 2)}–${hhmm(TURNOS[turno].fim).slice(0, 2)}h`;
 
 /** Quantos chips cabem numa célula do mês antes do "+N mais". */
 const MAX_CHIPS = 3;
@@ -78,26 +84,20 @@ function podeCriar() {
     return perfil.podeTudo || perfil.ehEstagiario;
 }
 
-/** A fila de pendentes é de amostra do laboratório: estagiário não agenda. */
-function podeMexerNaFila() {
-    return perfil.podeTudo;
-}
-
 /** Os tipos que aparecem no modal de criação para quem está logado. */
 function tiposDisponiveis() {
     return perfil.podeTudo ? TIPOS : [T[TIPO_ESTAGIO]];
 }
 
-/* No desktop o trilho fica ao lado da agenda e já abre na fila de pendentes;
-   no mobile ele é uma gaveta sobreposta, então começa fechado. */
-const RAIL_INICIAL = window.matchMedia('(min-width: 1024px)').matches ? 'pendentes' : null;
-
+/* O trilho lateral começa fechado e só abre no clique de um agendamento: ele
+   serve para ver e editar o detalhe, e a agenda fica com a largura inteira
+   enquanto não há nada selecionado. */
 const state = {
     visao: 'semana',       // 'semana' | 'mes'
     ancora: HOJE,          // data de referência do período exibido
-    rail: RAIL_INICIAL,    // 'pendentes' | 'detalhe' | null
+    rail: null,            // 'detalhe' | null
     detalheId: null,
-    colocacao: null,       // tarefa aguardando escolha de faixa
+    dia: null,             // dia aberto no painel do mês ('YYYY-MM-DD') ou null
     criando: null,         // { data, turno }
     novo: { tipo: 'necropsia', duracao: '60' },
 };
@@ -113,12 +113,11 @@ function cacheEls() {
     const ids = [
         'tab-semana', 'tab-mes', 'prev-period', 'today-btn', 'next-period',
         'period-title', 'period-sub', 'period-count',
-        'placement-banner', 'placement-task-name', 'cancel-placement',
         'week-view', 'week-head', 'band-manha', 'band-tarde',
         'month-view', 'month-grid',
-        'planner-rail', 'rail-detalhe', 'rail-pendentes', 'detalhe-body',
-        'close-detalhe', 'close-pendentes', 'pendentes-list', 'pendentes-count',
-        'btn-pendentes', 'badge-pendentes', 'btn-agendar',
+        'planner-rail', 'rail-detalhe', 'detalhe-body', 'close-detalhe',
+        'btn-agendar',
+        'day-modal', 'day-dow', 'day-date', 'day-count', 'day-body', 'close-day',
         'create-modal', 'create-target', 'close-create', 'cancel-create', 'save-create',
         'novo-titulo', 'novo-sub', 'novo-tipos', 'novo-data', 'novo-hora', 'novo-duracao',
         'create-hint',
@@ -151,16 +150,7 @@ function duracaoDe(task) {
     return Number(task.duration) || 60;
 }
 
-/** Data em que a tarefa entrou na fila, para o "na fila desde". */
-function desdeDe(task) {
-    const raw = task.dataEntrada || task.createdAt;
-    if (!raw) return null;
-    const s = String(raw).slice(0, 10);
-    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
-}
-
 const agendadas = () => tasksCache.filter(t => t.scheduledDate && t.scheduledTime);
-const pendentes = () => tasksCache.filter(t => !t.scheduledDate && !t.releasedAt);
 
 /* ==========================================================================
    REGRAS DE AGENDAMENTO
@@ -196,7 +186,6 @@ async function agendar(id, data, turno) {
     const { fim } = TURNOS[turno];
     const duracao = Math.min(duracaoDe(tarefa), fim - minutos(hora));
 
-    state.colocacao = null;
     await updateDoc(doc(db, 'tasks', id), {
         scheduledDate: data,
         scheduledTime: hora,
@@ -240,19 +229,38 @@ function renderToolbar() {
         ? agendadas().filter(t => t.scheduledDate >= ini && t.scheduledDate <= fimSem).length
         : agendadas().filter(t => t.scheduledDate.slice(0, 7) === state.ancora.slice(0, 7)).length;
     el['period-count'].textContent = noPeriodo;
-
-    // Faixa do modo "escolher onde encaixar"
-    if (state.colocacao) {
-        el['placement-banner'].classList.remove('hidden');
-        el['placement-task-name'].textContent = tituloDe(state.colocacao);
-    } else {
-        el['placement-banner'].classList.add('hidden');
-    }
 }
 
 /* ==========================================================================
    RENDER — CARTÕES
    ========================================================================== */
+
+/**
+ * O comportamento de uma faixa (um dia, um turno): clicar no vazio abre o
+ * formulário já com a data e o turno preenchidos; soltar um cartão arrastado
+ * remarca ele ali.
+ *
+ * Mora aqui porque a faixa da semana e a do painel do dia são a mesma coisa
+ * vista de dois lugares — se uma agendasse diferente da outra, o mês viraria
+ * uma tela com regra própria.
+ */
+function ligarFaixa(faixa, data, turno) {
+    faixa.addEventListener('click', (e) => {
+        if (e.target.closest('.pl-card')) return;
+        if (!podeCriar()) return;
+        abrirCriar(data, turno);
+    });
+
+    if (!podeCriar()) return;
+
+    faixa.addEventListener('dragover', (e) => { e.preventDefault(); faixa.classList.add('is-dragover'); });
+    faixa.addEventListener('dragleave', () => faixa.classList.remove('is-dragover'));
+    faixa.addEventListener('drop', (e) => {
+        e.preventDefault();
+        faixa.classList.remove('is-dragover');
+        if (dragId) { agendar(dragId, data, turno); dragId = null; }
+    });
+}
 
 /** Aplica a cor do tipo como custom properties usadas pelo CSS. */
 const pintar = pintarPorTipo;
@@ -329,7 +337,6 @@ function renderSemana() {
             const lane = document.createElement('div');
             lane.className = 'pl-lane';
             if (passado) lane.classList.add('is-past');
-            if (state.colocacao) lane.classList.add('is-target');
             if (!podeCriar()) lane.classList.add('is-locked');
 
             doTurno.forEach(t => lane.appendChild(criarCartao(t)));
@@ -340,21 +347,7 @@ function renderSemana() {
                 lane.appendChild(vazio);
             }
 
-            lane.addEventListener('click', (e) => {
-                if (e.target.closest('.pl-card')) return;
-                if (!podeCriar()) return;
-                if (state.colocacao) agendar(state.colocacao.id, data, turno);
-                else abrirCriar(data, turno);
-            });
-            if (podeCriar()) {
-                lane.addEventListener('dragover', (e) => { e.preventDefault(); lane.classList.add('is-dragover'); });
-                lane.addEventListener('dragleave', () => lane.classList.remove('is-dragover'));
-                lane.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    lane.classList.remove('is-dragover');
-                    if (dragId) { agendar(dragId, data, turno); dragId = null; }
-                });
-            }
+            ligarFaixa(lane, data, turno);
             el[`band-${turno}`].appendChild(lane);
         });
     }
@@ -391,8 +384,9 @@ function renderMes() {
         cell.className = 'pl-cell';
         if (!doMes) cell.classList.add('is-outside');
         else if (eHoje) cell.classList.add('is-today');
-        if (doMes && state.colocacao) cell.classList.add('is-target');
-        if (doMes && !podeCriar()) cell.classList.add('is-locked');
+        // Abrir o dia é leitura, e leitura todo mundo pode: a célula do mês
+        // deixou de ficar travada para quem não agenda — o que ele não vai
+        // encontrar lá dentro é o "+ agendar".
 
         // Cabeçalho da célula: número + contagem/barra por tipo
         const top = document.createElement('div');
@@ -423,7 +417,6 @@ function renderMes() {
                 <span class="pl-chip-titulo"></span>
             `;
             chip.querySelector('.pl-chip-titulo').textContent = tituloDe(t);
-            chip.addEventListener('click', (e) => { e.stopPropagation(); abrirDetalhe(t.id); });
             chips.appendChild(chip);
         });
         if (lista.length > MAX_CHIPS) {
@@ -435,16 +428,18 @@ function renderMes() {
         cell.appendChild(chips);
 
         if (doMes) {
-            cell.addEventListener('click', (e) => {
-                if (e.target.closest('.pl-chip')) return;
-                if (!podeCriar()) return;
-                if (state.colocacao) {
-                    agendar(state.colocacao.id, data, 'manha');
-                } else {
-                    state.ancora = data;
-                    abrirCriar(data, 'manha');
-                }
+            // O mês não agenda nem abre ficha direto: ele abre o dia. Os chips
+            // são só a prévia do que tem ali — clicar em qualquer parte da
+            // célula, chip incluído, leva ao painel com os dois turnos.
+            cell.setAttribute('role', 'button');
+            cell.setAttribute('tabindex', '0');
+            cell.addEventListener('click', () => abrirDia(data));
+            cell.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirDia(data); }
             });
+
+            // Arrastar um cartão para um dia do mês continua remarcando direto,
+            // sem passar pelo painel: o gesto já disse a data.
             if (podeCriar()) {
                 cell.addEventListener('dragover', (e) => { e.preventDefault(); cell.classList.add('is-dragover'); });
                 cell.addEventListener('dragleave', () => cell.classList.remove('is-dragover'));
@@ -461,31 +456,99 @@ function renderMes() {
 }
 
 /* ==========================================================================
+   RENDER — DIA ABERTO
+
+   A coluna da semana, no meio da tela. No mês cada dia é uma célula de três
+   chips e um "+2 mais": dá para ver que o dia está cheio, não dá para ver de
+   quê nem a que horas. Clicar abre este painel com os mesmos dois turnos da
+   visão semanal — os mesmos cartões, o mesmo "+ agendar", o mesmo arrastar
+   entre manhã e tarde.
+   ========================================================================== */
+
+function abrirDia(data) {
+    state.dia = data;
+    state.ancora = data;   // navegar dentro do painel não perde o mês exibido
+    renderAll();
+}
+
+function fecharDia() {
+    state.dia = null;
+    renderAll();
+}
+
+function renderDia() {
+    const aberto = !!state.dia;
+    el['day-modal'].classList.toggle('hidden', !aberto);
+    if (!aberto) return;
+
+    const data = state.dia;
+    const d = parseISO(data);
+    const passado = estaNoPassado(data);
+
+    const doDia = agendadas()
+        .filter(t => t.scheduledDate === data)
+        .sort((a, b) => minutos(a.scheduledTime) - minutos(b.scheduledTime));
+
+    el['day-dow'].textContent = DOW_LONGO[d.getDay()] + (data === HOJE ? ' · hoje' : '');
+    el['day-date'].textContent = `${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
+    el['day-count'].textContent = doDia.length;
+    el['day-count'].classList.toggle('is-vazio', doDia.length === 0);
+
+    const body = el['day-body'];
+    body.innerHTML = '';
+
+    Object.entries(TURNOS).forEach(([turno, info]) => {
+        const doTurno = doDia.filter(t => turnoDe(t.scheduledTime) === turno);
+
+        const bloco = document.createElement('div');
+        bloco.className = 'pl-dayband';
+        bloco.innerHTML = `
+            <div class="pl-dayband-head">
+                <i class="fas ${info.icone}" style="color:${info.cor};"></i>
+                <span class="pl-dayband-nome">${info.rotulo}</span>
+                <span class="pl-dayband-horas">${horasDoTurno(turno)}</span>
+            </div>`;
+
+        const faixa = document.createElement('div');
+        faixa.className = 'pl-lane pl-daylane';
+        if (passado) faixa.classList.add('is-past');
+        if (!podeCriar()) faixa.classList.add('is-locked');
+
+        doTurno.forEach(t => faixa.appendChild(criarCartao(t)));
+        if (!doTurno.length) {
+            const vazio = document.createElement('span');
+            vazio.className = 'pl-lane-empty';
+            vazio.textContent = podeCriar() ? '+ agendar' : 'Nada agendado';
+            faixa.appendChild(vazio);
+        }
+
+        ligarFaixa(faixa, data, turno);
+        bloco.appendChild(faixa);
+        body.appendChild(bloco);
+    });
+}
+
+/* ==========================================================================
    RENDER — TRILHO LATERAL
+
+   Só o detalhe do agendamento. A fila de amostras pendentes saiu daqui: as
+   necropsias e biópsias do laboratório não são agendadas pelo Planner — quem
+   escreve a agenda escreve à mão, e a fila de laudo vive no Mural e no Hub.
+   Com o trilho fechado, a semana fica com a largura inteira.
    ========================================================================== */
 
 function renderRail() {
-    const fila = pendentes();
-    // O detalhe só existe para tarefa agendada: se ela foi devolvida à fila por
-    // outra pessoa enquanto o painel estava aberto, o trilho volta aos pendentes.
-    const tarefaDet = tasksCache.find(t => t.id === state.detalheId && t.scheduledDate && t.scheduledTime);
-    if (state.rail === 'detalhe' && !tarefaDet) {
-        state.rail = 'pendentes';
+    // O detalhe só existe para tarefa agendada: se ela sumiu do calendário
+    // enquanto o painel estava aberto, o trilho fecha em vez de ficar mostrando
+    // um agendamento que não existe mais.
+    const tarefa = tasksCache.find(t => t.id === state.detalheId && t.scheduledDate && t.scheduledTime);
+    if (!tarefa) {
         state.detalheId = null;
+        state.rail = null;
     }
-    const verDetalhe = state.rail === 'detalhe';
-    const verPendentes = state.rail === 'pendentes';
 
-    el['planner-rail'].classList.toggle('hidden', state.rail === null);
-    el['rail-detalhe'].classList.toggle('hidden', !verDetalhe);
-    el['rail-pendentes'].classList.toggle('hidden', !verPendentes);
-
-    el['btn-pendentes'].classList.toggle('is-active', verPendentes);
-    el['badge-pendentes'].textContent = fila.length ? fila.length : '';
-    el['pendentes-count'].textContent = fila.length;
-
-    if (verDetalhe) renderDetalhe(tarefaDet);
-    if (verPendentes) renderPendentes(fila);
+    el['planner-rail'].classList.toggle('hidden', state.rail !== 'detalhe');
+    if (tarefa) renderDetalhe(tarefa);
 }
 
 function renderDetalhe(task) {
@@ -510,11 +573,6 @@ function renderDetalhe(task) {
         ${podeEditar(task) ? `
         <div class="pl-detail-actions">
             <button type="button" class="pl-action" data-act="mover"><i class="fas fa-right-left"></i> Mover para ${turno === 'manha' ? 'tarde' : 'manhã'}</button>
-            <!-- Devolver aos pendentes é só de quem mexe na fila: um item de
-                 estágio devolvido cairia num trilho que o estagiário não pode
-                 abrir, e ele ficaria sem como trazer o próprio item de volta. -->
-            ${podeMexerNaFila() ? `
-            <button type="button" class="pl-action" data-act="devolver"><i class="fas fa-inbox"></i> Devolver aos pendentes</button>` : ''}
             <button type="button" class="pl-action danger" data-act="excluir"><i class="fas fa-trash"></i> Excluir</button>
         </div>` : ''}
     `;
@@ -529,72 +587,7 @@ function renderDetalhe(task) {
         if (btn) btn.addEventListener('click', fn);
     };
     acao('mover', () => moverTurno(task));
-    acao('devolver', () => devolverParaPendentes(task));
     acao('excluir', () => excluirTarefa(task));
-}
-
-function renderPendentes(fila) {
-    const list = el['pendentes-list'];
-    list.innerHTML = '';
-
-    if (!fila.length) {
-        list.innerHTML = `
-            <div class="pl-pend-empty">
-                <i class="fas fa-check-circle"></i>
-                <p>Fila vazia</p>
-                <p class="sub">Todos os casos estão agendados.</p>
-            </div>`;
-        return;
-    }
-
-    fila.forEach(task => {
-        const tipo = tipoDe(task);
-        const desde = desdeDe(task);
-        const card = document.createElement('div');
-        card.className = 'pl-pend-card';
-        pintar(card, tipo);
-        card.draggable = podeMexerNaFila();
-        if (!podeMexerNaFila()) card.classList.add('is-locked');
-        card.innerHTML = `
-            <div class="pl-pend-top">
-                <span class="pl-pend-titulo"></span>
-                <span class="pl-pend-tag">${T[tipo].curto}</span>
-            </div>
-            <span class="pl-pend-sub"></span>
-            <div class="pl-pend-foot">
-                <span class="pl-pend-espera">${desde ? `na fila desde ${br(desde)}` : 'sem data'}</span>
-                ${podeMexerNaFila() ? `
-                <span class="pl-pend-btns">
-                    <button type="button" class="pl-pend-btn schedule" title="Escolher faixa"><i class="fas fa-clock"></i></button>
-                    <button type="button" class="pl-pend-btn remove" title="Excluir"><i class="fas fa-trash-alt"></i></button>
-                </span>` : ''}
-            </div>
-        `;
-        card.querySelector('.pl-pend-titulo').textContent = tituloDe(task);
-        card.querySelector('.pl-pend-sub').textContent = subDe(task);
-
-        card.addEventListener('dragstart', (e) => {
-            if (!podeMexerNaFila()) return;
-            dragId = task.id;
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', task.id);
-            card.classList.add('is-dragging');
-        });
-        card.addEventListener('dragend', () => card.classList.remove('is-dragging'));
-
-        if (podeMexerNaFila()) {
-            card.querySelector('.schedule').addEventListener('click', (e) => {
-                e.stopPropagation();
-                state.colocacao = task;
-                renderAll();
-            });
-            card.querySelector('.remove').addEventListener('click', (e) => {
-                e.stopPropagation();
-                excluirTarefa(task);
-            });
-        }
-        list.appendChild(card);
-    });
 }
 
 /* ==========================================================================
@@ -604,6 +597,9 @@ function renderPendentes(fila) {
 function abrirDetalhe(id) {
     state.detalheId = id;
     state.rail = 'detalhe';
+    // O trilho mora na lateral, atrás da cortina do painel do dia: abrir um
+    // cartão de lá fecha o painel, senão o detalhe aparece escondido.
+    state.dia = null;
     renderAll();
 }
 
@@ -614,21 +610,11 @@ async function moverTurno(task) {
     await updateDoc(doc(db, 'tasks', task.id), { scheduledTime: hora, updatedAt: new Date().toISOString() });
 }
 
-async function devolverParaPendentes(task) {
-    state.rail = 'pendentes';
-    state.detalheId = null;
-    await updateDoc(doc(db, 'tasks', task.id), {
-        scheduledDate: null, scheduledTime: null, duration: null,
-        updatedAt: new Date().toISOString(),
-    });
-}
-
 async function excluirTarefa(task) {
     if (!podeEditar(task)) return;
     if (!confirm(`Tem certeza que deseja excluir "${tituloDe(task)}"?`)) return;
     try {
-        if (state.detalheId === task.id) { state.rail = 'pendentes'; state.detalheId = null; }
-        if (state.colocacao && state.colocacao.id === task.id) state.colocacao = null;
+        if (state.detalheId === task.id) { state.rail = null; state.detalheId = null; }
         await deleteDoc(doc(db, 'tasks', task.id));
     } catch (e) {
         console.error(e);
@@ -721,6 +707,10 @@ async function salvarCriar() {
             createdAt: new Date().toISOString(),
         });
         state.ancora = data;
+        // Com o painel do dia aberto, ele segue a data que acabou de ser
+        // agendada — trocar a data no formulário e continuar vendo o dia antigo
+        // faria parecer que a gravação não aconteceu.
+        if (state.dia) state.dia = data;
         fecharCriar();
         renderAll();
     } catch (e) {
@@ -740,6 +730,7 @@ function renderAll() {
 
     renderToolbar();
     if (ehSemana) renderSemana(); else renderMes();
+    renderDia();
     renderRail();
 }
 
@@ -769,17 +760,13 @@ function initControles() {
 
     el['today-btn'].addEventListener('click', () => { state.ancora = HOJE; renderAll(); });
 
-    el['cancel-placement'].addEventListener('click', () => { state.colocacao = null; renderAll(); });
-
-    el['btn-pendentes'].addEventListener('click', () => {
-        state.rail = state.rail === 'pendentes' ? null : 'pendentes';
-        state.detalheId = null;
-        renderAll();
+    el['close-day'].addEventListener('click', fecharDia);
+    el['day-modal'].addEventListener('click', (e) => {
+        if (e.target === el['day-modal']) fecharDia();
     });
 
-    el['close-pendentes'].addEventListener('click', () => { state.rail = null; renderAll(); });
     el['close-detalhe'].addEventListener('click', () => {
-        state.rail = 'pendentes';
+        state.rail = null;
         state.detalheId = null;
         renderAll();
     });
@@ -799,10 +786,12 @@ function initControles() {
     });
     el['novo-titulo'].addEventListener('keydown', (e) => { if (e.key === 'Enter') salvarCriar(); });
 
+    // Esc fecha uma camada por vez, de cima para baixo.
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
         if (state.criando) fecharCriar();
-        else if (state.colocacao) { state.colocacao = null; renderAll(); }
+        else if (state.dia) fecharDia();
+        else if (state.rail === 'detalhe') { state.rail = null; state.detalheId = null; renderAll(); }
     });
 
     const logoutDesk = document.getElementById('logout-btn-desk');
@@ -834,8 +823,7 @@ function aplicarPermissoes() {
  * A consulta antiga era `status not-in ['arquivado','concluido']`, e no Firestore
  * `not-in` só devolve documento que TEM o campo. Amostra cadastrada pelo
  * formulário de entrada nunca grava `status` — só o Planner (`agendado`) e a
- * liberação (`concluido`) gravam —, então nenhuma amostra chegava aqui: a lista
- * de pendências só via os agendamentos criados pelo próprio Planner.
+ * liberação (`concluido`) gravam —, então nenhuma amostra chegava aqui.
  *
  * `protocoloAno` todo caso tem, e o `>=` não tem teto: série de ano futuro
  * (VN001-28) entra sozinha. O `status` passa a ser filtrado em memória, onde
@@ -851,6 +839,10 @@ const FORA_DO_PLANNER = ['arquivado', 'concluido'];
  * - `semAno`: protocolo ilegível, que fica abaixo do corte;
  * - `agendamentos`: os agendamentos rápidos criados aqui, que não têm protocolo
  *   nenhum e sumiriam de qualquer consulta baseada em ano.
+ *
+ * As amostras continuam sendo lidas mesmo agora que a fila de pendentes saiu:
+ * o calendário só desenha o que tem `scheduledDate`, e amostra agendada antes
+ * dessa mudança sumiria do Planner se a leitura parasse nos agendamentos.
  */
 const fontesTasks = { recentes: [], semAno: [], agendamentos: [] };
 
@@ -881,11 +873,10 @@ function aplicarTasks() {
         .forEach(t => porId.set(t.id, t));
     tasksCache = [...porId.values()];
 
-    // A tarefa em colocação (ou aberta no detalhe) pode ter sumido.
-    if (state.colocacao && !tasksCache.some(t => t.id === state.colocacao.id)) state.colocacao = null;
+    // A tarefa aberta no detalhe pode ter sumido (excluída por outra pessoa).
     if (state.detalheId && !tasksCache.some(t => t.id === state.detalheId)) {
         state.detalheId = null;
-        if (state.rail === 'detalhe') state.rail = 'pendentes';
+        state.rail = null;
     }
 
     renderAll();

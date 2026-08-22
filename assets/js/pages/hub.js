@@ -14,6 +14,13 @@ import {
 } from '../lib/etapas.js';
 import { TIPOS_AGENDA, infoDoTipo, pintarPorTipo, tipoDaAgenda } from '../lib/agenda-tipos.js';
 import {
+    CAMPO_REABERTO,
+    estaReaberto,
+    etiquetaReaberto,
+    laudoPendente,
+    pesoReabertura
+} from '../lib/reabertura.js';
+import {
     describeDeadline,
     formatDate,
     getCycleInfo,
@@ -160,39 +167,38 @@ function renderInventoryAlerts(list, subtitle, alerts) {
 // entrem sozinhas.
 const PRIMEIRO_ANO_ATIVO = () => new Date().getFullYear() - 1;
 
-// Caso com protocolo ilegível (`protocoloAno: 0`) fica abaixo do corte e vem de
-// uma segunda consulta: a entrada hoje exige ano, mas o que foi cadastrado antes
-// disso não pode sumir da fila.
-const filaPorFonte = { recentes: [], semAno: [] };
+// Três consultas, três motivos:
+//
+//   recentes  — a janela do acervo que ainda tem trabalho correndo;
+//   semAno    — protocolo ilegível (`protocoloAno: 0`) fica abaixo do corte, e a
+//               entrada hoje exige ano, mas o que foi cadastrado antes disso não
+//               pode sumir da fila;
+//   reabertos — caso que já teve laudo e foi trazido de volta do livro. Pode ser
+//               de qualquer ano, então nenhuma das outras duas o alcança.
+const filaPorFonte = { recentes: [], semAno: [], reabertos: [] };
 
 function initRealTimeDashboard() {
     const consultas = {
         recentes: query(collection(db, "tasks"), where("protocoloAno", ">=", PRIMEIRO_ANO_ATIVO())),
-        semAno: query(collection(db, "tasks"), where("protocoloAno", "==", 0))
+        semAno: query(collection(db, "tasks"), where("protocoloAno", "==", 0)),
+        reabertos: query(collection(db, "tasks"), where(CAMPO_REABERTO, "==", true))
     };
 
     Object.entries(consultas).forEach(([fonte, q]) => onSnapshot(q, (snapshot) => {
         filaPorFonte[fonte] = snapshot.docs
             .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
-            .filter(isTaskRelevant);
+            .filter(laudoPendente);
 
-        // As duas consultas não se sobrepõem, mas o id manda — nunca duplica.
+        // As consultas se sobrepõem (um reaberto deste ano vem por duas), mas o
+        // id manda — nunca duplica.
         const porId = new Map();
-        [...filaPorFonte.recentes, ...filaPorFonte.semAno]
+        [...filaPorFonte.recentes, ...filaPorFonte.semAno, ...filaPorFonte.reabertos]
             .forEach((task) => porId.set(task.id, task));
 
         queueSourceTasks = [...porId.values()];
         applyQueueFilter();
 
     }, (error) => console.warn('Fila do Hub indisponível:', error.message)));
-}
-
-// Laudo liberado sai do painel; agendamento exclusivo do Planner nunca entrou.
-function isTaskRelevant(task) {
-    if (task.releasedAt) return false;
-    if (task.status === 'concluido' || task.status === 'arquivado') return false;
-    if (task.type === 'agendamento_rapido') return false;
-    return true;
 }
 
 // --- FILTRO POR ETAPA ---
@@ -279,7 +285,10 @@ function applyQueueFilter() {
         ? tasksToRender
         : tasksToRender.filter((task) => estaNaEtapa(task, etapaFilterMode));
 
-    renderUrgentList(visiveis.filter((task) => nivelDaAmostra(task) !== null));
+    // Caso reaberto fica de fora das prioridades: o cartão de urgências é sobre
+    // prazo a estourar, e o prazo dele já foi cumprido. Ele aparece na fila do
+    // tipo dele, que é onde se vai procurar um caso antigo.
+    renderUrgentList(visiveis.filter((task) => nivelDaAmostra(task) !== null && !estaReaberto(task)));
     renderTypeQueue(
         els.listaBiopsias,
         els.countBiopsias,
@@ -334,6 +343,21 @@ function getDeadlineInfo(task) {
     return { remaining: Math.round((due - today) / 86400000), limit };
 }
 
+/**
+ * Canto do prazo. Caso reaberto não mostra contagem: pela data de entrada ele
+ * apareceria com centenas de dias de atraso, cobrando um prazo que o laudo já
+ * cumpriu. No lugar vai a data em que o laudo saiu.
+ */
+function renderPrazo(task) {
+    if (estaReaberto(task)) {
+        const quando = task.dataLaudo
+            ? new Date(`${task.dataLaudo}T12:00:00`).toLocaleDateString('pt-BR')
+            : '';
+        return `<span class="u-prazo is-unknown" title="Laudo já liberado${quando ? ` em ${quando}` : ''} — o prazo não corre mais">laudada</span>`;
+    }
+    return renderDeadlineCell(getDeadlineInfo(task));
+}
+
 function renderDeadlineCell(info) {
     if (!info) {
         return '<span class="u-prazo is-unknown" title="Sem data de entrada">—</span>';
@@ -351,6 +375,30 @@ function renderDeadlineCell(info) {
     const icon = late ? 'fa-triangle-exclamation' : 'fa-clock';
     return `<span class="u-prazo ${late ? 'is-late' : 'is-ok'}" title="${title}">
         <i class="fas ${icon}"></i>${days} d</span>`;
+}
+
+/**
+ * SITUAÇÃO FINANCEIRA — um cifrão colorido, e só.
+ *
+ * A informação é de conferência, não de trabalho: quem olha a fila quer saber o
+ * que analisar, e o financeiro só precisa saltar aos olhos quando alguém for
+ * atrás dele. Por isso um único caractere, com a situação por extenso no
+ * `title`, em vez de mais uma pílula disputando a linha.
+ *
+ * Fica no fim da faixa de etiquetas, encostado na borda direita — logo acima da
+ * data de entrada, na coluna que o olho já percorre de cima para baixo.
+ *
+ * Verde pago, âmbar pendente, roxo isento por interesse didático — as mesmas
+ * cores do Mural e do Livro de Registros.
+ */
+function renderFinanceiro(task) {
+    const situacao = task.financialStatus || task.situacao || 'pendente';
+    const info = {
+        pago: { classe: 'is-pago', titulo: 'Pago' },
+        didatico: { classe: 'is-didatico', titulo: 'Isento — interesse didático' }
+    }[situacao] || { classe: 'is-pendente', titulo: 'Pagamento pendente' };
+
+    return `<span class="u-fin ${info.classe}" title="${info.titulo}" aria-label="${info.titulo}">$</span>`;
 }
 
 /**
@@ -425,7 +473,13 @@ function renderUrgentList(tasks) {
 function renderTypeQueue(list, counter, tasks, mensagemVazia) {
     if (!list) return;
 
-    const rows = [...tasks].sort((a, b) => pesoProtocolo(a.protocolo) - pesoProtocolo(b.protocolo));
+    const rows = [...tasks].sort((a, b) => {
+        // Reaberto por último: ele está aqui para ser encontrado, não para
+        // furar a fila de quem ainda tem prazo correndo.
+        const reabertura = pesoReabertura(a) - pesoReabertura(b);
+        if (reabertura !== 0) return reabertura;
+        return pesoProtocolo(a.protocolo) - pesoProtocolo(b.protocolo);
+    });
 
     if (counter) counter.textContent = rows.length;
 
@@ -475,12 +529,12 @@ function buildUrgentCard(task) {
 
     card.innerHTML = `
         <span class="u-prot">${bandeiraDoNivel(task, 'u-flag')}${escapeHtml(task.protocolo || '---')}</span>
-        <span class="u-tags">${etiquetasDeEtapa(task, 'u-tag')}</span>
+        <span class="u-tags">${etiquetaReaberto(task, 'u-tag')}${etiquetasDeEtapa(task, 'u-tag')}${renderFinanceiro(task)}</span>
         <span class="u-animal"><strong>${escapeHtml(task.animalNome || 'Sem Nome')}</strong>
             <span class="u-species">(${escapeHtml(task.especie || '?')})</span></span>
         <span class="u-type ${typeClass}">${isNecropsia ? 'NECROPSIA' : 'BIÓPSIA'}</span>
         <span class="u-resp"><i class="fas fa-user-graduate"></i>${escapeHtml(getShortName(task.posGraduando || 'Sem Pós'))}</span>
-        ${renderDeadlineCell(getDeadlineInfo(task))}`;
+        ${renderPrazo(task)}`;
 
     return card;
 }
@@ -489,7 +543,7 @@ function buildQueueCard(task) {
     const typeClass = isNecropsiaTask(task) ? 'type-necro' : 'type-bio';
 
     const card = document.createElement('div');
-    card.className = `hub-row is-fila ${typeClass}`;
+    card.className = `hub-row is-fila ${typeClass}${estaReaberto(task) ? ' is-reaberta' : ''}`;
     makeCardOpenable(card, task);
 
     const dataEntrada = task.dataEntrada
@@ -503,11 +557,11 @@ function buildQueueCard(task) {
         ? `<span class="u-done">${pendentes.map((etapa) => `
             <button type="button" class="btn-done" data-etapa="${etapa.chave}" data-task="${escapeHtml(task.id)}"
                 title="Marcar ${etapa.titulo.toLowerCase()} como concluída">${escapeHtml(etapa.rotuloAcao)}</button>`).join('')}</span>`
-        : renderDeadlineCell(getDeadlineInfo(task));
+        : renderPrazo(task);
 
     card.innerHTML = `
         <span class="u-prot">${escapeHtml(task.protocolo || '---')}</span>
-        <span class="u-tags">${etiquetasDeEtapa(task, 'u-tag')}</span>
+        <span class="u-tags">${etiquetaReaberto(task, 'u-tag')}${etiquetasDeEtapa(task, 'u-tag')}${renderFinanceiro(task)}</span>
         <span class="u-animal"><strong>${escapeHtml(task.animalNome || 'Sem Nome')}</strong>
             <span class="u-species">(${escapeHtml(task.especie || '?')})</span></span>
         <span class="u-date"><i class="far fa-calendar"></i>${dataEntrada}</span>

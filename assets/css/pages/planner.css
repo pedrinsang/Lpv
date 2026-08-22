@@ -1,7 +1,7 @@
 /* ==========================================================================
    PLANNER LPV — AGENDA SEMANAL / MENSAL
    Faixas de manhã e tarde na semana, grade de chips no mês e um trilho lateral
-   que alterna entre a fila de pendentes e o detalhe do agendamento.
+   que abre no clique de um agendamento para mostrar o detalhe dele.
    ========================================================================== */
 
 :root {
@@ -73,41 +73,6 @@ body {
     align-items: center;
     gap: 10px;
 }
-
-.pl-btn-pendentes {
-    height: 40px;
-    padding: 0 16px;
-    border-radius: 50px;
-    border: 1px solid var(--pl-line-strong);
-    background: transparent;
-    color: var(--pl-text);
-    font-family: inherit;
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease;
-}
-
-.pl-btn-pendentes.is-active {
-    border-color: rgba(255, 255, 255, 0.24);
-    background: rgba(56, 189, 248, 0.14);
-}
-
-.pl-btn-pendentes:hover { background: rgba(56, 189, 248, 0.1); }
-
-.pl-badge-pendentes {
-    background: #f59e0b;
-    color: #3b2705;
-    font-size: 0.68rem;
-    font-weight: 800;
-    padding: 1px 7px;
-    border-radius: 20px;
-}
-
-.pl-badge-pendentes:empty { display: none; }
 
 .pl-btn-agendar {
     height: 40px;
@@ -283,43 +248,6 @@ body {
 .pl-count strong { color: var(--pl-text); }
 
 /* ==========================================================================
-   FAIXA DE MODO "ESCOLHER ONDE ENCAIXAR"
-   ========================================================================== */
-.pl-placement {
-    flex: 0 0 auto;
-    min-width: 740px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 9px 14px;
-    border-radius: 12px;
-    border: 1px solid rgba(56, 189, 248, 0.4);
-    background: rgba(56, 189, 248, 0.12);
-    animation: plSlideDown 0.3s var(--ease-spring);
-}
-
-.pl-placement-text {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.84rem;
-    color: var(--pl-text);
-}
-
-.pl-placement-text i { color: var(--pl-accent); }
-
-.pl-placement-close {
-    border: none;
-    background: transparent;
-    color: var(--pl-muted);
-    font-size: 0.9rem;
-    cursor: pointer;
-}
-
-.pl-placement-close:hover { color: var(--color-error); }
-
-/* ==========================================================================
    VISÃO SEMANAL
    ========================================================================== */
 .pl-week {
@@ -455,7 +383,6 @@ body {
 }
 
 .pl-lane.is-past { background: rgba(2, 6, 23, 0.35); }
-.pl-lane.is-target { background: rgba(56, 189, 248, 0.06); cursor: copy; }
 .pl-lane.is-dragover { background: rgba(56, 189, 248, 0.14); box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.5); }
 .pl-lane.is-locked { cursor: default; }
 
@@ -595,9 +522,13 @@ body {
 }
 
 .pl-cell.is-today { background: rgba(56, 189, 248, 0.1); }
-.pl-cell.is-target { cursor: copy; }
 .pl-cell.is-dragover { box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.5); }
-.pl-cell.is-locked { cursor: default; }
+/* A célula inteira é o botão que abre o dia — inclusive por cima dos chips,
+   que são prévia e não alvo próprio. */
+.pl-cell:hover { background: rgba(255, 255, 255, 0.04); }
+.pl-cell:focus-visible { outline: 2px solid var(--pl-accent); outline-offset: -2px; }
+.pl-cell.is-outside:hover { background: rgba(2, 6, 23, 0.4); }
+.pl-cell .pl-chip { cursor: inherit; }
 
 .pl-cell-top {
     display: flex;
@@ -689,7 +620,7 @@ body {
 }
 
 /* ==========================================================================
-   TRILHO LATERAL (PENDENTES / DETALHE)
+   TRILHO LATERAL (DETALHE DO AGENDAMENTO)
    ========================================================================== */
 .pl-rail {
     flex: 0 1 316px;
@@ -855,143 +786,136 @@ body {
 
 .pl-action.danger:hover { background: rgba(239, 68, 68, 0.18); }
 
-/* --- Pendentes --- */
-.pl-rail-hint {
-    flex: 0 0 auto;
-    padding: 10px 14px;
-    font-size: 0.72rem;
-    color: var(--pl-dim);
-    line-height: 1.45;
-    border-bottom: 1px solid var(--pl-hairline);
+/* ==========================================================================
+   DIA ABERTO — a coluna da semana no meio da tela
+
+   Fica abaixo do modal de novo agendamento no empilhamento (2050 contra 2100):
+   o "+ agendar" de dentro do painel abre o formulário por cima, e o painel
+   continua visível atrás dele, mostrando o dia que está sendo preenchido.
+   ========================================================================== */
+.pl-daymodal {
+    position: fixed;
+    inset: 0;
+    z-index: 2050;
+    display: grid;
+    place-items: center;
+    background: rgba(2, 6, 23, 0.72);
+    backdrop-filter: blur(4px);
+    padding: 24px;
+    animation: plFade 0.25s ease;
 }
 
-.pl-rail-hint i { color: var(--pl-accent); }
+.pl-daymodal.hidden { display: none !important; }
 
-.pl-pend-list {
+.pl-daymodal-card {
+    width: 100%;
+    max-width: 460px;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    border-radius: 18px;
+    background: var(--pl-surface);
+    border: 1px solid var(--pl-line-strong);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    animation: plModalIn 0.35s var(--ease-spring) both;
+}
+
+.pl-daymodal-head {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--pl-line);
+}
+
+.pl-daymodal-head-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pl-daymodal-dow {
+    font-size: 1.02rem;
+    font-weight: 800;
+    color: #fff;
+}
+
+.pl-daymodal-date {
+    font-size: 0.76rem;
+    color: var(--pl-muted);
+}
+
+/* Quantos compromissos o dia tem, no mesmo canto onde o mês mostrava o total. */
+.pl-daymodal-count {
+    flex: 0 0 auto;
+    min-width: 26px;
+    padding: 2px 9px;
+    border-radius: 20px;
+    background: rgba(56, 189, 248, 0.16);
+    color: var(--pl-accent);
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.pl-daymodal-count.is-vazio {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--pl-dim);
+}
+
+.pl-daymodal-body {
     flex: 1;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
-    padding: 12px 14px;
+}
+
+/* Os dois turnos empilhados: o mesmo par manhã/tarde da semana, só que um
+   embaixo do outro porque aqui existe um dia só. */
+.pl-dayband {
     display: flex;
     flex-direction: column;
+    border-bottom: 1px solid var(--pl-line);
+}
+
+.pl-dayband:last-child { border-bottom: none; }
+
+.pl-dayband-head {
+    display: flex;
+    align-items: center;
     gap: 9px;
+    padding: 9px 18px;
+    background: rgba(15, 23, 42, 0.35);
 }
 
-.pl-pend-card {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 10px 11px;
-    border-radius: 12px;
-    background: var(--pl-sunken);
-    border: 1px solid var(--pl-line);
-    border-left: 3px solid var(--card-color);
-    cursor: grab;
-    animation: plCardIn 0.3s var(--ease-spring) both;
-}
-
-.pl-pend-card.is-dragging { opacity: 0.4; }
-.pl-pend-card.is-locked { cursor: default; }
-
-.pl-pend-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-.pl-pend-titulo {
-    font-size: 0.84rem;
-    font-weight: 700;
-    color: #fff;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.pl-pend-tag {
-    font-size: 0.58rem;
+.pl-dayband-nome {
+    font-size: 0.66rem;
     font-weight: 800;
-    letter-spacing: 0.06em;
-    color: var(--card-color);
-    background: var(--card-chip);
-    padding: 2px 6px;
-    border-radius: 4px;
-    flex: 0 0 auto;
-}
-
-.pl-pend-sub {
-    font-size: 0.74rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
     color: var(--pl-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
-.pl-pend-foot {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-top: 2px;
-}
-
-.pl-pend-espera {
-    font-size: 0.68rem;
+.pl-dayband-horas {
+    margin-left: auto;
+    font-size: 0.66rem;
     color: var(--pl-dim);
+    font-variant-numeric: tabular-nums;
 }
 
-.pl-pend-btns {
-    display: flex;
-    gap: 6px;
-}
-
-.pl-pend-btn {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    font-size: 0.72rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.pl-pend-btn.schedule {
-    border: 1px solid rgba(56, 189, 248, 0.35);
-    background: rgba(56, 189, 248, 0.12);
-    color: #7dd3fc;
-}
-
-.pl-pend-btn.remove {
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: transparent;
-    color: var(--color-error);
-}
-
-.pl-pend-empty {
-    margin: auto;
-    text-align: center;
-    padding: 24px 8px;
-}
-
-.pl-pend-empty i {
-    font-size: 1.6rem;
-    color: var(--color-success);
-}
-
-.pl-pend-empty p {
-    margin: 10px 0 0;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--pl-text);
-}
-
-.pl-pend-empty p.sub {
-    margin: 4px 0 0;
-    font-size: 0.76rem;
-    font-weight: 400;
-    color: var(--pl-muted);
+/* Faixa: é a .pl-lane da semana, com altura de leitura em vez de altura de
+   grade, e sem a divisória vertical que só faz sentido entre dias. */
+.pl-daylane {
+    min-height: 92px;
+    padding: 10px 14px;
+    border-right: none;
+    overflow-y: visible;
 }
 
 /* ==========================================================================
@@ -1195,11 +1119,6 @@ select.pl-input option {
 /* ==========================================================================
    ANIMAÇÕES
    ========================================================================== */
-@keyframes plSlideDown {
-    from { opacity: 0; transform: translateY(-8px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
 @keyframes plCardIn {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
@@ -1240,11 +1159,9 @@ select.pl-input option {
         animation: plRailIn 0.3s var(--ease-spring) both;
     }
 
-    .pl-header-actions .pl-btn-agendar span,
-    .pl-header-actions .pl-btn-pendentes span.label { display: none; }
+    .pl-header-actions .pl-btn-agendar span { display: none; }
 
-    .pl-btn-agendar,
-    .pl-btn-pendentes { padding: 0 14px; }
+    .pl-btn-agendar { padding: 0 14px; }
 }
 
 @keyframes plRailIn {
@@ -1253,13 +1170,24 @@ select.pl-input option {
 }
 
 @media (max-width: 560px) {
-    .pl-modal { padding: 0; place-items: end center; }
+    /* No celular os dois painéis sobem do rodapé, colados na borda de baixo:
+       é onde o polegar alcança. */
+    .pl-modal,
+    .pl-daymodal { padding: 0; place-items: end center; }
 
     .pl-modal-card {
         max-width: 100%;
         border-radius: 18px 18px 0 0;
         padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px));
     }
+
+    .pl-daymodal-card {
+        max-width: 100%;
+        max-height: 82vh;
+        border-radius: 18px 18px 0 0;
+    }
+
+    .pl-daymodal-body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
     .pl-when-row { flex-wrap: wrap; }
     .pl-when-hora,

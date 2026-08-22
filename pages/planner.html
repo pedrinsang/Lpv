@@ -69,10 +69,6 @@
                 <span class="page-title">Planner</span>
             </div>
             <div class="pl-header-actions">
-                <button id="btn-pendentes" type="button" class="pl-btn-pendentes">
-                    <i class="fas fa-inbox"></i> <span class="label">Pendentes</span>
-                    <span id="badge-pendentes" class="pl-badge-pendentes"></span>
-                </button>
                 <button id="btn-agendar" type="button" class="pl-btn-agendar">
                     <i class="fas fa-plus"></i> <span>Agendar</span>
                 </button>
@@ -120,15 +116,6 @@
                     </div>
                 </div>
 
-                <div id="placement-banner" class="pl-placement hidden">
-                    <span class="pl-placement-text">
-                        <i class="fas fa-calendar-plus"></i>
-                        Clique numa faixa de <strong>manhã</strong> ou <strong>tarde</strong> para agendar
-                        <strong id="placement-task-name"></strong>
-                    </span>
-                    <button type="button" id="cancel-placement" class="pl-placement-close" aria-label="Cancelar"><i class="fas fa-times"></i></button>
-                </div>
-
                 <section id="week-view" class="pl-week">
                     <div id="week-head" class="pl-week-head">
                         <div class="pl-gutter-spacer"></div>
@@ -159,33 +146,39 @@
                 </section>
             </div>
 
-            <aside id="planner-rail" class="pl-rail">
+            <!-- O trilho só abre no clique de um agendamento: ele mostra o
+                 detalhe e nada mais. A fila de amostras pendentes saiu daqui —
+                 o Planner é a agenda do dia a dia, escrita à mão. -->
+            <aside id="planner-rail" class="pl-rail hidden">
                 <div class="pl-rail-card">
-
-                    <div id="rail-detalhe" class="pl-rail-pane hidden">
+                    <div id="rail-detalhe" class="pl-rail-pane">
                         <div class="pl-rail-head">
                             <span class="pl-rail-title">Detalhe</span>
                             <button type="button" id="close-detalhe" class="pl-rail-close" aria-label="Fechar"><i class="fas fa-times"></i></button>
                         </div>
                         <div id="detalhe-body" class="pl-detail-body"></div>
                     </div>
-
-                    <div id="rail-pendentes" class="pl-rail-pane">
-                        <div class="pl-rail-head">
-                            <span class="pl-rail-title">Pendentes · <span id="pendentes-count">0</span></span>
-                            <button type="button" id="close-pendentes" class="pl-rail-close" aria-label="Fechar"><i class="fas fa-times"></i></button>
-                        </div>
-                        <div class="pl-rail-hint">
-                            Arraste um cartão para uma faixa da semana, ou clique em
-                            <i class="fas fa-clock"></i> e escolha onde encaixar.
-                        </div>
-                        <div id="pendentes-list" class="pl-pend-list"></div>
-                    </div>
-
                 </div>
             </aside>
         </main>
 
+    </div>
+
+    <!-- DIA ABERTO — a coluna da semana, no meio da tela.
+         Clicar num dia do mês abre este painel: os mesmos dois turnos da visão
+         semanal, com os agendamentos daquele dia e o "+ agendar" em cada um. -->
+    <div id="day-modal" class="pl-daymodal hidden">
+        <div class="pl-daymodal-card">
+            <div class="pl-daymodal-head">
+                <div class="pl-daymodal-head-text">
+                    <span id="day-dow" class="pl-daymodal-dow">—</span>
+                    <span id="day-date" class="pl-daymodal-date">—</span>
+                </div>
+                <span id="day-count" class="pl-daymodal-count">0</span>
+                <button type="button" id="close-day" class="pl-modal-close" aria-label="Fechar"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="day-body" class="pl-daymodal-body"></div>
+        </div>
     </div>
 
     <div id="create-modal" class="pl-modal hidden">

@@ -271,6 +271,38 @@
     box-shadow: 0 6px 18px rgba(245, 158, 11, 0.16);
 }
 
+/* Caso trazido de volta do Livro de Registros: roxo, e um tom mais apagado que
+   o resto do painel. Ele está aqui por escolha de alguém — não é amostra nova
+   esperando laudo, e não pode ser lido como uma. */
+.mural-card.is-reaberta {
+    border-left-color: #8b5cf6;
+    border-color: rgba(139, 92, 246, 0.28);
+    background: linear-gradient(90deg, rgba(139, 92, 246, 0.08), rgba(139, 92, 246, 0.02) 45%, transparent 75%),
+                var(--bg-glass);
+}
+
+.mural-card.is-reaberta:hover {
+    border-color: rgba(139, 92, 246, 0.55);
+    box-shadow: 0 6px 18px rgba(139, 92, 246, 0.16);
+}
+
+.m-tag.is-reaberta {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #c4b5fd;
+    background: rgba(139, 92, 246, 0.12);
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
 .mural-card-top {
     display: flex;
     align-items: center;

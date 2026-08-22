@@ -1,6 +1,7 @@
 import { db, auth } from '../core.js';
 import { infoDoNivel } from '../lib/prioridade.js';
 import { CHAVES_ETAPA, ETAPAS, FEITO, PENDENTE, estadoDaEtapa } from '../lib/etapas.js';
+import { CAMPO_REABERTO, estaReaberto } from '../lib/reabertura.js';
 import {
     doc, getDoc, updateDoc, deleteDoc, deleteField
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
@@ -519,6 +520,10 @@ function renderDetails(task) {
 
     // O laudo liberado é o que marca o caso como fechado — não existe mais etapa.
     const laudoLiberado = !!task.releasedAt;
+    // ...a não ser que alguém tenha trazido o caso de volta do livro. Aí ele
+    // volta a ter etapas e a aparecer no Mural e no Hub, sem que o registro do
+    // laudo se desfaça (ver lib/reabertura.js).
+    const reaberto = estaReaberto(task);
     const dataLaudo = laudoLiberado ? brData(dataDoLaudo(task)) : '';
     const protocolo = task.protocolo || '—';
     const nome = task.animalNome || 'Sem nome';
@@ -554,6 +559,7 @@ function renderDetails(task) {
                     <i class="fas ${laudoLiberado ? 'fa-check-double' : 'fa-hourglass-half'}"></i>
                     ${laudoLiberado ? `Laudo em ${dataLaudo}` : 'Laudo pendente'}
                 </div>
+                ${reaberto ? '<div class="tm-hero-reaberta"><i class="fas fa-rotate-left"></i> De volta no mural</div>' : ''}
             </div>
         </div>`;
 
@@ -657,10 +663,22 @@ function renderDetails(task) {
                         ? `<p class="tm-block-text">${esc(task.diagnostico)}</p>`
                         : '<p class="tm-block-hint" style="font-style:italic;">Sem diagnóstico registrado.</p>'}
                 </div>
+                ${reaberto ? `
+                    <p class="tm-block-hint">
+                        <i class="fas fa-rotate-left"></i>
+                        Este caso está de volta no Mural e no Hub para consulta. O registro acima
+                        continua valendo — a reabertura não desfaz o laudo.
+                    </p>` : ''}
                 ${canReleaseInitial ? `
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.openReleaseForm()" style="align-self:flex-start;">
-                        <i class="fas fa-pen"></i> Corrigir registro
-                    </button>` : ''}
+                    <div class="tm-block-actions">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.openReleaseForm()">
+                            <i class="fas fa-pen"></i> Corrigir registro
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.alternarReabertura()">
+                            <i class="fas ${reaberto ? 'fa-book' : 'fa-rotate-left'}"></i>
+                            ${reaberto ? 'Devolver ao livro' : 'Voltar ao mural'}
+                        </button>
+                    </div>` : ''}
             </div>
         </div>`
         : `
@@ -702,7 +720,7 @@ function renderDetails(task) {
         ${animalHtml}
         ${proprietarioHtml}
         ${financeiroHtml}
-        ${laudoLiberado ? '' : renderEtapasBloco(task, permission)}
+        ${laudoLiberado && !reaberto ? '' : renderEtapasBloco(task, permission)}
         ${livroHtml}
         ${actionsHtml ? `<div class="tm-actions-footer">${actionsHtml}</div>` : ''}
         <div class="tm-meta">
@@ -934,6 +952,67 @@ async function toggleFinancialStatus() {
 
 
 /**
+ * VOLTAR AO MURAL / DEVOLVER AO LIVRO
+ *
+ * O caminho de volta de um caso já laudado. Reabrir não mexe em `releasedAt`,
+ * `dataLaudo` nem no diagnóstico: a linha do livro continua exatamente como
+ * está, e o que muda é só onde o caso aparece. É o que permite ao pós rever as
+ * lâminas de um caso do ano passado, ou ao professor separar casos antigos para
+ * uma aula, usando as mesmas etapas de sempre.
+ *
+ * Devolver ao livro apaga o campo — nada mais se desfaz, e o caso pode ir e
+ * voltar quantas vezes for preciso.
+ */
+async function alternarReabertura() {
+    if (!currentTask) return;
+
+    if (!getPermissionContext(currentTask).canReleaseInitial) {
+        alert('Apenas professor, pós-graduando ou admin podem reabrir um caso.');
+        return;
+    }
+
+    const voltando = !estaReaberto(currentTask);
+    const nome = [currentTask.protocolo, currentTask.animalNome].filter(Boolean).join(' — ') || 'este caso';
+
+    const aviso = voltando
+        ? `Trazer ${nome} de volta para o Mural e o Hub?\n\nO laudo continua liberado e o registro `
+            + 'do livro não muda — o caso só volta a aparecer nas filas, marcado como reaberto.'
+        : `Devolver ${nome} ao livro?\n\nEle sai do Mural e do Hub. As etapas marcadas continuam `
+            + 'gravadas, caso ele seja reaberto de novo.';
+    if (!confirm(aviso)) return;
+
+    const dados = voltando
+        ? {
+            [CAMPO_REABERTO]: true,
+            reabertoEm: new Date().toISOString(),
+            reabertoPor: auth.currentUser.uid
+        }
+        : {
+            [CAMPO_REABERTO]: deleteField(),
+            reabertoEm: deleteField(),
+            reabertoPor: deleteField()
+        };
+
+    try {
+        await updateDoc(doc(db, "tasks", currentTask.id), dados);
+
+        // `deleteField()` é uma ordem para o Firestore, não um valor: gravá-la no
+        // objeto local deixaria `reaberto` "verdadeiro" na tela até a próxima
+        // leitura. Os campos apagados saem do espelho local na mão.
+        if (voltando) Object.assign(currentTask, dados);
+        else Object.keys(dados).forEach((campo) => delete currentTask[campo]);
+
+        // Mural e Hub se corrigem sozinhos (onSnapshot); o Livro de Registros lê
+        // por ano e guarda em cache, então precisa do aviso.
+        avisarCasoAtualizado(currentTask);
+        renderDetails(currentTask);
+    } catch (e) {
+        console.error(e);
+        alert('Não foi possível mudar a situação do caso: ' + e.message);
+    }
+}
+
+/**
  * FORMULÁRIO DE LIBERAÇÃO
  *
  * A linha do Livro de Registros já existe desde o cadastro da entrada, com tudo
@@ -1146,4 +1225,5 @@ window.triggerEditEntry = function() {
 window.openTaskManager = openTaskManager;
 window.openReleaseForm = openReleaseForm;
 window.toggleFinancialStatus = toggleFinancialStatus;
+window.alternarReabertura = alternarReabertura;
 window.marcarEtapa = marcarEtapa;

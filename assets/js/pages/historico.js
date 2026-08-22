@@ -17,6 +17,7 @@ import { db, auth, logout, hasFullControl } from '../core.js';
 import { collection, query, where, getDocs, getDoc, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { anoProtocolo, pesoProtocolo } from '../lib/protocolo.js';
 import { ANO_DESCONHECIDO, gravarIndice } from '../lib/livro-indice.js';
+import { estaReaberto } from '../lib/reabertura.js';
 import '../components/task-manager.js';
 
 // ================================================================
@@ -193,6 +194,11 @@ function normalizarCaso(id, t) {
         protocolo: t.protocolo || '—',
         tipo: necropsia ? 'necropsia' : 'biopsia',
         liberado,
+        // Caso laudado que alguém trouxe de volta para o Mural (ver
+        // lib/reabertura.js). Não muda nada na linha do livro — a data do laudo
+        // e o diagnóstico continuam lá — mas quem procura um caso antigo precisa
+        // saber que ele já está na fila de alguém.
+        reaberto: estaReaberto(t),
         situacao: situacaoKey,
         docente: t.docente || '',
         posGraduando: t.posGraduando || '',
@@ -225,7 +231,8 @@ function normalizarCaso(id, t) {
         caso.origem, caso.diagnostico,
         br(caso.dataEntrada), liberado ? br(caso.dataLaudo) : '',
         caso.tipo === 'necropsia' ? 'necropsia' : 'biopsia',
-        liberado ? 'laudo liberado' : 'laudo pendente em aberto'
+        liberado ? 'laudo liberado' : 'laudo pendente em aberto',
+        caso.reaberto ? 'reaberta reaberto de volta no mural' : ''
     ].filter(Boolean).join(' '));
 
     return caso;
@@ -490,9 +497,14 @@ function linhaHTML(c, aberto) {
     // Sem laudo liberado a coluna não fica vazia: um traço não diferencia "não
     // tem data" de "ainda não foi laudado", e é essa a informação que importa
     // numa linha que existe desde a entrada da amostra.
+    // O caso reaberto continua com a data do laudo — o registro não se desfez.
+    // A setinha ao lado é só o aviso de que ele voltou para as filas.
+    const reaberta = c.reaberto
+        ? ' <i class="lr-reaberta fas fa-rotate-left" title="Reaberta — de volta no Mural e no Hub"></i>'
+        : '';
     const laudo = c.liberado
-        ? `<span class="lr-laudo">${br(c.dataLaudo)}</span>`
-        : '<span class="lr-laudo is-aberto"><i class="fas fa-hourglass-half"></i> Em aberto</span>';
+        ? `<span class="lr-laudo">${br(c.dataLaudo)}${reaberta}</span>`
+        : `<span class="lr-laudo is-aberto"><i class="fas fa-hourglass-half"></i> Em aberto${reaberta}</span>`;
     const diag = c.diagnostico
         ? `<span class="lr-diag lr-truncate" title="${esc(c.diagnostico)}">${esc(c.diagnostico)}</span>`
         : `<span class="lr-diag lr-truncate is-empty">${
@@ -540,7 +552,8 @@ function expansaoHTML(c) {
                 ${item('Idade', c.idade)}
                 ${item('Raça', c.raca)}
                 ${item('Entrada', br(c.dataEntrada))}
-                ${item('Laudo', c.liberado ? br(c.dataLaudo) : 'Em aberto')}
+                ${item('Laudo', (c.liberado ? br(c.dataLaudo) : 'Em aberto')
+                    + (c.reaberto ? ' · reaberta, de volta no mural' : ''))}
                 ${item('Valor', c.valor ? `R$ ${c.valor}` : '—')}
             </dl>
             <div class="ledger-expand-diag">
