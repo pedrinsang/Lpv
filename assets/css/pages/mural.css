@@ -148,6 +148,12 @@
     min-width: 100%;
     width: 100%;
     height: 100%;
+
+    /* O painel tem o tamanho do quadro, não o da fila. Sem isto ele herda o
+       mínimo automático de item flex — "não encolho abaixo do meu conteúdo" —
+       e vinte amostras esticavam o painel para 2000px, empurrando os cartões
+       de baixo para fora da área visível. */
+    min-height: 0;
     flex-shrink: 0;
     scroll-snap-align: center;
     scroll-snap-stop: always;
@@ -210,8 +216,17 @@
     border-radius: 20px;
 }
 
+/* A lista é o que rola.
+ *
+ * `flex: 1` sozinho não bastava: item de flex nasce com `min-height: auto`, que
+ * significa "nunca menor que o meu conteúdo". A lista então não encolhia, o
+ * `overflow-y: auto` nunca tinha o que cortar e a barra de rolagem nunca
+ * aparecia — a fila inteira era desenhada e o painel crescia junto com ela.
+ * `min-height: 0` solta esse piso, e aí sim a altura vem do painel e a rolagem
+ * acontece aqui dentro. */
 .mural-panel-body {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -503,6 +518,11 @@
     .mural-board {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
+
+        /* Linha implícita de grid é `auto`: ela cresce com o conteúdo e o
+           `height: 100%` do painel não tem contra o que resolver. Com o teto
+           em `1fr`, a linha é a altura do quadro e o painel para nela. */
+        grid-template-rows: minmax(0, 1fr);
         gap: 20px;
         overflow: visible;
         padding: 0 24px 20px;
