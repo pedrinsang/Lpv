@@ -19,6 +19,13 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/fi
 import { pesoProtocolo } from '../lib/protocolo.js';
 import { bandeiraDoNivel, classeDoNivel, pesoPrioridade } from '../lib/prioridade.js';
 import { estaNaEtapa, etiquetasDeEtapa } from '../lib/etapas.js';
+import {
+    CAMPO_REABERTO,
+    estaReaberto,
+    etiquetaReaberto,
+    laudoPendente,
+    pesoReabertura
+} from '../lib/reabertura.js';
 
 const els = {
     board: document.getElementById('mural-board'),
@@ -106,42 +113,45 @@ function updateUserBadge(role) {
 const PRIMEIRO_ANO_ATIVO = () => new Date().getFullYear() - 1;
 
 /**
- * Casos com protocolo ilegível (`protocoloAno: 0`) ficam abaixo do corte, então
- * vêm de uma segunda consulta. A entrada hoje exige protocolo com ano, mas casos
- * cadastrados antes disso continuam existindo — e não podem sumir da fila.
+ * Duas consultas a mais, cada uma cobrindo um buraco do corte por ano:
+ *
+ * `semAno` — casos com protocolo ilegível (`protocoloAno: 0`) ficam abaixo do
+ * corte. A entrada hoje exige protocolo com ano, mas casos cadastrados antes
+ * disso continuam existindo — e não podem sumir da fila.
+ *
+ * `reabertos` — caso já laudado que alguém trouxe de volta do Livro de
+ * Registros (ver lib/reabertura.js). Pode ser de qualquer ano, então é a única
+ * consulta que o alcança.
  */
-const fontes = { recentes: [], semAno: [] };
+const fontes = { recentes: [], semAno: [], reabertos: [] };
 
 function initBoard() {
     const consultas = {
         recentes: query(collection(db, "tasks"), where("protocoloAno", ">=", PRIMEIRO_ANO_ATIVO())),
-        semAno: query(collection(db, "tasks"), where("protocoloAno", "==", 0))
+        semAno: query(collection(db, "tasks"), where("protocoloAno", "==", 0)),
+        reabertos: query(collection(db, "tasks"), where(CAMPO_REABERTO, "==", true))
     };
 
     Object.entries(consultas).forEach(([fonte, q]) => {
         onSnapshot(q, (snapshot) => {
             fontes[fonte] = snapshot.docs
                 .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
-                .filter(isPendente);
+                .filter(laudoPendente);
             juntarFontes();
         }, (erro) => console.warn('Não foi possível carregar o mural.', erro));
     });
 }
 
-/** As duas consultas não se sobrepõem, mas o id manda — nunca duplica card. */
+/**
+ * As consultas se sobrepõem — um caso reaberto deste ano vem por duas delas —
+ * mas o id manda: nunca duplica card.
+ */
 function juntarFontes() {
     const porId = new Map();
-    [...fontes.recentes, ...fontes.semAno].forEach((task) => porId.set(task.id, task));
+    [...fontes.recentes, ...fontes.semAno, ...fontes.reabertos]
+        .forEach((task) => porId.set(task.id, task));
     allTasks = [...porId.values()];
     renderBoard();
-}
-
-// Laudo liberado sai do Mural; agendamento do Planner nunca entrou.
-function isPendente(task) {
-    if (task.releasedAt) return false;
-    if (task.status === 'concluido' || task.status === 'arquivado') return false;
-    if (task.type === 'agendamento_rapido') return false;
-    return true;
 }
 
 function isNecropsiaTask(task) {
@@ -177,6 +187,12 @@ function renderBoard() {
 // entrada não há prazo a cobrar, então esses ficam no fim.
 function ordenarPorPrazo(tasks) {
     return [...tasks].sort((a, b) => {
+        // Reaberto vai para o fim antes de qualquer outro critério: o prazo dele
+        // já foi cumprido, e pela data de entrada um caso de dois anos atrás
+        // apareceria no topo como o mais atrasado do painel.
+        const reabertura = pesoReabertura(a) - pesoReabertura(b);
+        if (reabertura !== 0) return reabertura;
+
         const nivel = pesoPrioridade(a) - pesoPrioridade(b);
         if (nivel !== 0) return nivel;
 
@@ -214,7 +230,7 @@ function renderPanel(painel, tasks) {
 
 function buildCard(task, index) {
     const card = document.createElement('article');
-    card.className = `mural-card ${classeDoNivel(task)}`.trim();
+    card.className = `mural-card ${classeDoNivel(task)}${estaReaberto(task) ? ' is-reaberta' : ''}`.trim();
     card.style.setProperty('--card-index', index);
     card.setAttribute('role', 'button');
     card.setAttribute('tabindex', '0');
@@ -234,8 +250,9 @@ function buildCard(task, index) {
         : '—';
 
     // Caso comum não tem etapa marcada e não ganha linha nenhuma: uma faixa
-    // vazia em todo cartão custaria altura sem dizer nada.
-    const etiquetas = etiquetasDeEtapa(task, 'm-tag');
+    // vazia em todo cartão custaria altura sem dizer nada. A reabertura vem
+    // primeiro porque é o estado do caso — as etapas dizem o trabalho dele.
+    const etiquetas = etiquetaReaberto(task, 'm-tag') + etiquetasDeEtapa(task, 'm-tag');
 
     card.innerHTML = `
         <div class="mural-card-top">
@@ -243,7 +260,7 @@ function buildCard(task, index) {
                 ${bandeiraDoNivel(task, 'm-flag')}
                 ${escapeHtml(task.protocolo || '---')}
             </span>
-            ${renderDeadline(getDeadlineInfo(task))}
+            ${renderPrazo(task)}
         </div>
         <div class="m-animal">
             <strong>${escapeHtml(task.animalNome || 'Sem Nome')}</strong>
@@ -275,6 +292,20 @@ function getDeadlineInfo(task) {
     hoje.setHours(12, 0, 0, 0);
 
     return { remaining: Math.round((vencimento - hoje) / 86400000), limit };
+}
+
+/**
+ * Caso reaberto não mostra contagem de prazo: pela data de entrada ele viria com
+ * centenas de dias de atraso, cobrando um prazo que o laudo já cumpriu.
+ */
+function renderPrazo(task) {
+    if (estaReaberto(task)) {
+        const quando = task.dataLaudo
+            ? new Date(`${task.dataLaudo}T12:00:00`).toLocaleDateString('pt-BR')
+            : '';
+        return `<span class="m-prazo is-unknown" title="Laudo já liberado${quando ? ` em ${quando}` : ''} — o prazo não corre mais">laudada</span>`;
+    }
+    return renderDeadline(getDeadlineInfo(task));
 }
 
 function renderDeadline(info) {

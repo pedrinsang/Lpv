@@ -365,6 +365,16 @@
 .hub-row.is-fila.type-necro:hover { border-color: rgba(59, 130, 246, 0.45); }
 .hub-row.is-fila.type-bio:hover { border-color: rgba(236, 72, 153, 0.45); }
 
+/* Caso reaberto: a barra da esquerda vira roxa e a linha fica um tom mais
+   apagada. Ele está na fila por escolha de alguém, não por prazo — e não pode
+   ser confundido com amostra nova esperando trabalho. */
+.hub-row.is-fila.is-reaberta {
+    --row-accent: #8b5cf6;
+    background: rgba(15, 23, 42, 0.38);
+}
+
+.hub-row.is-fila.is-reaberta:hover { border-color: rgba(139, 92, 246, 0.45); }
+
 .hub-row.is-prioridade.is-urgent {
     --row-accent: #ef4444;
     background: linear-gradient(90deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.02) 45%, transparent 75%),
@@ -403,6 +413,23 @@
     font-size: 0.74rem;
     color: #ef4444;
 }
+
+/* SITUAÇÃO FINANCEIRA — um cifrão, do tamanho de um cifrão.
+ *
+ * Verde pago, âmbar pendente, roxo isento por interesse didático: as mesmas
+ * cores do Mural e do Livro de Registros. Mora no fim da faixa de etiquetas,
+ * encostado na borda direita e logo acima da data de entrada — a coluna que já
+ * se lê de cima para baixo. O espaçamento vem do `gap` de .u-tags. */
+.u-fin {
+    font-size: 0.75rem;
+    font-weight: 800;
+    line-height: 1;
+    cursor: help;
+}
+
+.u-fin.is-pago { color: #34d399; }
+.u-fin.is-pendente { color: #fbbf24; }
+.u-fin.is-didatico { color: #a78bfa; }
 
 /* Só a urgente pisca: se tudo pisca, nada chama atenção. */
 .u-flag.is-urgent {
@@ -543,6 +570,14 @@
     color: #fbbf24;
     border-color: rgba(245, 158, 11, 0.4);
     background: rgba(245, 158, 11, 0.1);
+}
+
+/* Caso trazido de volta do livro. Roxo por não ser nem etapa nem prazo: é o
+   estado do caso, não o trabalho que ele pede. */
+.u-tag.is-reaberta {
+    color: #c4b5fd;
+    border-color: rgba(139, 92, 246, 0.4);
+    background: rgba(139, 92, 246, 0.12);
 }
 
 /* Etapa concluída fica verde e sem ícone: o certo já diz o que aconteceu, e a

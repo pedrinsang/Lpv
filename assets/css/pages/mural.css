@@ -310,6 +310,21 @@
     box-shadow: 0 6px 18px rgba(245, 158, 11, 0.16);
 }
 
+/* Caso trazido de volta do Livro de Registros: roxo, e um tom mais apagado que
+   o resto do painel. Ele está aqui por escolha de alguém — não é amostra nova
+   esperando laudo, e não pode ser lido como uma. */
+.mural-card.is-reaberta {
+    border-left-color: #8b5cf6;
+    border-color: rgba(139, 92, 246, 0.28);
+    background: linear-gradient(90deg, rgba(139, 92, 246, 0.08), rgba(139, 92, 246, 0.02) 45%, transparent 75%),
+                var(--bg-glass);
+}
+
+.mural-card.is-reaberta:hover {
+    border-color: rgba(139, 92, 246, 0.55);
+    box-shadow: 0 6px 18px rgba(139, 92, 246, 0.16);
+}
+
 .mural-card-top {
     display: flex;
     align-items: center;
@@ -405,6 +420,13 @@
     color: #fbbf24;
     border-color: rgba(245, 158, 11, 0.4);
     background: rgba(245, 158, 11, 0.1);
+}
+
+/* Caso trazido de volta do livro: roxo, ao lado das etiquetas de etapa. */
+.m-tag.is-reaberta {
+    color: #c4b5fd;
+    border-color: rgba(139, 92, 246, 0.35);
+    background: rgba(139, 92, 246, 0.12);
 }
 
 /* Etapa concluída fica verde e sem ícone: o certo já diz o que aconteceu, e a

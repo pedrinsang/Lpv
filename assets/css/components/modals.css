@@ -291,6 +291,22 @@
   color: #fff;
 }
 
+/* Caso já laudado que voltou para as filas. Fica logo abaixo da tarja do laudo
+   porque é uma ressalva a ela: o laudo saiu, e mesmo assim o caso está no
+   Mural. */
+.tm-hero-reaberta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.9);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+
 /* --- Blocos de campos --- */
 .tm-section {
   display: flex;
