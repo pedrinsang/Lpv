@@ -41,6 +41,13 @@
   
   /* Layout */
   --header-height: 70px;
+  /* Espaço que a barra flutuante de navegação cobre no rodapé do celular.
+     São 120px e não 90 (a barra) porque o botão "+" sobe 25px acima dela: com
+     a conta da barra sozinha, o botão ficava por cima do rodapé da tela — no
+     Livro ele cobria justamente o "N registros no filtro".
+     `env()` cai para 0 em aparelho sem recorte, então a conta serve nos dois. */
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --bottom-nav-space: calc(120px + var(--safe-bottom));
   --sidebar-width: 260px;
   --radius-sm: 8px;
   --radius-md: 16px;

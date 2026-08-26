@@ -1,6 +1,6 @@
 // Trocar a versão descarta o cache anterior na ativação. Suba um número sempre
 // que um arquivo da lista abaixo mudar de conteúdo.
-const CACHE_NAME = 'lpv-ultra-fast-v20';
+const CACHE_NAME = 'lpv-ultra-fast-v21';
 
 // Caminhos RELATIVOS ao próprio sw.js — nunca absolutos.
 //

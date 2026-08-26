@@ -23,7 +23,9 @@ body {
   background-color: var(--bg-body);
   color: var(--text-primary);
   min-height: 100vh;
-  padding-bottom: 110px;
+  /* dvh acompanha a barra de endereço do navegador móvel, que vh ignora. */
+  min-height: 100dvh;
+  padding-bottom: var(--bottom-nav-space);
   background-image: radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.15) 0px, transparent 50%);
   background-attachment: fixed;
   transition: background-color var(--duration-normal) ease;

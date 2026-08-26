@@ -5,7 +5,9 @@
 
 .bottom-nav {
   position: fixed;
-  bottom: 20px;
+  /* Sobe junto com o indicador de home do iPhone; em aparelho sem recorte
+     `--safe-bottom` é 0 e a barra fica onde sempre esteve. */
+  bottom: calc(20px + var(--safe-bottom));
   left: 50%;
   transform: translateX(-50%);
   width: 95%;
@@ -31,7 +33,11 @@
   justify-content: center;
   color: var(--text-secondary);
   font-size: 0.65rem;
-  width: 50px;
+  /* Largura mínima de alvo de toque; cresce e divide a barra por igual em
+     telas maiores em vez de deixar os cinco itens amontoados no meio. */
+  flex: 1 1 0;
+  min-width: 48px;
+  max-width: 76px;
   text-align: center;
   gap: 4px;
   transition: color var(--duration-normal) ease,
@@ -75,6 +81,7 @@
 .nav-fab-container {
   position: relative;
   top: -25px;
+  flex: 0 0 auto;
 }
 
 .nav-fab {

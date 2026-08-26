@@ -456,6 +456,7 @@ function renderUrgentList(tasks) {
     }
 
     rows.forEach((task) => els.urgentList.appendChild(buildUrgentCard(task)));
+    dobrarNoCelular(els.urgentList, rows.length);
 }
 
 /**
@@ -480,6 +481,46 @@ function renderTypeQueue(list, counter, tasks, mensagemVazia) {
     }
 
     rows.forEach((task) => list.appendChild(buildQueueCard(task)));
+    dobrarNoCelular(list, rows.length);
+}
+
+/* --------------------------------------------------------------------------
+   FILA DOBRADA NO CELULAR
+
+   Empilhadas, as três filas somavam a altura de umas seis telas — e a semana,
+   que é o que se olha para saber o dia, ficava depois de todas elas. Rolagem
+   dentro de rolagem já tinha sido descartada aqui (é armadilha no toque), então
+   a fila abre com as primeiras linhas e o resto vem no botão.
+
+   Quem decide se dobra é o CSS, não este arquivo: acima de 820px a regra do
+   `is-collapsed` e o próprio botão somem, então girar o aparelho ou abrir no
+   desktop devolve a lista inteira sem depender de um novo render.
+   -------------------------------------------------------------------------- */
+const LINHAS_NO_CELULAR = 5;
+
+function dobrarNoCelular(list, total) {
+    const antigo = list.querySelector('.hub-card-more');
+    if (antigo) antigo.remove();
+    list.classList.remove('is-collapsed');
+
+    if (total <= LINHAS_NO_CELULAR) return;
+
+    const resto = total - LINHAS_NO_CELULAR;
+    const rotulo = `Ver as outras ${resto}`;
+
+    list.classList.add('is-collapsed');
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'hub-card-more';
+    btn.textContent = rotulo;
+    btn.addEventListener('click', () => {
+        const abrindo = list.classList.contains('is-collapsed');
+        list.classList.toggle('is-collapsed', !abrindo);
+        btn.textContent = abrindo ? 'Ver menos' : rotulo;
+    });
+
+    list.appendChild(btn);
 }
 
 function buildEmpty(mensagem) {

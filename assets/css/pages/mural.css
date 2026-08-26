@@ -6,13 +6,15 @@
 
 /* A página inteira cabe na tela: quem rola é a lista dentro do painel.
    No mobile a altura é contada na mão (cabeçalho + faixa da bottom-nav) porque
-   o wrapper não é um flex de altura fixa fora do desktop. */
+   o wrapper não é um flex de altura fixa fora do desktop. Os dois pedaços vêm
+   dos tokens: com os 180px escritos à mão, o recorte do iPhone comia a última
+   linha da fila, porque a barra flutuante sobe junto com o indicador de home. */
 .mural-main {
     display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    height: calc(100dvh - 180px);
+    height: calc(100dvh - var(--header-height) - var(--bottom-nav-space));
     max-width: 100%;
     padding-top: 1rem;
     overflow: hidden;
@@ -118,13 +120,13 @@
    ================================================================ */
 .mural-board {
     display: flex;
-    gap: 15px;
+    gap: 12px;
     flex: 1;
     min-height: 0;
 
     /* Mobile: um painel por vez, com snap e sem barra de rolagem. */
     overflow-x: auto;
-    padding: 0 7.5vw 20px;
+    padding: 0 12px 16px;
     scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
@@ -134,10 +136,17 @@
 
 .mural-board::-webkit-scrollbar { display: none; }
 
+/* O painel ocupa a largura toda.
+ *
+ * Antes eram 85vw com 7.5vw de padding dos dois lados: sobrava uma tira do
+ * painel vizinho na borda direita, apagada e encolhida, que lia como recorte
+ * malfeito e não como "tem mais para o lado" — e ainda comia 15% da largura
+ * útil dos cartões, que é onde mora a informação. Quem diz que existe um
+ * segundo painel são os indicadores acima do quadro e o nome no cabeçalho. */
 .mural-panel {
     --panel-accent: var(--color-other);
-    min-width: 85vw;
-    width: 85vw;
+    min-width: 100%;
+    width: 100%;
     height: 100%;
     flex-shrink: 0;
     scroll-snap-align: center;
@@ -145,22 +154,19 @@
 
     display: flex;
     flex-direction: column;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-card);
     border: 1px solid var(--border-glass);
     border-radius: 16px;
 
-    opacity: 0.5;
-    transform: scale(0.95);
-    transition: opacity 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
+    /* Sem a tira do vizinho à mostra, apagar e encolher o painel de trás só
+       aparecia como um tremido no meio do deslize. */
+    transition: border-color 0.3s ease;
 }
 
 .mural-panel.type-necro { --panel-accent: var(--color-necro); }
 .mural-panel.type-bio { --panel-accent: var(--color-bio); }
 
 .mural-panel.active-panel {
-    opacity: 1;
-    transform: scale(1);
-    background: var(--bg-card);
     border-color: var(--panel-accent);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
@@ -497,6 +503,55 @@
     .mural-panel:hover { border-color: color-mix(in srgb, var(--panel-accent) 40%, transparent); }
 
     .carousel-indicators { display: none; }
+}
+
+/* ================================================================
+   CELULAR — MENOS MOLDURA, MAIS FILA
+
+   A tela abria com título, subtítulo, a palavra "Mostrar", cinco botões em duas
+   fileiras e os indicadores: uns 200px de moldura antes do primeiro cartão,
+   numa tela de 750px. Fica o que muda o que se vê; o resto é do desktop, onde
+   sobra largura.
+   ================================================================ */
+@media (max-width: 1023px) {
+    .mural-toolbar {
+        gap: 10px;
+        padding: 0 12px 10px;
+    }
+
+    .mural-toolbar-title { font-size: 0.95rem; }
+
+    /* Explicação de primeira visita, não de toda visita. */
+    .mural-toolbar-sub { display: none; }
+
+    .mural-toolbar-info { flex: 1 1 100%; }
+
+    .mural-toolbar-controls {
+        flex: 1 1 100%;
+        gap: 8px;
+    }
+
+    /* Os botões já dizem que são um filtro; a palavra custa 60px de uma linha
+       que precisa acomodar três deles. */
+    .mural-filters-label { display: none; }
+
+    .mural-stage-filter,
+    .mural-switch { flex: 1 1 100%; gap: 6px; }
+
+    .mural-switch-btn {
+        flex: 1;
+        min-width: 0;
+        justify-content: center;
+        height: 34px;
+        padding: 0 8px;
+        font-size: 0.76rem;
+    }
+
+    /* Sem a tira do painel vizinho, são estes que dizem que há dois quadros —
+       então eles precisam ser vistos. */
+    .carousel-indicators { gap: 6px; margin-bottom: 8px; }
+    .dot { width: 9px; height: 9px; opacity: 0.45; }
+    .dot.active { width: 26px; }
 }
 
 /* ================================================================

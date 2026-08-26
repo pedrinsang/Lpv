@@ -25,13 +25,25 @@
     --pl-accent: #38bdf8;
     --pl-gradient: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
 
-    /* Gutter dos turnos + uma coluna por dia útil (segunda a sexta). */
-    --pl-cols: 74px repeat(5, minmax(0, 1fr));
+    /* Gutter dos turnos + uma coluna por dia útil (segunda a sexta).
+       As duas medidas são variáveis porque o mobile mexe nas duas: o gutter
+       encolhe e o dia ganha largura fixa para a semana rolar de lado. */
+    --pl-gutter-w: 74px;
+    --pl-day-w: minmax(0, 1fr);
+    --pl-cols: var(--pl-gutter-w) repeat(5, var(--pl-day-w));
+
+    /* Altura de uma semana na grade do mês — o JS repete esta medida por
+       linha. Fica aqui para o mobile poder encolhê-la. */
+    --pl-month-row: 136px;
 }
 
-/* --- ESTRUTURA: a página inteira cabe na viewport, quem rola é cada faixa --- */
+/* --- ESTRUTURA: a página inteira cabe na viewport, quem rola é cada faixa ---
+   `dvh` acompanha a barra de endereço do navegador móvel, que `vh` ignora: com
+   `vh` a agenda nascia mais alta que a tela e o rodapé ficava sempre escondido
+   atrás da barra do navegador. */
 body {
     height: 100vh;
+    height: 100dvh;
     overflow: hidden;
     padding-bottom: 0;
 }
@@ -41,6 +53,7 @@ body {
     flex-direction: column;
     flex: 1;
     height: 100vh;
+    height: 100dvh;
     min-height: 0;
     overflow: hidden;
 }
@@ -574,7 +587,9 @@ body {
     overflow-y: auto;
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    /* As linhas são definidas em JS: minmax(136px, 1fr) por semana do mês. */
+    /* Quantas linhas o mês tem só o JS sabe (5 ou 6 semanas), então é ele que
+       escreve o `grid-template-rows` — mas a altura de cada uma vem de
+       `--pl-month-row`, para o mobile poder encolhê-la sem tocar no script. */
 }
 
 .pl-cell {
@@ -1217,15 +1232,148 @@ select.pl-input option {
 
 /* ==========================================================================
    MOBILE
-   A agenda mantém as proporções do desenho e rola na horizontal; o trilho
-   lateral vira uma gaveta sobreposta para não roubar a largura da semana.
+
+   A rolagem horizontal desce para DENTRO da agenda. Antes ela morava na
+   `.planner-main`, e como a barra de controle e a faixa de aviso são irmãs da
+   semana lá dentro, elas herdavam a largura de 740px da grade e sumiam para a
+   esquerda junto com os dias — no celular a primeira coisa que se via era meia
+   segunda-feira, sem botão de "Hoje" e sem saber que semana era.
+
+   Agora a semana rola sozinha, com o gutter dos turnos preso à esquerda, e o
+   dia tem largura própria: uma coluna por tela no telefone, cinco espremidas
+   nenhuma. O trilho lateral vira gaveta sobreposta para não roubar largura.
    ========================================================================== */
 @media (max-width: 1023px) {
-    .planner-main {
-        padding: 12px 12px 100px;
-        gap: 12px;
+    :root {
+        --pl-gutter-w: 56px;
+        /* No tablet os cinco dias ainda cabem: a coluna estica até preencher a
+           tela (tela menos o padding da agenda, a borda e o gutter, dividido
+           por cinco) e só volta a rolar quando o piso de 132px é atingido.
+           Largura fixa aqui deixava 74px de rolagem à toa num iPad em pé. */
+        --pl-day-w: max(132px, calc((100vw - 84px) / 5));
+        --pl-month-row: 84px;
     }
 
+    .planner-main {
+        padding: 12px 12px var(--bottom-nav-space);
+        gap: 10px;
+        overflow-x: hidden;
+    }
+
+    /* Quem rola agora é a semana; estes dois voltam a caber na tela. */
+    .pl-toolbar,
+    .pl-placement { min-width: 0; }
+
+    /* --- BARRA DE CONTROLE --- */
+    .pl-toolbar { gap: 9px; padding: 9px 10px; }
+
+    .pl-toolbar-left,
+    .pl-toolbar-right { width: 100%; }
+
+    .pl-toolbar-left { gap: 8px; }
+
+    /* Alternador e setas dividem a primeira linha; o nome do período fica com a
+       segunda inteira em vez de espremer os dois. */
+    .pl-viewtabs { flex: 0 0 auto; }
+    .pl-nav { flex: 1 1 auto; justify-content: flex-end; }
+
+    /* Com os ícones, "Semanal" e "Mensal" mediam 190px e empurravam as setas
+       para uma segunda linha por 19px de diferença. O calendário do ícone não
+       diz nada que a palavra ao lado já não diga. */
+    .pl-tab { padding: 0 11px; font-size: 0.78rem; }
+    .pl-tab i { display: none; }
+
+    /* Título e subtítulo do período lado a lado: empilhados eram uma terceira
+       linha de barra, e barra é altura que sai da agenda. */
+    .pl-period {
+        order: 3;
+        width: 100%;
+        flex-direction: row;
+        align-items: baseline;
+        gap: 8px;
+    }
+    .pl-period-title { font-size: 0.95rem; }
+    .pl-period-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .pl-toolbar-right {
+        gap: 10px;
+        justify-content: space-between;
+        flex-wrap: nowrap;
+    }
+
+    /* A legenda tem cinco itens e não cabe numa linha de telefone. Rolando de
+       lado ela ficava cortada no meio da palavra ("Estagiários" virava "Est"),
+       o que lê como defeito, não como "arraste para ver o resto".
+
+       Na semana ela some: com um dia por tela, cada cartão traz a etiqueta do
+       tipo escrita nele. No mês, onde sobram bolinha e horário, ela volta — e
+       aí pode ocupar as duas linhas de que precisa. */
+    .pl-legend { display: none; }
+
+    body.pl-visao-mes .pl-legend {
+        display: flex;
+        flex: 1 1 auto;
+        min-width: 0;
+        flex-wrap: wrap;
+        gap: 5px 12px;
+    }
+    .pl-legend-item { flex: 0 0 auto; }
+
+    .pl-sep { display: none; }
+    .pl-count { flex: 0 0 auto; font-size: 0.72rem; }
+    .pl-count-word { display: none; }
+
+    .pl-placement { padding: 8px 10px; }
+    .pl-placement-text { font-size: 0.78rem; }
+
+    /* --- SEMANA NO TABLET: as cinco colunas esticam; se não couberem, a
+       própria caixa da agenda rola de lado (a barra de controle fica parada) --- */
+    .pl-week {
+        min-width: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+    }
+
+    .pl-week::-webkit-scrollbar { height: 0; }
+
+    /* Sem isto o cabeçalho e o corpo seriam esticados à largura da caixa e cada
+       um recortaria a própria grade — é o que mantém os dois rolando juntos. */
+    .pl-week-head,
+    .pl-week-body {
+        width: max-content;
+        min-width: 100%;
+    }
+
+    .pl-day-head { padding: 9px 10px; }
+
+    /* --- MÊS: cabe na tela inteira, sem rolagem de lado --- */
+    .pl-month { min-width: 0; }
+
+    .pl-month-head > div {
+        padding: 8px 2px;
+        text-align: center;
+        font-size: 0.56rem;
+        letter-spacing: 0.04em;
+    }
+
+    .pl-cell { padding: 5px 4px; gap: 4px; }
+    .pl-cell-num { font-size: 0.76rem; }
+    .pl-cell-total { display: none; }
+    .pl-cell-bar { width: 16px; height: 3px; }
+
+    /* Numa célula de ~50px o título não cabe: sobra a cor do tipo e a hora, que
+       é o que se procura no mês. A ficha continua a um toque. */
+    .pl-chip {
+        gap: 3px;
+        padding: 2px;
+        font-size: 0.56rem;
+    }
+    .pl-chip-titulo { display: none; }
+    .pl-cell-mais { font-size: 0.56rem; }
+
+    /* --- GAVETA DE PENDENTES / DETALHE --- */
     .pl-rail {
         position: fixed;
         top: var(--header-height);
@@ -1234,7 +1382,7 @@ select.pl-input option {
         width: min(340px, 88vw);
         z-index: 1500;
         flex: 0 0 auto;
-        padding: 12px 12px 100px;
+        padding: 12px 12px var(--bottom-nav-space);
         background: rgba(2, 6, 23, 0.6);
         backdrop-filter: blur(6px);
         animation: plRailIn 0.3s var(--ease-spring) both;
@@ -1252,16 +1400,151 @@ select.pl-input option {
     to { opacity: 1; transform: translateX(0); }
 }
 
+/* ==========================================================================
+   TELEFONE — A SEMANA VIRA UM DIA POR VEZ
+
+   Cinco colunas não cabem em 375px, e rolar a grade de lado também não resolveu:
+   o dia chegava cortado ao meio com o vizinho espiando do lado, e a faixa
+   vertical de "Manhã"/"Tarde" gastava 46px — 13% da largura — para dizer duas
+   palavras.
+
+   Então o cabeçalho da semana vira a régua de dias (SEG a SEX, com a contagem
+   de cada um) e a agenda mostra um dia inteiro na largura toda, manhã em cima e
+   tarde embaixo. É o desenho de qualquer calendário de celular: sem rolagem
+   lateral, sem coluna cortada, e o cartão finalmente tem largura para o
+   protocolo e o subtítulo caberem.
+
+   Quem escolhe o dia é o `state.diaMobile` do planner.js, pela classe
+   `is-selected`. Acima deste corte a classe existe e não faz nada — as cinco
+   colunas aparecem juntas de qualquer jeito.
+   ========================================================================== */
+@media (max-width: 720px) {
+    .pl-week {
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .pl-week-head,
+    .pl-week-body { width: auto; min-width: 0; }
+
+    /* --- RÉGUA DE DIAS --- */
+    .pl-week-head { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .pl-gutter-spacer { display: none; }
+
+    .pl-day-head {
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        padding: 7px 2px;
+        cursor: pointer;
+        border-right: 1px solid var(--pl-hairline);
+    }
+
+    .pl-day-head:last-child { border-right: none; }
+
+    .pl-day-label {
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+    }
+
+    .pl-dow { font-size: 0.58rem; letter-spacing: 0.06em; }
+    .pl-daynum { font-size: 1.05rem; line-height: 1.1; }
+
+    .pl-day-count {
+        padding: 0 6px;
+        font-size: 0.56rem;
+        line-height: 1.5;
+    }
+
+    /* O dia aberto: sublinhado grosso na cor de destaque. Fundo cheio brigaria
+       com o "hoje", que também é um fundo azulado. */
+    .pl-day-head.is-selected {
+        background: rgba(56, 189, 248, 0.1);
+        box-shadow: inset 0 -3px 0 var(--pl-accent);
+    }
+
+    .pl-day-head.is-selected .pl-daynum { color: #fff; }
+    .pl-day-head.is-selected .pl-dow { color: var(--pl-accent); }
+
+    /* --- O DIA --- */
+    /* A faixa deixa de ser grade de gutter + 5 colunas: vira rótulo do turno em
+       cima e a agenda do dia embaixo. */
+    .pl-band {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .pl-gutter {
+        position: static;
+        flex: 0 0 auto;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        padding: 6px 12px;
+        border-right: none;
+        border-bottom: 1px solid var(--pl-hairline);
+    }
+
+    .pl-gutter-label {
+        writing-mode: horizontal-tb;
+        transform: none;
+        font-size: 0.62rem;
+    }
+
+    .pl-gutter-hours { margin-left: auto; }
+
+    .pl-lane { display: none; }
+
+    .pl-lane.is-selected {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        border-right: none;
+        padding: 10px;
+        gap: 8px;
+    }
+
+    /* Com a largura toda, o cartão deixa de ser uma tira: hora e etiqueta na
+       primeira linha, título e subtítulo com espaço para não virar reticências. */
+    .pl-card { padding: 10px 12px; }
+    .pl-card-titulo { font-size: 0.85rem; }
+    .pl-card-sub { font-size: 0.74rem; }
+}
+
 @media (max-width: 560px) {
     .pl-modal { padding: 0; place-items: end center; }
 
     .pl-modal-card {
         max-width: 100%;
+        max-height: 92dvh;
         border-radius: 18px 18px 0 0;
-        padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+        padding-bottom: calc(22px + var(--safe-bottom));
     }
 
     .pl-when-row { flex-wrap: wrap; }
     .pl-when-hora,
     .pl-when-dur { width: calc(50% - 5px); }
+}
+
+/* --- TELA MUITO ESTREITA (Android de 360px, iPhone SE) ---
+   Só o suficiente para o alternador e as setas continuarem dividindo a mesma
+   linha: 20px de folga a menos e a barra volta a crescer 60px de altura, que
+   saem da agenda. */
+@media (max-width: 420px) {
+    /* A barra do Planner tem três botões à direita — um a mais que as outras
+       telas. Com a marca escrita ao lado da logo não sobrava largura, e a
+       etiqueta do papel ("Estagiário / Admin") acabava por baixo dos botões.
+       A logo continua dizendo onde a pessoa está. */
+    .app-header .header-text-column { display: none; }
+}
+
+@media (max-width: 370px) {
+    .pl-tab { padding: 0 9px; font-size: 0.74rem; }
+    .pl-navbtn { width: 30px; height: 30px; }
+    .pl-navbtn-text { padding: 0 10px; }
+    .pl-period-sub { display: none; }
 }

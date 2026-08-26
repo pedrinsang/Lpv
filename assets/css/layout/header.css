@@ -95,6 +95,9 @@
 .user-badge {
   font-size: 0.7rem;
   font-weight: 600;
+  /* "Estagiario / Admin" quebrava em duas linhas e estourava a altura travada
+     da barra, passando por baixo dos botões da direita. */
+  white-space: nowrap;
   color: var(--text-secondary);
   background-color: rgba(0, 0, 0, 0.06);
   padding: 1px 6px;

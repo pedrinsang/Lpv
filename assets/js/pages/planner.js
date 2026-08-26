@@ -95,6 +95,7 @@ const RAIL_INICIAL = window.matchMedia('(min-width: 1024px)').matches ? 'pendent
 const state = {
     visao: 'semana',       // 'semana' | 'mes'
     ancora: HOJE,          // data de referência do período exibido
+    diaMobile: 0,          // dia aberto na visão de um dia por vez (0 = segunda)
     rail: RAIL_INICIAL,    // 'pendentes' | 'detalhe' | null
     detalheId: null,
     colocacao: null,       // tarefa aguardando escolha de faixa
@@ -296,6 +297,13 @@ function criarCartao(task) {
 
 function renderSemana() {
     const ini = inicioDaSemana();
+
+    // Semana nova na tela: o dia aberto no celular volta a ser hoje.
+    if (semanaAberta !== ini) {
+        state.diaMobile = diaPadrao(ini);
+        semanaAberta = ini;
+    }
+
     const porDia = {};
     agendadas().forEach(t => { (porDia[t.scheduledDate] = porDia[t.scheduledDate] || []).push(t); });
     Object.values(porDia).forEach(a => a.sort((x, y) => minutos(x.scheduledTime) - minutos(y.scheduledTime)));
@@ -314,7 +322,8 @@ function renderSemana() {
         const lista = porDia[data] || [];
 
         const head = document.createElement('div');
-        head.className = 'pl-day-head' + (eHoje ? ' is-today' : '') + (passado ? ' is-past' : '');
+        head.className = 'pl-day-head' + (eHoje ? ' is-today' : '') + (passado ? ' is-past' : '')
+                       + (i === state.diaMobile ? ' is-selected' : '');
         head.innerHTML = `
             <div class="pl-day-label">
                 <span class="pl-dow">${DOW_CURTO[d.getDay()]}</span>
@@ -322,12 +331,23 @@ function renderSemana() {
             </div>
             ${lista.length ? `<span class="pl-day-count">${lista.length}</span>` : ''}
         `;
+
+        // Abaixo de 720px o cabeçalho do dia é o seletor da agenda. Acima, as
+        // cinco colunas já aparecem juntas: redesenhar não mudaria nada na tela
+        // além de repetir a animação de entrada de todos os cartões.
+        head.addEventListener('click', () => {
+            if (!umDiaPorVez.matches || state.diaMobile === i) return;
+            state.diaMobile = i;
+            renderSemana();
+        });
+
         el['week-head'].appendChild(head);
 
         ['manha', 'tarde'].forEach(turno => {
             const doTurno = lista.filter(t => turnoDe(t.scheduledTime) === turno);
             const lane = document.createElement('div');
             lane.className = 'pl-lane';
+            if (i === state.diaMobile) lane.classList.add('is-selected');
             if (passado) lane.classList.add('is-past');
             if (state.colocacao) lane.classList.add('is-target');
             if (!podeCriar()) lane.classList.add('is-locked');
@@ -360,6 +380,36 @@ function renderSemana() {
     }
 }
 
+/* --------------------------------------------------------------------------
+   UM DIA POR VEZ NO CELULAR
+
+   Cinco colunas não cabem num telefone. A primeira tentativa foi manter a grade
+   e rolar de lado, uma coluna por tela — mas o dia chegava cortado pela metade,
+   com o vizinho aparecendo de lado, e o rótulo do turno virava uma faixa
+   vertical de 46px que roubava 13% da largura para dizer duas palavras.
+
+   Aqui o cabeçalho da semana vira a régua de dias (SEG a SEX, com a contagem
+   de cada um) e a agenda mostra o dia escolhido inteiro, manhã e tarde
+   empilhadas na largura toda. É o desenho de qualquer calendário de celular, e
+   quem escolhe o que aparece é esta variável — o CSS abaixo de 720px esconde
+   as faixas dos outros dias.
+
+   O dia aberto é hoje quando a semana exibida contém hoje. A escolha é refeita
+   quando o período muda, não a cada render: a agenda redesenha a cada mudança
+   no Firestore, e reescolher ali jogaria de volta para hoje o dia que a pessoa
+   acabou de abrir.
+   -------------------------------------------------------------------------- */
+let semanaAberta = null;
+
+/** O mesmo corte do CSS: abaixo dele a agenda mostra um dia por vez. */
+const umDiaPorVez = window.matchMedia('(max-width: 720px)');
+
+/** Índice do dia que a semana abre: hoje, quando ele está nela. */
+function diaPadrao(ini) {
+    const i = Math.round((parseISO(HOJE) - parseISO(ini)) / 86400000);
+    return i >= 0 && i < DIAS_SEMANA ? i : 0;
+}
+
 /* ==========================================================================
    RENDER — VISÃO MENSAL
    ========================================================================== */
@@ -377,7 +427,9 @@ function renderMes() {
 
     const grid = el['month-grid'];
     grid.innerHTML = '';
-    grid.style.gridTemplateRows = `repeat(${semanas}, minmax(${52 + MAX_CHIPS * 22 + 18}px, 1fr))`;
+    // A altura da linha é do CSS (`--pl-month-row`): no celular a célula vira
+    // número e horários, e o piso do desktop deixaria o mês rolando à toa.
+    grid.style.gridTemplateRows = `repeat(${semanas}, minmax(var(--pl-month-row, ${52 + MAX_CHIPS * 22 + 18}px), 1fr))`;
 
     for (let i = 0; i < semanas * 7; i++) {
         const dia = i - offset + 1;
@@ -738,6 +790,11 @@ function renderAll() {
     el['week-view'].classList.toggle('hidden', !ehSemana);
     el['month-view'].classList.toggle('hidden', ehSemana);
 
+    // A marca no <body> deixa o CSS saber qual visão está aberta. Serve para a
+    // legenda de cores no celular: na semana cada cartão já traz a etiqueta do
+    // tipo escrita, no mês sobram bolinha e hora — e aí a legenda é necessária.
+    document.body.classList.toggle('pl-visao-mes', !ehSemana);
+
     renderToolbar();
     if (ehSemana) renderSemana(); else renderMes();
     renderRail();
@@ -748,7 +805,10 @@ function renderAll() {
    ========================================================================== */
 
 function initControles() {
-    el['tab-semana'].addEventListener('click', () => { state.visao = 'semana'; renderAll(); });
+    el['tab-semana'].addEventListener('click', () => {
+        state.visao = 'semana';
+        renderAll();
+    });
     el['tab-mes'].addEventListener('click', () => { state.visao = 'mes'; renderAll(); });
 
     el['prev-period'].addEventListener('click', () => {
@@ -767,7 +827,14 @@ function initControles() {
         renderAll();
     });
 
-    el['today-btn'].addEventListener('click', () => { state.ancora = HOJE; renderAll(); });
+    // "Hoje" apertado dentro da própria semana de hoje não muda o período — o
+    // que ele precisa mudar no celular é o dia aberto, e quem segura isso é a
+    // trava. Sem soltá-la, o botão não faria nada.
+    el['today-btn'].addEventListener('click', () => {
+        state.ancora = HOJE;
+        semanaAberta = null;
+        renderAll();
+    });
 
     el['cancel-placement'].addEventListener('click', () => { state.colocacao = null; renderAll(); });
 

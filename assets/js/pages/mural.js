@@ -350,6 +350,16 @@ function updateSwitch() {
 function initMobileCarousel() {
     if (!els.dots || !els.board) return;
 
+    /* Distância de um painel ao seguinte, medida no próprio DOM.
+       Antes era `largura do painel + 15`, com o 15 sendo o `gap` do CSS escrito
+       à mão aqui: mexer no espaçamento do quadro dessincronizava os
+       indicadores, e o clique no segundo ponto parava no meio do caminho. */
+    const passo = () => {
+        const [um, dois] = panelOrder.map((p) => p.wrap).filter(Boolean);
+        if (um && dois) return dois.offsetLeft - um.offsetLeft;
+        return (um?.offsetWidth || 1);
+    };
+
     els.dots.innerHTML = '';
     panelOrder.forEach((painel, index) => {
         const dot = document.createElement('button');
@@ -357,15 +367,14 @@ function initMobileCarousel() {
         dot.className = index === 0 ? 'dot active' : 'dot';
         dot.setAttribute('aria-label', painel.wrap?.querySelector('.mural-panel-title')?.textContent.trim() || `Painel ${index + 1}`);
         dot.addEventListener('click', () => {
-            const largura = (panelOrder[0].wrap?.offsetWidth || 1) + 15;
-            els.board.scrollTo({ left: largura * index, behavior: 'smooth' });
+            els.board.scrollTo({ left: passo() * index, behavior: 'smooth' });
         });
         els.dots.appendChild(dot);
     });
 
     const sync = () => {
         if (window.innerWidth >= 1024) return;
-        const largura = (panelOrder[0].wrap?.offsetWidth || 1) + 15;
+        const largura = passo() || 1;
         const ativo = Math.max(0, Math.min(panelOrder.length - 1, Math.round(els.board.scrollLeft / largura)));
 
         els.dots.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === ativo));

@@ -46,6 +46,13 @@ const ROTULOS = {
 // Filtros que moram no painel "Mais filtros" — alimentam o contador do botão.
 const NO_PAINEL = ['docente', 'posGraduando', 'especie', 'sexo', 'origem', 'remetente', 'raca', 'periodo'];
 
+// No celular a barra de filtros fica só com a busca e o tipo: laudo, situação e
+// ano também se recolhem para o painel (ver o bloco mobile do historico.css).
+// O contador do botão precisa saber disso, senão ele diz "0" com três filtros
+// ativos escondidos — que é justamente o caso em que o número importa.
+const NO_PAINEL_MOBILE = [...NO_PAINEL, 'laudo', 'situacao', 'ano'];
+const telaEstreita = window.matchMedia('(max-width: 1023px)');
+
 const F_VAZIO = {
     busca: '', tipo: 'todos', laudo: '', situacao: '', ano: '',
     docente: '', posGraduando: '', especie: '', sexo: '', origem: '',
@@ -691,7 +698,8 @@ function renderChips() {
         </button>
     `).join('') + (chips.length ? '<button type="button" class="ledger-chip-clear">Limpar tudo</button>' : '');
 
-    const escondidos = chips.filter((c) => NO_PAINEL.includes(c.chave)).length;
+    const dentro = telaEstreita.matches ? NO_PAINEL_MOBILE : NO_PAINEL;
+    const escondidos = chips.filter((c) => dentro.includes(c.chave)).length;
     painelBadge.textContent = escondidos;
     painelBadge.classList.toggle('hidden', escondidos === 0);
 }
@@ -817,7 +825,14 @@ btnPainel.addEventListener('click', () => {
     state.painelAberto = !state.painelAberto;
     painel.classList.toggle('hidden', !state.painelAberto);
     btnPainel.classList.toggle('is-open', state.painelAberto);
+    // A marca no <body> é o que deixa o CSS do celular mostrar de volta os
+    // campos recolhidos, que vivem fora do #ledger-panel.
+    document.body.classList.toggle('ledger-panel-open', state.painelAberto);
 });
+
+// Girar o aparelho muda quais filtros estão escondidos, e com isso o número do
+// botão. Recontar no evento evita o badge congelado da orientação anterior.
+telaEstreita.addEventListener('change', renderChips);
 
 chipsBox.addEventListener('click', (e) => {
     if (e.target.closest('.ledger-chip-clear')) return limparTudo();
@@ -829,6 +844,28 @@ headEl.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-sort]');
     if (btn) ordenar(btn.dataset.sort);
 });
+
+/**
+ * Abrir uma linha.
+ *
+ * No desktop a linha se expande no lugar: a ficha resumida aparece embaixo dela
+ * e a lista continua em volta, então dá para descer de caso em caso sem perder
+ * o fio.
+ *
+ * No celular isso não funciona. A janela da lista tem uns 450px e a expansão
+ * ocupa 340: abrir uma linha apagava a lista inteira da tela e deixava no lugar
+ * um `dl` de duas colunas espremidas — o pior dos dois mundos, porque nem a
+ * lista se lê nem a ficha. Lá o toque vai direto para a ficha completa, que é
+ * de tela cheia e tem tudo. É também o que o único botão da expansão fazia.
+ */
+function abrirLinha(id) {
+    if (telaEstreita.matches) {
+        abrirFicha(id);
+        return;
+    }
+    state.aberto = state.aberto === id ? null : id;
+    render();
+}
 
 track.addEventListener('click', (e) => {
     const acao = e.target.closest('[data-abrir]');
@@ -842,8 +879,7 @@ track.addEventListener('click', (e) => {
 
     const wrap = e.target.closest('.ledger-row-wrap');
     if (!wrap) return;
-    state.aberto = state.aberto === wrap.dataset.id ? null : wrap.dataset.id;
-    render();
+    abrirLinha(wrap.dataset.id);
 });
 
 track.addEventListener('keydown', (e) => {
@@ -851,9 +887,16 @@ track.addEventListener('keydown', (e) => {
     const linha = e.target.closest('.ledger-row');
     if (!linha) return;
     e.preventDefault();
-    const wrap = linha.closest('.ledger-row-wrap');
-    state.aberto = state.aberto === wrap.dataset.id ? null : wrap.dataset.id;
-    render();
+    abrirLinha(linha.closest('.ledger-row-wrap').dataset.id);
+});
+
+/* Girar para o retrato com uma linha expandida deixaria a expansão ocupando a
+   janela inteira da lista, que é justamente o que o desvio acima evita. */
+telaEstreita.addEventListener('change', (e) => {
+    if (e.matches && state.aberto != null) {
+        state.aberto = null;
+        render();
+    }
 });
 
 viewport.addEventListener('scroll', () => {

@@ -661,31 +661,124 @@
 }
 
 /* ================================================================
-   MOBILE — cada linha vira um cartão de duas alturas
+   MOBILE — cada linha vira um cartão, e os filtros se recolhem
+
+   O bloco de filtros tem oito campos. Aberto num telefone ele ocupava mais de
+   metade da tela e sobrava uma faixa de lista com três linhas — e essa faixa
+   ainda rolava por dentro de uma página que também rolava, as duas disputando o
+   mesmo dedo. Aqui a barra fica só com o que se usa a toda hora (busca e tipo),
+   o resto entra no painel "Filtros", e a página inteira para de rolar: quem
+   rola é a lista, como já acontece no desktop.
    ================================================================ */
 @media (max-width: 1023px) {
     :root {
         --ledger-row-h: 96px;
-        --ledger-exp-h: 380px;
+        /* A expansão em linha não é usada aqui (o toque abre a ficha de tela
+           cheia, ver historico.js), mas o virtualizador lê esta medida de
+           qualquer jeito para calcular a altura da pista. */
+        --ledger-exp-h: 340px;
     }
 
-    .ledger-main { padding: 12px 12px 24px; }
+    .ledger-main {
+        padding: 12px 12px var(--bottom-nav-space);
+        gap: 12px;
+    }
     .ledger-title h1 { font-size: 1.15rem; }
 
-    .ledger-field.is-grow { min-width: 100%; }
+    /* --- AÇÕES ---
+
+       Exportar planilha e apagar o acervo são tarefa de mesa, não de corredor:
+       no telefone o Livro é consulta — achar um caso, ver se o laudo saiu. Fora
+       do painel elas custavam uma faixa fixa de 48px no alto de toda visita, e
+       a segunda é a única ação irreversível do sistema, bem onde o polegar
+       encosta ao rolar. Entram junto com os filtros, e aí o topo da tela é só
+       busca e lista. (No rodapé da tabela o "apagar" é do desktop; aqui ele
+       repetiria o mesmo botão um palmo abaixo.) */
+    .ledger-mobile-actions { display: none; gap: 8px; }
+    body.ledger-panel-open .ledger-mobile-actions { display: flex; }
+
+    .ledger-mobile-actions .btn-export,
+    .ledger-mobile-actions .btn-danger-ghost.is-visible {
+        height: 36px;
+        padding: 0 12px;
+        font-size: 0.78rem;
+    }
+    .ledger-foot #btn-clear-history { display: none !important; }
+
+    /* No HTML as ações vêm antes dos filtros, porque no desktop elas são do
+       cabeçalho; aqui elas pertencem ao painel, então descem para depois dele. */
+    .ledger-title { order: 0; }
+    .ledger-filters { order: 1; }
+    .ledger-mobile-actions { order: 2; }
+    .ledger-table { order: 3; }
+
+    /* --- FILTROS --- */
+    .ledger-filters { gap: 8px; padding: 10px; }
+
+    /* Fechado, sobra a linha de busca e a de tipo. */
+    .ledger-field.is-grow { flex: 1 1 200px; min-width: 150px; }
     .ledger-field:not(.is-grow) { flex: 1; min-width: 140px; width: auto !important; }
+
+    /* A ordem da linha não é a do HTML: busca e botão de filtros dividem a
+       primeira, o segmentado de tipo fica com a segunda inteira, e os campos
+       recolhidos entram depois dos dois quando o painel abre. */
+    .ledger-filter-row .ledger-field.is-grow,
+    .ledger-filter-row .ledger-panel-btn { order: 0; }
+    /* `flex-basis: 100%` prende o segmentado a uma linha só dele: dividindo a
+       linha com o botão de filtros, os três botões ficavam com 50px cada e
+       "Necropsias" virava reticências. */
+    .ledger-filter-row .ledger-field:not(.is-grow):not(.is-secundario) {
+        order: 1;
+        flex-basis: 100%;
+    }
+    .ledger-filter-row .ledger-field.is-secundario { order: 2; }
+
+    /* "Buscar" e "Tipo" repetem o que o placeholder e os botões já dizem, e
+       custam uma linha de texto cada; os do painel continuam rotulados, que ali
+       um <select> fechado não diz do que é. */
+    .ledger-filter-row .ledger-field:not(.is-secundario) > label { display: none; }
+    .ledger-field > label { font-size: 0.64rem; }
+
     .ledger-segmented { width: 100%; }
     .ledger-segmented button { flex: 1; justify-content: center; padding: 0 6px; font-size: 0.72rem; }
-    .ledger-panel-btn { flex: 1; justify-content: center; }
+
+    /* O botão de painel divide a linha com a busca em vez de ocupar uma só
+       para ele. Perde o "Mais" — no celular ele não abre filtros a mais, abre
+       os que foram recolhidos — e `capitalize` devolve a maiúscula que o "Mais"
+       carregava. */
+    .ledger-panel-btn {
+        flex: 0 0 auto;
+        gap: 7px;
+        padding: 0 12px;
+        text-transform: capitalize;
+    }
+    .ledger-panel-btn-word { display: none; }
+
+    /* Laudo, situação e ano se recolhem junto com o painel — o <body> ganha a
+       marca no clique do botão (ver historico.js). */
+    body:not(.ledger-panel-open) .ledger-field.is-secundario { display: none; }
+
+    /* Aberto, o painel tem onze campos. O teto é o que impede ele de empurrar a
+       lista e o rodapé para fora da janela travada: 35dvh deixa sempre uns
+       130px de lista mesmo na tela mais baixa que este modo atende (620px). O
+       que não couber rola por dentro do próprio bloco de filtros. */
+    .ledger-filters { max-height: 35dvh; overflow-y: auto; }
+    .ledger-filter-panel { padding-top: 8px; }
     .ledger-period { flex-wrap: wrap; }
     .ledger-period select, .ledger-period input { width: auto; flex: 1; min-width: 120px; }
 
+    /* iOS dá zoom no campo em foco quando a fonte é menor que 16px, e a página
+       fica torta depois. */
+    .ledger-field select,
+    .ledger-field input { font-size: 16px; }
+
+    /* --- LISTA --- */
     .ledger-scroll-x { overflow-x: hidden; }
     .ledger-inner { min-width: 0; }
     .ledger-head { display: none; }
-    /* dvh acompanha a barra de endereço do navegador móvel, que vh ignora */
-    .ledger-viewport { height: calc(100vh - 380px); min-height: 320px; }
-    .ledger-viewport { height: calc(100dvh - 380px); }
+
+    /* Piso enquanto a página ainda rola (telas baixas, ver o bloco seguinte). */
+    .ledger-viewport { height: 60dvh; min-height: 280px; }
 
     .ledger-row {
         grid-template-columns: minmax(0, 1fr) auto auto;
@@ -708,7 +801,15 @@
     .lr-prop, .lr-pos { display: none; }
     .lr-entrada { grid-area: entrada; justify-self: end; }
     .lr-laudo { grid-area: laudo; justify-self: end; }
-    .lr-situacao { grid-area: situacao; justify-self: end; max-width: 92px; }
+    /* 92px cortavam "Interesse Didático" em "Interesse Did…", que é a etiqueta
+       que mais aparece no acervo didático. A coluna do protocolo é `1fr` e cede
+       o espaço sem apertar nada. */
+    .lr-situacao {
+        grid-area: situacao;
+        justify-self: end;
+        max-width: 116px;
+        font-size: 0.63rem;
+    }
     .lr-diag {
         grid-area: diag;
         font-size: 0.72rem;
@@ -720,6 +821,102 @@
     .ledger-expand-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .ledger-expand-actions button { flex: 1; justify-content: center; }
 
-    .ledger-foot { justify-content: center; }
-    .ledger-foot-info { justify-content: center; font-size: 0.72rem; }
+    /* --- RODAPÉ --- */
+    .ledger-foot { justify-content: space-between; gap: 10px; padding: 9px 12px; }
+    .ledger-foot-info { gap: 10px; font-size: 0.72rem; }
+
+    /* Quantas linhas o virtualizador desenhou e a data do primeiro registro são
+       leitura de bancada, não de telefone: saem para o rodapé caber numa linha
+       e o que interessa (quantos casos, quantos em aberto) ficar legível. O
+       separador da vez (o 4º) some junto — sem nada depois dele, ele viraria um
+       risco solto no fim da frase. */
+    .ledger-foot-info > span:nth-child(4),
+    .ledger-foot-info > span:nth-child(5),
+    .ledger-foot-info > span:nth-child(6),
+    .ledger-foot-info > span:nth-child(7) { display: none; }
+
+    .ledger-foot-btn { height: 32px; padding: 0 11px; }
+}
+
+/* ================================================================
+   TELA MUITO ESTREITA — o botão de filtros perde a palavra
+
+   Com "Filtros" escrito ele mede 113px, e a busca pede 200px: a partir de
+   375px de tela os dois dividem a linha, abaixo disso o botão cai para a linha
+   seguinte e o bloco de filtros cresce uma linha inteira. Nesses aparelhos
+   (320px, 360px) sobra só o ícone — o `aria-label` no HTML continua dizendo o
+   que ele é para quem usa leitor de tela.
+   ================================================================ */
+@media (max-width: 374px) {
+    .ledger-panel-btn {
+        width: 38px;
+        padding: 0;
+        gap: 0;
+        font-size: 0;
+        position: relative;
+    }
+    .ledger-panel-btn i { font-size: 0.9rem; }
+
+    .ledger-panel-badge {
+        position: absolute;
+        top: -7px;
+        right: -7px;
+        font-size: 0.62rem;
+    }
+
+    .ledger-foot-info { font-size: 0.68rem; gap: 8px; }
+}
+
+/* ================================================================
+   MOBILE, TELA EM PÉ — a página não rola, a lista rola
+
+   O mesmo modelo do desktop. Fica atrás de um piso de altura porque num
+   telefone deitado a barra superior, os filtros e o rodapé já comem a janela
+   inteira: ali é mais honesto deixar a página rolar do que espremer a lista até
+   ela sumir.
+   ================================================================ */
+@media (max-width: 1023px) and (min-height: 620px) {
+    /* Fora do desktop o .layout-wrapper é um bloco comum: sem virar coluna
+       flex aqui, o `flex: 1` da main abaixo não teria com quem conversar. */
+    .ledger-page .layout-wrapper {
+        display: flex;
+        flex-direction: column;
+        height: 100dvh;
+        overflow: hidden;
+    }
+
+    /* O respiro do rodapé é da main, que é quem tem a barra flutuante por
+       baixo; mantido no body ele sobraria abaixo da janela travada e a página
+       voltaria a rolar 110px à toa. */
+    body.ledger-page { padding-bottom: 0; }
+
+    .ledger-main {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .ledger-mobile-actions,
+    .ledger-filters { flex: 0 0 auto; }
+
+    .ledger-table {
+        flex: 1;
+        min-height: 0;
+    }
+
+    .ledger-scroll-x,
+    .ledger-inner {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .ledger-viewport {
+        flex: 1;
+        height: auto;
+        min-height: 120px;
+    }
+
+    .ledger-foot { flex: 0 0 auto; }
 }

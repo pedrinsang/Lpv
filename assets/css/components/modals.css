@@ -659,12 +659,14 @@
 @media (max-width: 768px) {
   .modal-glass {
     width: 100% !important;
-    height: 100% !important;
-    max-height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
     border-radius: 0 !important;
     margin: 0 !important;
     display: flex;
     flex-direction: column;
+    /* Sem isto o rodapé de ações fica embaixo do indicador de home do iPhone. */
+    padding-bottom: var(--safe-bottom);
   }
 
   .modal-footer { flex-direction: column-reverse; }
@@ -678,10 +680,11 @@
 @media (max-width: 768px) {
   .tm-modal-shell {
     width: 100% !important;
-    height: 100% !important;
-    max-height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
     border-radius: 0 !important;
     margin: 0 !important;
+    padding-bottom: var(--safe-bottom);
   }
 
   #view-details-content { padding: 14px; }

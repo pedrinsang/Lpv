@@ -287,6 +287,9 @@
     scrollbar-gutter: stable;
 }
 
+/* O botão de "ver as outras" é só do celular; no desktop a lista rola. */
+.hub-card-more { display: none; }
+
 .hub-card-list::-webkit-scrollbar { width: 5px; }
 .hub-card-list::-webkit-scrollbar-track { background: transparent; }
 .hub-card-list::-webkit-scrollbar-thumb {
@@ -1086,8 +1089,11 @@
 
     .week-grid::-webkit-scrollbar { display: none; }
 
+    /* A largura acompanha a tela em vez de ser um número só: 148px fixos
+       davam duas colunas e meia num telefone, com os chips cortados no meio da
+       palavra, e quatro colunas magras num tablet de 1000px. */
     .week-day {
-        flex: 0 0 148px;
+        flex: 0 0 clamp(148px, 46vw, 190px);
         scroll-snap-align: start;
     }
 }
@@ -1102,6 +1108,135 @@
     .hub-card-list {
         height: auto;
         overflow-y: visible;
+    }
+
+    /* --- ORDEM DA TELA ---
+
+       No desktop as três filas ficam lado a lado e a semana logo abaixo: tudo
+       numa olhada. Empilhado, essa mesma ordem enterra a semana depois de
+       dezenas de linhas de fila — e "o que tem hoje" é metade do motivo de
+       abrir o painel no telefone.
+
+       Aqui a leitura vira: o que precisa de decisão (urgências), o que está
+       marcado (semana), o que está para acabar (estoque) e, por último, as
+       filas gerais, que são de navegar, não de conferir. `display: contents`
+       dissolve os dois invólucros e deixa os cinco blocos como filhos diretos
+       da coluna — é o mesmo recurso que o layout "foco" usa. */
+    #cards-grid,
+    #bottom-grid { display: contents; }
+
+    .hub-filters { order: 0; }
+    .hub-card.is-urgencias { order: 1; }
+    .week-section { order: 2; }
+    /* O `align-self: start` do estoque é do rodapé em grade do desktop, onde
+       ele não deve esticar até a altura da semana. Aqui, na coluna, `start`
+       vira largura de conteúdo e o painel encolhe para 250px no meio de blocos
+       de tela cheia. */
+    .hub-bottom .inventory-hub-panel {
+        order: 3;
+        align-self: stretch;
+    }
+    .hub-card.is-biopsias { order: 4; }
+    .hub-card.is-necropsias { order: 5; }
+
+    /* O traço que separava o rodapé passa para a semana, que agora é quem abre
+       a segunda metade da tela. */
+    .week-section {
+        border-top: 1px solid var(--border-glass);
+        padding-top: 16px;
+    }
+
+    /* --- A SEMANA VIRA UMA LISTA DE DIAS ---
+
+       Rolando de lado, a semana do Hub mostrava dois dias e um terceiro
+       cortado ao meio — e como ela abria sempre na segunda, numa quinta o dia
+       de hoje estava fora da tela, num painel cuja função é justamente dizer o
+       que tem hoje.
+
+       Empilhada, os cinco dias aparecem de uma vez sem rolagem nenhuma. Manhã e
+       tarde ficam lado a lado dentro do dia: é o que mantém cada linha em
+       ~90px, e um dia vazio numa linha só. */
+    .week-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        overflow: visible;
+        scroll-snap-type: none;
+    }
+
+    .week-day {
+        flex: 0 0 auto;
+        min-height: 0;
+    }
+
+    .week-day-body { flex-direction: row; }
+
+    .week-shift-block {
+        flex: 1 1 0;
+        min-width: 0;
+        gap: 3px;
+        padding: 8px 10px;
+    }
+
+    /* Lado a lado, quem separa os turnos é um traço vertical. */
+    .week-shift-block.shift-tarde {
+        border-top: none;
+        border-left: 1px dashed var(--border-glass);
+    }
+
+    .week-shift-items { overflow: visible; }
+
+    /* --- FILA DOBRADA ---
+       O 6 abaixo é o `LINHAS_NO_CELULAR` do hub.js mais um; mexer num pede
+       mexer no outro. Fora deste corte a regra não existe, então uma lista que
+       ficou dobrada volta inteira ao girar o aparelho. */
+    .hub-card-list.is-collapsed > .hub-row:nth-child(n+6) { display: none; }
+
+    .hub-card-more {
+        display: block;
+        width: 100%;
+        margin-top: 2px;
+        padding: 9px;
+        font-family: inherit;
+        font-size: 0.74rem;
+        font-weight: 700;
+        color: var(--card-accent);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px dashed var(--border-color);
+        border-radius: 10px;
+        cursor: pointer;
+    }
+
+    /* O cabeçalho da semana tem duas metades — título com atalho, e a
+       navegação. Lado a lado num telefone elas quebravam no meio da navegação,
+       deixando o botão "Hoje" sozinho numa terceira linha; cada uma com a sua
+       linha inteira resolve, e a navegação se espalha para virar alvo de dedo. */
+    .section-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .section-heading { justify-content: space-between; }
+
+    .week-nav { gap: 6px; }
+    .week-range-label { flex: 1; min-width: 0; }
+    .btn-week-nav { width: 34px; height: 34px; flex: 0 0 34px; }
+    .btn-week-today { height: 34px; }
+}
+
+/* No telefone os três botões de etapa dividem a largura da tela: agrupados à
+   esquerda eles deixavam metade da barra vazia e alvos de 65px de lado. */
+@media (max-width: 560px) {
+    .stage-filter,
+    .queue-filter { flex: 1 1 100%; }
+
+    .stage-filter-btn,
+    .queue-filter-btn {
+        flex: 1;
+        min-width: 0;
+        justify-content: center;
+        padding: 0 6px;
     }
 }
 
@@ -1122,6 +1257,27 @@
     .queue-filter {
         margin-left: 0;
         flex-basis: 100%;
+    }
+
+    /* "Mostrar" custa uns 60px de uma linha que tem três botões para acomodar,
+       e os botões já dizem que são um filtro. Sem ele os três dividem a largura
+       da tela por igual, em vez de o terceiro cair sozinho na linha de baixo. */
+    .hub-filters-label { display: none; }
+
+    /* Altura de alvo de toque nos dois grupos; a largura continua sendo a do
+       texto — esticar três botões numa barra de 870px de tablet daria botões de
+       286px, que é largura de banner, não de filtro. */
+    .stage-filter-btn,
+    .queue-filter-btn {
+        height: 34px;
+        padding: 0 10px;
+    }
+
+    /* O rodapé precisa de mais respiro que o desktop: a barra flutuante de
+       navegação cobre os últimos ~90px da tela. */
+    .hub-bottom {
+        padding-top: 16px;
+        gap: 12px;
     }
 
     /* 1. Botão Hambúrguer Visível */
@@ -1149,6 +1305,7 @@
         left: -100%;
         width: 280px;
         height: 100vh;
+        height: 100dvh;
         z-index: 2000;
         transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         background-color: #ffffff;
@@ -1401,6 +1558,7 @@
    existe se a tela for a medida. O que não couber rola por dentro. */
 :root[data-hub-layout="foco"] .hub-layout {
     min-height: calc(100vh - var(--header-height));
+    min-height: calc(100dvh - var(--header-height));
     gap: 14px;
 }
 
@@ -1433,5 +1591,6 @@
 @media (max-width: 1024px) {
     :root[data-hub-layout="foco"] .hub-layout {
         min-height: calc(100vh - var(--header-height) - 100px);
+        min-height: calc(100dvh - var(--header-height) - 100px - var(--safe-bottom));
     }
 }

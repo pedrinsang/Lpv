@@ -4,7 +4,7 @@
     <!-- Redireciona quem chega pelo endereço antigo. Tem que vir antes de tudo. -->
     <script src="../assets/js/migracao.js"></script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Livro de Registros | LPV</title>
 
     <script>
@@ -119,7 +119,7 @@
                         </div>
                     </div>
 
-                    <div class="ledger-field" style="width: 140px;">
+                    <div class="ledger-field is-secundario" style="width: 140px;">
                         <label for="f-laudo">Laudo</label>
                         <select id="f-laudo">
                             <option value="">Todos</option>
@@ -128,7 +128,7 @@
                         </select>
                     </div>
 
-                    <div class="ledger-field" style="width: 150px;">
+                    <div class="ledger-field is-secundario" style="width: 150px;">
                         <label for="f-situacao">Situação</label>
                         <select id="f-situacao">
                             <option value="">Todas</option>
@@ -138,13 +138,13 @@
                         </select>
                     </div>
 
-                    <div class="ledger-field" style="width: 140px;">
+                    <div class="ledger-field is-secundario" style="width: 140px;">
                         <label for="f-ano">Ano do protocolo</label>
                         <select id="f-ano"></select>
                     </div>
 
-                    <button type="button" id="btn-painel" class="ledger-panel-btn">
-                        <i class="fas fa-sliders-h"></i> Mais filtros
+                    <button type="button" id="btn-painel" class="ledger-panel-btn" aria-label="Mais filtros">
+                        <i class="fas fa-sliders-h"></i> <span class="ledger-panel-btn-word">Mais</span> filtros
                         <span id="painel-badge" class="ledger-panel-badge hidden">0</span>
                     </button>
                 </div>
