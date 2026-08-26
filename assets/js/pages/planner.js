@@ -100,6 +100,8 @@ const state = {
     detalheId: null,
     dia: null,             // dia aberto no painel do mês ('YYYY-MM-DD') ou null
     criando: null,         // { data, turno }
+    editando: null,        // id da tarefa aberta no formulário, ou null
+    travado: false,        // edição de caso do laboratório: só o horário
     novo: { tipo: 'necropsia', duracao: '60' },
 };
 
@@ -119,9 +121,9 @@ function cacheEls() {
         'planner-rail', 'rail-detalhe', 'detalhe-body', 'close-detalhe',
         'btn-agendar',
         'day-modal', 'day-dow', 'day-date', 'day-count', 'day-body', 'close-day',
-        'create-modal', 'create-target', 'close-create', 'cancel-create', 'save-create',
+        'create-modal', 'create-title', 'create-target', 'close-create', 'cancel-create', 'save-create',
         'novo-titulo', 'novo-sub', 'novo-tipos', 'novo-data', 'novo-hora', 'novo-duracao',
-        'create-hint',
+        'create-hint', 'edit-hint',
     ];
     ids.forEach(id => { el[id] = document.getElementById(id); });
 }
@@ -151,7 +153,31 @@ function duracaoDe(task) {
     return Number(task.duration) || 60;
 }
 
+/**
+ * "08:00–09:30" — a faixa que a tarefa ocupa, não só a hora em que ela começa.
+ *
+ * Duração era um campo que só existia no formulário e no painel de detalhe: na
+ * agenda, uma tarefa de 30 min e uma de 4 h eram o mesmo cartão com o mesmo
+ * "08:00". Quem olhava a coluna não sabia se o turno estava cheio.
+ */
+function faixaDe(task) {
+    return `${task.scheduledTime}–${hhmm(minutos(task.scheduledTime) + duracaoDe(task))}`;
+}
+
 const agendadas = () => tasksCache.filter(t => t.scheduledDate && t.scheduledTime);
+
+/**
+ * Agendamento escrito no Planner — não é amostra do laboratório.
+ *
+ * A diferença importa na edição: num agendamento destes, título, descrição e
+ * tipo são campos do próprio agendamento e mudam à vontade. Numa necropsia, o
+ * "título" é o protocolo do caso, que o Mural e o Livro de Registros usam para
+ * achar a amostra; deixar reescrever isso daqui renomearia o caso inteiro a
+ * partir de uma tela de calendário. Lá o Planner remarca o horário e nada mais.
+ */
+function ehDoPlanner(task) {
+    return task?.type === 'agendamento_rapido';
+}
 
 /* ==========================================================================
    REGRAS DE AGENDAMENTO
@@ -274,7 +300,7 @@ function criarCartao(task) {
     card.draggable = podeEditar(task);
     card.innerHTML = `
         <div class="pl-card-top">
-            <span class="pl-card-hora">${task.scheduledTime}</span>
+            <span class="pl-card-hora">${faixaDe(task)}</span>
             <span class="pl-tag">${T[tipo].curto}</span>
         </div>
         <span class="pl-card-titulo"></span>
@@ -469,6 +495,9 @@ function renderMes() {
                 <span class="pl-chip-titulo"></span>
             `;
             chip.querySelector('.pl-chip-titulo').textContent = tituloDe(t);
+            // Na célula do mês não cabe a faixa inteira sem comer o título; ela
+            // fica no tooltip, e o painel do dia mostra o cartão completo.
+            chip.title = `${faixaDe(t)} · ${T[tipo].rotulo} — ${tituloDe(t)}`;
             chips.appendChild(chip);
         });
         if (lista.length > MAX_CHIPS) {
@@ -589,6 +618,28 @@ function renderDia() {
    Com o trilho fechado, a semana fica com a largura inteira.
    ========================================================================== */
 
+/**
+ * Qual agendamento está desenhado no painel.
+ *
+ * O painel é redesenhado a cada mudança no Firestore, não só no clique: sem
+ * guardar quem está na tela, a animação de troca dispararia sozinha a cada
+ * atualização de qualquer tarefa da semana, e o painel ficaria piscando.
+ */
+let detalheNaTela = null;
+
+/**
+ * Roda de novo uma animação que já está no elemento.
+ *
+ * Tirar e pôr a classe na mesma linha não faz nada: o navegador junta as duas
+ * mudanças no mesmo quadro e não vê diferença. Ler `offsetWidth` no meio força
+ * o recálculo do estilo, e aí a animação recomeça.
+ */
+function reiniciarAnimacao(nodes, classe) {
+    nodes.forEach(n => n && n.classList.remove(classe));
+    if (nodes[0]) void nodes[0].offsetWidth;
+    nodes.forEach(n => n && n.classList.add(classe));
+}
+
 function renderRail() {
     // O detalhe só existe para tarefa agendada: se ela sumiu do calendário
     // enquanto o painel estava aberto, o trilho fecha em vez de ficar mostrando
@@ -597,6 +648,9 @@ function renderRail() {
     if (!tarefa) {
         state.detalheId = null;
         state.rail = null;
+        // Fechou: reabrir o MESMO agendamento é uma troca de novo, e precisa
+        // animar. Sem zerar aqui, a segunda abertura entraria muda.
+        detalheNaTela = null;
     }
 
     el['planner-rail'].classList.toggle('hidden', state.rail !== 'detalhe');
@@ -608,6 +662,8 @@ function renderDetalhe(task) {
     const duracao = duracaoDe(task);
     const turno = turnoDe(task.scheduledTime);
     const body = el['detalhe-body'];
+    const trocou = detalheNaTela !== task.id;
+    detalheNaTela = task.id;
     body.innerHTML = `
         <div class="pl-detail-head">
             <span class="pl-detail-tag">${T[tipo].rotulo}</span>
@@ -624,10 +680,15 @@ function renderDetalhe(task) {
         </div>
         ${podeEditar(task) ? `
         <div class="pl-detail-actions">
+            <button type="button" class="pl-action primary" data-act="editar"><i class="fas fa-pen"></i> Editar</button>
             <button type="button" class="pl-action" data-act="mover"><i class="fas fa-right-left"></i> Mover para ${turno === 'manha' ? 'tarde' : 'manhã'}</button>
             <button type="button" class="pl-action danger" data-act="excluir"><i class="fas fa-trash"></i> Excluir</button>
         </div>` : ''}
     `;
+    // O cartão inteiro recebe a cor do tipo: é dela que o pulso da troca sai,
+    // então o painel pisca na mesma cor do cartão que foi clicado.
+    const cartao = el['planner-rail'].querySelector('.pl-rail-card');
+    pintar(cartao, tipo);
     pintar(body.querySelector('.pl-detail-tag'), tipo);
     body.querySelector('.pl-detail-titulo').textContent = tituloDe(task);
     body.querySelector('.pl-detail-sub').textContent = subDe(task);
@@ -638,6 +699,9 @@ function renderDetalhe(task) {
         const btn = body.querySelector(`[data-act="${nome}"]`);
         if (btn) btn.addEventListener('click', fn);
     };
+    if (trocou) reiniciarAnimacao([body, cartao], 'is-trocando');
+
+    acao('editar', () => abrirEditar(task));
     acao('mover', () => moverTurno(task));
     acao('excluir', () => excluirTarefa(task));
 }
@@ -679,6 +743,20 @@ async function excluirTarefa(task) {
    ========================================================================== */
 
 function renderTipos() {
+    // Caso do laboratório em edição: o tipo vem da amostra e não é escolha —
+    // a fileira vira uma etiqueta só, dizendo o que o caso é. Ver `ehDoPlanner`.
+    if (state.travado) {
+        el['novo-tipos'].innerHTML = '';
+        const etiqueta = document.createElement('button');
+        etiqueta.type = 'button';
+        etiqueta.className = 'pl-type-btn is-active';
+        etiqueta.disabled = true;
+        etiqueta.textContent = T[state.novo.tipo].rotulo;
+        pintar(etiqueta, state.novo.tipo, true);
+        el['novo-tipos'].appendChild(etiqueta);
+        return;
+    }
+
     const disponiveis = tiposDisponiveis();
 
     // O estagiário só tem "Estágio": a escolha some, e o tipo do estado é
@@ -699,19 +777,94 @@ function renderTipos() {
     });
 }
 
+/**
+ * Marca a duração no seletor.
+ *
+ * Agendamento antigo pode ter duração que não está na lista — 45 min de um
+ * arrasto que encurtou a tarefa, ou 4 h de antes da opção existir. `value` com
+ * número fora das opções deixa o `<select>` vazio, e aí salvar trocaria a
+ * duração da tarefa sem ninguém pedir. Então a que falta entra na lista, no
+ * lugar certo, e sai na próxima abertura.
+ */
+function selecionarDuracao(m) {
+    const sel = el['novo-duracao'];
+    sel.querySelectorAll('option[data-extra]').forEach(o => o.remove());
+
+    const valor = String(m);
+    if (!Array.from(sel.options).some(o => o.value === valor)) {
+        const opt = document.createElement('option');
+        opt.value = valor;
+        opt.textContent = dur(m);
+        opt.dataset.extra = '1';
+        sel.insertBefore(opt, Array.from(sel.options).find(o => Number(o.value) > m) || null);
+    }
+    sel.value = valor;
+}
+
+/** Deixa o formulário no estado de criação, desfazendo o que a edição travou. */
+function modoCriar() {
+    state.editando = null;
+    state.travado = false;
+    el['create-title'].textContent = 'Novo agendamento';
+    el['save-create'].textContent = 'Agendar';
+    el['novo-titulo'].disabled = false;
+    el['novo-sub'].disabled = false;
+    el['edit-hint'].classList.add('hidden');
+}
+
+/**
+ * Abre o mesmo formulário para editar um agendamento que já existe.
+ *
+ * É o formulário de criar, e não uma segunda tela: os campos são os mesmos seis
+ * e duas telas iguais acabam divergindo. O que muda é o alvo da gravação e,
+ * quando a tarefa é um caso do laboratório, quais campos aceitam digitação.
+ */
+function abrirEditar(task) {
+    if (!podeEditar(task)) return;
+
+    const doPlanner = ehDoPlanner(task);
+    state.criando = null;
+    state.editando = task.id;
+    state.travado = !doPlanner;
+    state.novo.tipo = tipoDe(task);
+
+    el['create-title'].textContent = 'Editar agendamento';
+    el['save-create'].textContent = 'Salvar';
+    el['create-target'].textContent =
+        `${br(task.scheduledDate)} · ${TURNOS[turnoDe(task.scheduledTime)].rotulo.toLowerCase()}`;
+
+    // Num agendamento do Planner os dois campos são o que foi digitado neles;
+    // num caso do laboratório eles são a leitura da amostra, só para conferir
+    // que é este o caso que está sendo remarcado.
+    el['novo-titulo'].value = doPlanner ? (task.protocolo || '') : tituloDe(task);
+    el['novo-sub'].value = doPlanner ? (task.animalNome || '') : subDe(task);
+    el['novo-titulo'].disabled = state.travado;
+    el['novo-sub'].disabled = state.travado;
+    el['edit-hint'].classList.toggle('hidden', !state.travado);
+
+    el['novo-data'].value = task.scheduledDate;
+    el['novo-hora'].value = task.scheduledTime;
+    selecionarDuracao(duracaoDe(task));
+
+    renderTipos();
+    el['create-modal'].classList.remove('hidden');
+    setTimeout(() => (state.travado ? el['novo-data'] : el['novo-titulo']).focus(), 80);
+}
+
 function abrirCriar(data, turno) {
     if (!podeCriar()) return;
     if (estaNoPassado(data)) {
         alert('Não é possível agendar em dias que já passaram.');
         return;
     }
+    modoCriar();
     state.criando = { data, turno };
     el['create-target'].textContent = `${br(data)} · ${turno === 'manha' ? 'manhã' : 'tarde'}`;
     el['novo-titulo'].value = '';
     el['novo-sub'].value = '';
     el['novo-data'].value = data;
     el['novo-hora'].value = proximaLivre(data, turno);
-    el['novo-duracao'].value = state.novo.duracao;
+    selecionarDuracao(Number(state.novo.duracao));
     renderTipos();
     el['create-modal'].classList.remove('hidden');
     setTimeout(() => el['novo-titulo'].focus(), 80);
@@ -719,10 +872,63 @@ function abrirCriar(data, turno) {
 
 function fecharCriar() {
     state.criando = null;
+    modoCriar();
     el['create-modal'].classList.add('hidden');
 }
 
+/**
+ * Grava a edição.
+ *
+ * O que pode ser gravado sai da tarefa (`ehDoPlanner`), não do estado da tela:
+ * `state.travado` diz o que desenhar, e desenho é o que dá para burlar pelo
+ * console. É a mesma razão de o tipo ser reconferido na criação.
+ */
+async function salvarEdicao() {
+    const task = tasksCache.find(t => t.id === state.editando);
+    if (!task || !podeEditar(task)) { fecharCriar(); return; }
+
+    const data = el['novo-data'].value;
+    const hora = el['novo-hora'].value || task.scheduledTime;
+    if (!data) { alert('Escolha uma data.'); return; }
+
+    // Remarcar para trás continua proibido; deixar onde já está, não — senão
+    // uma tarefa de ontem não poderia nem ter o título corrigido.
+    if (data !== task.scheduledDate && estaNoPassado(data)) {
+        alert('Não é possível agendar em dias que já passaram.');
+        return;
+    }
+
+    const mudancas = {
+        scheduledDate: data,
+        scheduledTime: hora,
+        duration: Number(el['novo-duracao'].value) || duracaoDe(task),
+        updatedAt: new Date().toISOString(),
+    };
+
+    if (ehDoPlanner(task)) {
+        const titulo = el['novo-titulo'].value.trim();
+        if (!titulo) { alert('Digite um título.'); return; }
+        mudancas.protocolo = titulo;
+        mudancas.animalNome = el['novo-sub'].value.trim() || '';
+        mudancas.plannerTipo = tiposDisponiveis().some(t => t.id === state.novo.tipo)
+            ? state.novo.tipo
+            : tipoDe(task);
+    }
+
+    try {
+        await updateDoc(doc(db, 'tasks', task.id), mudancas);
+        state.ancora = data;
+        if (state.dia) state.dia = data;
+        fecharCriar();
+        renderAll();
+    } catch (e) {
+        console.error(e);
+        alert('Erro ao salvar: ' + e.message);
+    }
+}
+
 async function salvarCriar() {
+    if (state.editando) return salvarEdicao();
     if (!podeCriar()) return;
 
     const titulo = el['novo-titulo'].value.trim();
@@ -856,7 +1062,7 @@ function initControles() {
     // Esc fecha uma camada por vez, de cima para baixo.
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
-        if (state.criando) fecharCriar();
+        if (state.criando || state.editando) fecharCriar();
         else if (state.dia) fecharDia();
         else if (state.rail === 'detalhe') { state.rail = null; state.detalheId = null; renderAll(); }
     });

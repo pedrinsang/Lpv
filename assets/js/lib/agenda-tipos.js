@@ -38,13 +38,30 @@ export const TIPOS_AGENDA = [
     },
     {
         /**
+         * Pós-graduandos: o que é da rotina de quem está na pós — reunião de
+         * orientação, defesa, plantão do pós — e não é caso de laboratório.
+         *
+         * Laranja (#f97316, o mesmo `swatch.orange` do formulário de entrada) e
+         * não âmbar: âmbar (#f59e0b/#fbbf24) já significa "prioritária" nos
+         * cartões da fila do Hub, e duas coisas diferentes na mesma matiz numa
+         * tela que mostra as duas seria só confusão.
+         */
+        id: 'posgrad',
+        rotulo: 'Pós-graduandos',
+        curto: 'PÓS',
+        cor: '#f97316',
+        corTexto: '#fdba74'
+    },
+    {
+        /**
          * Estágio: tarefa de estagiário, falta, troca de turno — o que é da
          * rotina de quem está estagiando e não é caso de laboratório.
          *
          * Roxo porque é a única matiz que sobrava: azul e rosa são os dois tipos
-         * de amostra, verde é aula, âmbar e vermelho já significam prazo
-         * (prioritária e urgente) nos cartões da fila, e o ciano é a cor da
-         * marca. Ver a legenda da semana em hub.js — cor sem legenda é enfeite.
+         * de amostra, verde é aula, laranja é a pós, âmbar e vermelho já
+         * significam prazo (prioritária e urgente) nos cartões da fila, e o
+         * ciano é a cor da marca. Ver a legenda da semana em hub.js — cor sem
+         * legenda é enfeite.
          */
         id: 'estagio',
         rotulo: 'Estagiários',

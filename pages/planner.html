@@ -108,6 +108,7 @@
                             <span class="pl-legend-item"><span class="pl-dot necropsia"></span> Necropsia</span>
                             <span class="pl-legend-item"><span class="pl-dot biopsia"></span> Biópsia</span>
                             <span class="pl-legend-item"><span class="pl-dot aula"></span> Aula</span>
+                            <span class="pl-legend-item"><span class="pl-dot posgrad"></span> Pós-graduandos</span>
                             <span class="pl-legend-item"><span class="pl-dot estagio"></span> Estagiários</span>
                             <span class="pl-legend-item"><span class="pl-dot outro"></span> Outros</span>
                         </div>
@@ -185,7 +186,7 @@
         <div class="pl-modal-card">
             <div class="pl-modal-head">
                 <div class="pl-modal-head-text">
-                    <span class="pl-modal-title">Novo agendamento</span>
+                    <span id="create-title" class="pl-modal-title">Novo agendamento</span>
                     <span id="create-target" class="pl-modal-sub"></span>
                 </div>
                 <button type="button" id="close-create" class="pl-modal-close" aria-label="Fechar"><i class="fas fa-times"></i></button>
@@ -204,6 +205,11 @@
             <div class="pl-form-group" style="gap:6px;">
                 <label class="pl-label">Tipo</label>
                 <div id="novo-tipos" class="pl-type-row"></div>
+                <p id="edit-hint" class="pl-hint hidden">
+                    <i class="fas fa-lock"></i>
+                    Caso do laboratório: aqui dá para remarcar data, hora e duração.
+                    Protocolo, espécie e tipo se editam na ficha do caso, no Mural.
+                </p>
                 <p id="create-hint" class="pl-hint hidden">
                     <i class="fas fa-circle-info"></i>
                     Estagiário agenda só os próprios itens de estágio — tarefa, falta, troca de turno.
@@ -228,6 +234,7 @@
                         <option value="90">1 h 30</option>
                         <option value="120">2 h</option>
                         <option value="180">3 h</option>
+                        <option value="240">4 h</option>
                     </select>
                 </div>
             </div>

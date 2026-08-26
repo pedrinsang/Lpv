@@ -817,6 +817,26 @@ function getAgendaShift(task) {
 }
 
 /**
+ * "08:00–09:30" — a faixa do agendamento, a mesma que o cartão do Planner
+ * mostra. Sem ela o chip dizia só a hora de começar, e um compromisso de 30 min
+ * e um de 4 h ocupavam a mesma linha no dia.
+ *
+ * `duration` vem em minutos e é o mesmo campo que o Planner grava; hora fora do
+ * formato "HH:MM" cai fora e o chip volta a mostrar só o começo.
+ */
+function getAgendaRange(task) {
+    const inicio = task.scheduledTime || '';
+    if (!/^\d{2}:\d{2}$/.test(inicio)) return inicio || '--:--';
+
+    const minutos = Number(inicio.slice(0, 2)) * 60 + Number(inicio.slice(3, 5));
+    const duracao = Number(task.duration) || 0;
+    if (!duracao) return inicio;
+
+    const fim = minutos + duracao;
+    return `${inicio}–${String(Math.floor(fim / 60) % 24).padStart(2, '0')}:${String(fim % 60).padStart(2, '0')}`;
+}
+
+/**
  * Legenda das cores da semana.
  *
  * A agenda ganhou cor e cor sem legenda é enfeite: quem abre o Hub precisa saber
@@ -898,9 +918,9 @@ function renderWeekAgenda() {
                 // assim que "Aula" chegava no Hub pintada de cinza de "outros".
                 pintarPorTipo(chip, tipo);
                 chip.innerHTML = `
-                    <span class="week-chip-time">${escapeHtml(task.scheduledTime || '--:--')}</span>
+                    <span class="week-chip-time">${escapeHtml(getAgendaRange(task))}</span>
                     <span class="week-chip-label">${escapeHtml(task.protocolo || task.animalNome || 'Sem título')}</span>`;
-                chip.title = `${infoDoTipo(tipo).rotulo} · ${task.protocolo || ''} — ${task.animalNome || ''} (${task.scheduledTime || '--:--'})`;
+                chip.title = `${infoDoTipo(tipo).rotulo} · ${task.protocolo || ''} — ${task.animalNome || ''} (${getAgendaRange(task)})`;
                 chip.addEventListener('click', () => { window.location.href = 'planner.html'; });
                 itemsWrap.appendChild(chip);
             });

@@ -19,6 +19,7 @@
     --pl-necropsia: #3b82f6;
     --pl-biopsia: #ec4899;
     --pl-aula: #10b981;
+    --pl-posgrad: #f97316;
     --pl-estagio: #a78bfa;
     --pl-outro: #94a3b8;
 
@@ -243,6 +244,7 @@ body {
 .pl-dot.necropsia { background: var(--pl-necropsia); }
 .pl-dot.biopsia { background: var(--pl-biopsia); }
 .pl-dot.aula { background: var(--pl-aula); }
+.pl-dot.posgrad { background: var(--pl-posgrad); }
 .pl-dot.estagio { background: var(--pl-estagio); }
 .pl-dot.outro { background: var(--pl-outro); }
 
@@ -695,6 +697,30 @@ body {
 .pl-rail-close:hover { color: var(--text-primary); }
 
 /* --- Detalhe --- */
+
+/* TROCA DE AGENDAMENTO NO PAINEL
+   ------------------------------
+   Com o trilho já aberto, clicar num segundo cartão trocava o conteúdo no
+   mesmo lugar, sem nada se mexendo: quem clicou continuava olhando um painel
+   de aparência idêntica e não sabia se o clique tinha pegado. São dois sinais,
+   cada um dizendo uma coisa:
+
+   `plDetailSwap` no corpo — entrou conteúdo novo (o movimento vem da direita,
+   de onde o painel entra no celular).
+
+   `plRailPulse` no cartão — QUAL é o novo: a borda e o brilho piscam na cor do
+   tipo do agendamento que acabou de abrir, a mesma cor do cartão clicado.
+
+   O brilho é `inset` de propósito: `.pl-rail` tem `overflow: hidden` e padding
+   zero à esquerda, então um brilho para fora sairia cortado de um lado só. */
+.pl-detail-body.is-trocando {
+    animation: plDetailSwap 0.32s var(--ease-spring) both;
+}
+
+.pl-rail-card.is-trocando {
+    animation: plRailPulse 0.55s ease-out both;
+}
+
 .pl-detail-body {
     flex: 1;
     min-height: 0;
@@ -791,6 +817,15 @@ body {
 }
 
 .pl-action:hover { background: rgba(56, 189, 248, 0.12); }
+
+.pl-action.primary {
+    border-color: rgba(56, 189, 248, 0.4);
+    background: rgba(56, 189, 248, 0.14);
+    color: var(--pl-accent);
+    font-weight: 700;
+}
+
+.pl-action.primary:hover { background: rgba(56, 189, 248, 0.22); }
 
 .pl-action.danger {
     border-color: rgba(239, 68, 68, 0.35);
@@ -1024,6 +1059,16 @@ body {
 }
 
 .pl-input:focus { border-color: var(--pl-accent); }
+
+/* Editando um caso do laboratório, protocolo e descrição são leitura: dá para
+   conferir que é este o caso, não para reescrever a amostra a partir daqui. */
+.pl-input:disabled {
+    color: var(--pl-muted);
+    background: rgba(2, 6, 23, 0.5);
+    cursor: not-allowed;
+}
+
+.pl-type-btn:disabled { cursor: default; }
 .pl-input::placeholder { color: var(--pl-faint); }
 
 .pl-input.compact {
@@ -1142,6 +1187,25 @@ select.pl-input option {
 @keyframes plFade {
     from { opacity: 0; }
     to { opacity: 1; }
+}
+
+@keyframes plDetailSwap {
+    from { opacity: 0; transform: translateX(10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* O estado final é o transparente escrito por extenso, e não `none`: a
+   interpolação de sombra para `none` não é igual em todo navegador. */
+@keyframes plRailPulse {
+    from {
+        border-color: var(--card-color, var(--pl-line));
+        box-shadow: inset 0 0 0 1px var(--card-edge, transparent),
+                    inset 0 0 26px var(--card-tint, transparent);
+    }
+    to {
+        border-color: var(--pl-line);
+        box-shadow: inset 0 0 0 1px transparent, inset 0 0 26px transparent;
+    }
 }
 
 @keyframes plModalIn {

@@ -844,10 +844,15 @@
 
 /* A cor sai de `--card-color` / `--card-text`, gravadas pelo JS a partir da
    tabela de lib/agenda-tipos.js. Antes eram classes fixas aqui, e o Hub só
-   conhecia três das cinco — "Aula" e "Estágio" chegavam cinzas. */
+   conhecia três das cinco — "Aula" e "Estágio" chegavam cinzas.
+
+   Empilhado, e não lado a lado: a coluna do dia tem ~150px e a hora virou
+   faixa ("08:00–09:30"). Na mesma linha ela comia o título inteiro. */
 .week-chip {
     display: flex;
-    gap: 6px;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
     padding: 5px 7px;
     border-radius: 6px;
     font-size: 0.68rem;
