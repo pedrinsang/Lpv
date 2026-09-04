@@ -145,8 +145,45 @@ service cloud.firestore {
       allow write: if isApprovedUser();
     }
 
+    // Quem lanca lamina: a bancada. O estagiario entra (e ele quem passa o dia
+    // no microtomo) e o pos-graduando fica de fora, por decisao de quem toca o
+    // laboratorio. As variantes de grafia estao aqui pelo mesmo motivo de
+    // isStaff: a tela de equipe grava a role como a pessoa digitou.
+    function isSlideRecorder() {
+      return hasAnyRole([
+        'admin',
+        'professor',
+        'professores',
+        'estagiario',
+        'estagiarios',
+        'estagiário',
+        'estagiários'
+      ]);
+    }
+
+    // Producao de laminas: log append-only de corte e coloracao, no mesmo
+    // espirito de inventory_events. Cada documento e um protocolo de uma leva;
+    // a leva inteira compartilha o loteId, que e o que o "Desfazer" apaga.
     match /slide_records/{recordId} {
-      allow read, write: if isApprovedUser();
+      allow read: if isApprovedUser();
+
+      allow create: if isSlideRecorder()
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.tipo in ['necropsia', 'biopsia']
+        && request.resource.data.acao in ['corte', 'coloracao']
+        && request.resource.data.quantidade is number
+        && request.resource.data.quantidade > 0
+        && request.resource.data.protocolo is string
+        && request.resource.data.protocolo.size() > 0
+        && request.resource.data.responsavelNome is string
+        && request.resource.data.responsavelNome.size() > 0;
+
+      // Lancamento gravado nao se reescreve: erro se corrige desfazendo a leva
+      // e lancando de novo, e o log continua contando o que aconteceu.
+      allow update: if false;
+
+      allow delete: if isApprovedUser()
+        && (resource.data.createdByUid == request.auth.uid || isAdmin());
     }
 
     // O estoque nao controla saldo: cada item guarda quanto se compra de uma vez

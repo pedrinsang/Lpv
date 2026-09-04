@@ -1,0 +1,1243 @@
+/* ================================================================
+   LPV — LÂMINAS (produção: corte e coloração)
+
+   A tela tem dois rostos, e é de propósito.
+
+   No desktop tudo cabe junto: o formulário em cima, a fila do que foi
+   cortado e ainda não foi corado logo abaixo, e o resultado do período
+   em dois painéis lado a lado.
+
+   No celular a mesma página vira duas abas — Registro e Histórico. Quem
+   está na bancada lança de pé, com uma mão, e o formulário sozinho já
+   ocupa a tela inteira; pôr o painel de números embaixo dele só faria
+   rolagem. O botão de lançar fica flutuando acima da barra de navegação
+   para não sumir enquanto a leva é montada.
+
+   Necropsia é azul (--color-necro) e biópsia é rosa (--color-bio) em
+   todo lugar onde os dois aparecem juntos, como no resto do app.
+   ================================================================ */
+
+.laminas-page {
+  /* As versões translúcidas dos dois tokens de tipo. Ficam aqui em cima
+     porque aparecem em pill, barra, borda e pulso — repetir o rgba solto
+     em cada regra é como as paletas paralelas nascem. */
+  --necro-line: rgba(59, 130, 246, 0.45);
+  --necro-fill: rgba(59, 130, 246, 0.12);
+  --necro-halo: rgba(59, 130, 246, 0.18);
+  --necro-text: #93c5fd;
+  --bio-line: rgba(236, 72, 153, 0.45);
+  --bio-fill: rgba(236, 72, 153, 0.12);
+  --bio-halo: rgba(236, 72, 153, 0.18);
+  --bio-text: #f9a8d4;
+  --fila-line: rgba(251, 191, 36, 0.35);
+  --fila-fill: rgba(251, 191, 36, 0.16);
+}
+
+.main-container.laminas-main {
+  width: 100%;
+  /* Mais largo que o 1200px padrão: são dois painéis lado a lado e uma
+     linha de formulário com quatro campos. */
+  max-width: 1400px;
+  padding: 1.25rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+
+/* ==========================================================
+   CONTADORES DO CABEÇALHO
+
+   `.header-actions` não existe no CSS global — cada página que usa a
+   barra superior declara o seu (o Livro de Registros faz igual). Sem
+   isto o div é bloco puro e os contadores e o botão de sair empilham,
+   estourando a altura travada de 70px do cabeçalho.
+   ========================================================== */
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Nasce escondido e só aparece no desktop, como os contadores do Livro de
+   Registros. No celular a barra superior já é logo + marca + papel, e o bloco
+   de três números empurrava tudo por cima do "LPV Lâminas". Os mesmos totais
+   estão a um toque, grandes, na aba Histórico. */
+.laminas-counters {
+  display: none;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-glass);
+  border-radius: 12px;
+  flex: 0 0 auto;
+}
+
+.laminas-counter {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.laminas-counter-val {
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.laminas-counter-val.is-necro { color: var(--color-necro); }
+.laminas-counter-val.is-bio { color: var(--color-bio); }
+
+.laminas-counter-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.laminas-counter-sep {
+  width: 1px;
+  height: 24px;
+  background: var(--border-color);
+}
+
+
+/* ==========================================================
+   ABAS (só no celular)
+   ========================================================== */
+
+.laminas-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border-color);
+  background: rgba(15, 23, 42, 0.7);
+  border-radius: 12px;
+}
+
+.laminas-tabs button {
+  height: 44px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-family: inherit;
+  font-size: 0.87rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+
+/* ==========================================================
+   CONTROLE SEGMENTADO (etapa e período)
+   ========================================================== */
+
+.laminas-seg {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--border-color);
+  background: rgba(15, 23, 42, 0.7);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+}
+
+.laminas-seg button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
+}
+
+.laminas-seg button:hover { color: var(--text-primary); }
+
+.laminas-seg button.is-on,
+.laminas-tabs button.is-on {
+  background: var(--gradient-main);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.laminas-seg.is-etapa { height: 42px; }
+.laminas-seg.is-periodo { height: 38px; }
+.laminas-seg.is-periodo button { height: 30px; padding: 0 15px; font-size: 0.78rem; }
+
+
+/* ==========================================================
+   FORMULÁRIO DA LEVA
+   ========================================================== */
+
+/**
+ * As animações de entrada desta página usam `backwards` e nunca `both`, e
+ * `.laminas-card` ainda leva um z-index próprio.
+ *
+ * `springUp` termina com `transform`, e um transform que fica (que é o que
+ * `both` faz) transforma o elemento em contexto de empilhamento. Com isso a
+ * lista de sugestões do protocolo — que vive dentro do cartão — passava a ser
+ * empilhada *dentro* dele, e todo bloco seguinte da página (fila, totais,
+ * estado vazio, que também tinham `both`) era pintado por cima dela: a lista
+ * aparecia cortada no meio de um item. O `z-index` do dropdown não resolvia
+ * porque ele nunca chegava a competir com os irmãos do cartão.
+ */
+.laminas-card {
+  position: relative;
+  z-index: 5;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-glass);
+  animation: springUp var(--duration-slow) var(--ease-spring) 0.1s backwards;
+}
+
+.laminas-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.laminas-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.laminas-field.is-proto { flex: 1 1 240px; position: relative; }
+.laminas-field.is-resp { flex: 1 1 180px; }
+
+.laminas-field > label,
+.laminas-legend {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.laminas-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.laminas-input-wrap > i {
+  position: absolute;
+  left: 12px;
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.laminas-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px 0 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: rgba(15, 23, 42, 0.7);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color var(--duration-fast) ease;
+}
+
+.laminas-input:focus { border-color: var(--color-primary); }
+
+.laminas-input.is-proto {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Sugestões vindas do Mural */
+.laminas-sugestoes {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 6px;
+  z-index: 400;
+  background: var(--bg-glass-heavy);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  animation: slideDown var(--duration-fast) var(--ease-spring) both;
+}
+
+.laminas-sugestoes-head {
+  padding: 8px 12px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.laminas-sugestao {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.laminas-sugestao:hover,
+.laminas-sugestao:focus-visible {
+  background: rgba(2, 132, 199, 0.16);
+  outline: none;
+}
+
+.laminas-sugestao i { width: 16px; text-align: center; font-size: 0.78rem; opacity: 0.85; }
+.laminas-sugestao strong { font-weight: 800; letter-spacing: 0.02em; }
+
+.laminas-sugestao small {
+  color: var(--text-tertiary);
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Quantidade */
+.laminas-qtd-row { display: flex; align-items: center; gap: 8px; }
+
+.laminas-stepper {
+  display: flex;
+  align-items: center;
+  height: 42px;
+  border: 1px solid var(--border-color);
+  background: rgba(15, 23, 42, 0.7);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.laminas-stepper button {
+  width: 34px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
+}
+
+.laminas-stepper button:hover {
+  color: var(--color-primary);
+  background: rgba(2, 132, 199, 0.1);
+}
+
+.laminas-stepper input {
+  width: 54px;
+  height: 100%;
+  border: none;
+  border-left: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  box-sizing: border-box;
+  -moz-appearance: textfield;
+}
+
+.laminas-stepper input::-webkit-outer-spin-button,
+.laminas-stepper input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.laminas-add {
+  height: 42px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.08);
+  color: var(--color-accent);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: background var(--duration-fast) ease, border-style var(--duration-fast) ease;
+}
+
+.laminas-add:hover {
+  background: rgba(56, 189, 248, 0.16);
+  border-style: solid;
+}
+
+
+/* ==========================================================
+   A LEVA EM MONTAGEM
+   ========================================================== */
+
+.laminas-leva-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 11px;
+  border-top: 1px solid var(--border-glass);
+}
+
+.laminas-leva-rotulo {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.laminas-leva-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.laminas-vazio-inline { font-size: 0.78rem; color: #94a3b8; }
+
+/* Pill de protocolo — o mesmo desenho serve na leva, na fila, na quebra
+   por pessoa e no log. O que muda é o tamanho, via modificadores. */
+.laminas-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 11px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+
+.laminas-pill i { font-size: 0.72rem; opacity: 0.9; }
+
+.laminas-pill em {
+  font-style: normal;
+  font-weight: 600;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+.laminas-pill.is-necro {
+  border-color: var(--necro-line);
+  background: var(--necro-fill);
+  color: var(--necro-text);
+}
+
+.laminas-pill.is-bio {
+  border-color: var(--bio-line);
+  background: var(--bio-fill);
+  color: var(--bio-text);
+}
+
+.laminas-pill.is-nova { animation: badgePop 0.32s var(--ease-spring) both; }
+
+.laminas-pill.is-sm { padding: 5px 11px; font-size: 0.73rem; }
+.laminas-pill.is-xs { padding: 3px 9px; font-size: 0.68rem; gap: 6px; }
+
+.laminas-pill-x {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  font-size: 0.6rem;
+  cursor: pointer;
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+
+.laminas-pill-x:hover {
+  background: var(--color-error);
+  color: #ffffff;
+}
+
+.laminas-lancar {
+  margin-left: auto;
+  height: 42px;
+  padding: 0 22px;
+  border-radius: var(--radius-pill);
+  border: none;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--gradient-main);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3);
+  white-space: nowrap;
+  transition: transform var(--duration-normal) var(--ease-spring),
+              box-shadow var(--duration-normal) ease;
+}
+
+.laminas-lancar:hover {
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.4);
+  transform: translateY(-2px);
+}
+
+.laminas-lancar:active { transform: translateY(0) scale(0.96); }
+
+.laminas-lancar[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+
+/* ==========================================================
+   FILA — CORTADAS AGUARDANDO COLORAÇÃO
+   ========================================================== */
+
+.laminas-fila {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  animation: springUp var(--duration-slow) var(--ease-spring) 0.14s backwards;
+}
+
+.laminas-fila-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 0 0 auto;
+  color: var(--color-warning);
+}
+
+.laminas-fila-head span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.laminas-fila-total {
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--fila-fill);
+  border: 1px solid var(--fila-line);
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.laminas-fila-lista {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.laminas-fila-item {
+  background: rgba(15, 23, 42, 0.6);
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform var(--duration-fast) var(--ease-spring);
+}
+
+.laminas-fila-item:hover { transform: translateY(-1px); }
+.laminas-fila-item:active { transform: scale(0.97); }
+
+
+/* ==========================================================
+   PERÍODO
+   ========================================================== */
+
+.laminas-periodo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.laminas-resumo { font-size: 0.78rem; color: var(--text-tertiary); }
+
+
+/* ==========================================================
+   TOTAIS
+   ========================================================== */
+
+.laminas-totais {
+  display: grid;
+  grid-template-columns: 200px 1fr 1fr;
+  gap: 10px;
+  align-items: center;
+  animation: springUp var(--duration-slow) var(--ease-spring) 0.15s backwards;
+}
+
+.laminas-totais-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 4px;
+  color: var(--text-tertiary);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.laminas-totais-rotulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.laminas-totais-rotulo.is-necro {
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.08);
+  color: var(--color-necro);
+}
+
+.laminas-totais-rotulo.is-bio {
+  border: 1px solid rgba(236, 72, 153, 0.4);
+  background: rgba(236, 72, 153, 0.08);
+  color: var(--color-bio);
+}
+
+.laminas-total {
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: 14px;
+  padding: 13px 18px;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.laminas-total.is-necro { border-left: 3px solid var(--color-necro); }
+.laminas-total.is-bio { border-left: 3px solid var(--color-bio); }
+
+.laminas-total strong {
+  font-size: 2.15rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.laminas-total.is-necro strong { color: var(--color-necro); }
+.laminas-total.is-bio strong { color: var(--color-bio); }
+
+.laminas-total small { color: var(--text-tertiary); font-size: 0.72rem; }
+
+/* Pulso de confirmação: a leitura que acabou de mudar pisca na cor do
+   tipo. É o feedback de "entrou", junto com o toast. */
+@keyframes laminasPulseNecro {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+  45%      { box-shadow: 0 0 0 7px var(--necro-halo); }
+}
+
+@keyframes laminasPulseBio {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
+  45%      { box-shadow: 0 0 0 7px var(--bio-halo); }
+}
+
+.laminas-total.pulse-necro { animation: laminasPulseNecro 0.9s var(--ease-spring); }
+.laminas-total.pulse-bio { animation: laminasPulseBio 0.9s var(--ease-spring); }
+
+
+/* ==========================================================
+   PAINÉIS (por responsável / últimas levas)
+   ========================================================== */
+
+.laminas-paineis {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: stretch;
+}
+
+.laminas-painel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  animation: springUp var(--duration-slow) var(--ease-spring) 0.2s backwards;
+}
+
+.laminas-painel.is-log { animation-delay: 0.25s; }
+
+.laminas-painel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.laminas-painel-head h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.laminas-painel-head span { font-size: 0.7rem; color: var(--text-tertiary); }
+
+.laminas-painel-body {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+/* --- Linha de pessoa --- */
+.laminas-pessoa { border-bottom: 1px solid var(--border-glass); }
+
+.laminas-pessoa-head {
+  display: grid;
+  grid-template-columns: 36px minmax(150px, 1fr) 168px 62px 20px;
+  gap: 13px;
+  align-items: center;
+  padding: 13px 18px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--duration-fast) ease;
+}
+
+.laminas-pessoa-head:hover { background: rgba(255, 255, 255, 0.025); }
+
+.laminas-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--gradient-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+/* Os netos da grade continuam inline por padrão — só os filhos diretos são
+   blocados por ela. Sem isso o corte com reticências não acontece. */
+.laminas-pessoa-head > span { min-width: 0; }
+
+.laminas-pessoa-nome {
+  display: block;
+  color: var(--text-primary);
+  font-weight: 800;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.laminas-barra {
+  display: flex;
+  height: 6px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+  overflow: hidden;
+}
+
+.laminas-barra span { height: 100%; animation: densityGrow var(--duration-slow) var(--ease-spring) both; }
+.laminas-barra .is-necro { background: var(--color-necro); }
+.laminas-barra .is-bio { background: var(--color-bio); }
+
+.laminas-pessoa-num {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 10px;
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+
+.laminas-pessoa-num span { font-variant-numeric: tabular-nums; }
+.laminas-pessoa-num .is-necro { color: var(--color-necro); }
+.laminas-pessoa-num .is-bio { color: var(--color-bio); }
+.laminas-pessoa-num strong { font-weight: 800; }
+
+/* No celular a grade de quatro números não cabe; vira uma linha só de
+   resumo, que o JS já monta junto. */
+.laminas-pessoa-resumo {
+  display: none;
+  margin-top: 6px;
+  font-size: 0.66rem;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.laminas-pessoa-total { text-align: right; }
+
+.laminas-pessoa-total strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.laminas-pessoa-total small {
+  display: block;
+  color: var(--text-tertiary);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+.laminas-pessoa-head > i { color: #94a3b8; font-size: 0.75rem; text-align: center; }
+
+.laminas-pessoa-protocolos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 18px 14px 67px;
+  animation: fadeInUp 0.24s var(--ease-spring) both;
+}
+
+/* --- Linha de leva --- */
+.laminas-leva-log {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.laminas-leva-log-head {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+}
+
+.laminas-leva-icone {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text-secondary);
+}
+
+.laminas-leva-log-head > span { min-width: 0; }
+
+.laminas-leva-titulo {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.laminas-leva-detalhe { display: block; font-size: 0.66rem; color: var(--text-tertiary); margin-top: 2px; }
+
+.laminas-desfazer {
+  padding: 5px 11px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+
+.laminas-desfazer:hover { border-color: var(--color-error); color: var(--color-error); }
+.laminas-desfazer[disabled] { opacity: 0.35; cursor: not-allowed; }
+.laminas-desfazer[disabled]:hover { border-color: var(--border-color); color: var(--text-tertiary); }
+
+.laminas-leva-itens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+  padding-left: 41px;
+}
+
+
+/* ==========================================================
+   ESTADOS VAZIOS
+   ========================================================== */
+
+.laminas-empty {
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 3rem 1rem;
+  color: var(--text-tertiary);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+  animation: springUp var(--duration-slow) var(--ease-spring) 0.15s backwards;
+}
+
+.laminas-empty i { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.55; }
+
+.laminas-empty h3 {
+  color: var(--text-primary);
+  margin: 0 0 6px;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.laminas-empty p { margin: 0; font-size: 0.85rem; max-width: 48ch; line-height: 1.5; }
+
+.laminas-painel-vazio {
+  padding: 1.5rem 1.2rem;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+}
+
+
+/* ==========================================================
+   TOAST
+   ========================================================== */
+
+.laminas-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 5000;
+  max-width: min(380px, calc(100vw - 40px));
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  background: var(--bg-glass-heavy);
+  color: var(--text-primary);
+  padding: 12px 15px;
+  box-shadow: var(--shadow-xl);
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+  transition: 0.2s ease;
+}
+
+.laminas-toast.show { opacity: 1; transform: translateY(0); }
+.laminas-toast i { color: var(--color-success); }
+.laminas-toast.error { border-color: rgba(239, 68, 68, 0.45); color: #fca5a5; }
+.laminas-toast.error i { color: var(--color-error); }
+
+
+/* ==========================================================
+   BLOQUEIO DE ACESSO
+   ========================================================== */
+
+.laminas-bloqueio {
+  min-height: 55vh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+  gap: 10px;
+  padding: 2rem 1rem;
+  color: var(--text-tertiary);
+}
+
+.laminas-bloqueio i { font-size: 2.5rem; color: var(--color-warning); opacity: 0.8; }
+.laminas-bloqueio h2 { margin: 6px 0 0; color: var(--text-primary); font-size: 1.15rem; }
+.laminas-bloqueio p { margin: 0; font-size: 0.88rem; max-width: 46ch; line-height: 1.5; }
+
+
+/* ==========================================================
+   DESKTOP — as duas abas viram uma tela só
+   ========================================================== */
+
+/* 1025px e não 1024: é o ponto onde `layout/responsive.css` troca a barra
+   inferior pela sidebar fixa. Com um limiar próprio, a 1024px exatos a página
+   caía no desktop enquanto a casca do app ainda estava no celular. */
+@media (min-width: 1025px) {
+  .laminas-counters { display: flex; }
+  .laminas-tabs { display: none; }
+
+  /* Sem abas, os dois painéis são seções da mesma página. O !important
+     é para vencer o `display: none` da aba inativa no celular, que fica
+     na classe e não no estilo inline. */
+  .laminas-pane { display: flex !important; flex-direction: column; gap: 0.9rem; }
+
+  /* A tela inteira cabe na janela e quem rola são os dois painéis, por dentro
+     — é assim no artboard, e é o que mantém o formulário e os quatro totais
+     sempre à vista enquanto a lista de responsáveis corre. Para isso a altura
+     precisa descer inteira, sem furo: cada nível ganha `flex: 1` e o
+     `min-height: 0` que desarma o mínimo automático do flex (sem ele o filho
+     se recusa a encolher e o vazamento vai parar no rodapé da página). */
+  .laminas-page .layout-wrapper { overflow: hidden; }
+  .main-container.laminas-main { flex: 1; min-height: 0; overflow-y: auto; }
+  #laminas-conteudo { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.9rem; }
+  #pane-historico { flex: 1; min-height: 0; }
+  #lam-dados { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.9rem; }
+  .laminas-paineis { flex: 1; min-height: 0; }
+
+  /* Sem lançamento no período, o vazio ocupa o lugar dos painéis em vez de
+     virar uma faixa fina no meio da tela. */
+  .laminas-empty { flex: 1; min-height: 0; }
+}
+
+
+/* ==========================================================
+   TELAS MÉDIAS
+   ========================================================== */
+
+@media (max-width: 1250px) {
+  .laminas-paineis { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 1050px) {
+  .laminas-totais { grid-template-columns: 1fr 1fr; }
+  .laminas-totais > .laminas-totais-head,
+  .laminas-totais > .laminas-totais-vazio { display: none; }
+  .laminas-totais > .laminas-totais-rotulo { grid-column: span 2; }
+}
+
+
+/* ==========================================================
+   CELULAR — duas abas, polegar e uma mão só
+   ========================================================== */
+
+@media (max-width: 1024px) {
+  /* Toda medida daqui para baixo é a do artboard mobile (Lpv Laminas Mobile
+     v3): raios de 9/11/12 e os respiros do Histórico.
+
+     As **alturas do Registro** são a exceção deliberada. O artboard usa 46/52/56
+     numa tela sem cabeçalho do app e sem barra de navegação; aqui esses dois
+     comem 190px, e o formulário inteiro deixava de caber numa tela de 812 — a
+     pessoa montava a leva rolando. Os campos foram para 40/46/48, que continua
+     acima do alvo de toque confortável e devolve o formulário inteiro para a
+     primeira tela. */
+
+  .main-container.laminas-main {
+    padding: 12px 14px 16px;
+    gap: 10px;
+  }
+
+  /* Contadores compactos: o artboard mobile traz VN e V, sem o total geral —
+     que é justamente o que não cabe ao lado da marca e do papel. */
+  .laminas-counters {
+    display: flex;
+    gap: 12px;
+    padding: 6px 12px;
+    border-radius: 10px;
+  }
+
+  .laminas-counters .is-geral { display: none; }
+  .laminas-counter-val { font-size: 0.85rem; }
+  .laminas-counter-label { font-size: 0.55rem; }
+
+  /* Abas mais baixas: são duas, sempre no mesmo lugar, e não precisam do
+     mesmo peso de um botão de ação. */
+  .laminas-tabs { padding: 3px; }
+  .laminas-tabs button { height: 38px; font-size: 0.83rem; }
+
+  /* Só a aba escolhida ocupa a tela. */
+  #laminas-conteudo { display: flex; flex-direction: column; gap: 10px; }
+  .laminas-pane { display: none; flex-direction: column; gap: 10px; }
+  .laminas-pane.is-ativa { display: flex; }
+  #pane-historico { gap: 18px; }
+  #lam-dados { display: flex; flex-direction: column; gap: 18px; }
+
+  /* O formulário empilha: cada campo numa linha. */
+  .laminas-card { padding: 12px; gap: 10px; }
+  .laminas-form-row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .laminas-field { gap: 5px; }
+  .laminas-field > label,
+  .laminas-legend { font-size: 0.64rem; }
+  .laminas-field.is-proto,
+  .laminas-field.is-resp { flex: 1 1 auto; }
+
+  .laminas-seg.is-etapa { height: 48px; padding: 4px; border-radius: 12px; }
+  .laminas-seg.is-etapa button {
+    flex: 1;
+    height: 40px;
+    border-radius: 9px;
+    gap: 8px;
+    font-size: 0.84rem;
+  }
+
+  .laminas-input { height: 46px; padding: 0 12px 0 36px; border-radius: 10px; }
+  .laminas-field.is-resp .laminas-input { height: 44px; }
+  .laminas-input-wrap > i { left: 13px; }
+
+  .laminas-qtd-row { gap: 8px; }
+  .laminas-stepper { flex: 1; height: 46px; border-radius: 10px; }
+  .laminas-stepper button { width: 40px;}
+
+  /* `width: 0` e não `auto`: um <input> tem largura intrínseca (uns 230px) e
+     ela vira o piso de min-content da linha inteira, empurrando o cartão para
+     fora da tela. Com largura zero o `flex: 1` cuida do tamanho real. */
+  .laminas-stepper input { flex: 1 1 0; width: 0; min-width: 0; font-size: 1.15rem; }
+
+  .laminas-add { height: 46px; padding: 0 14px; border-radius: 10px; font-size: 0.82rem; }
+
+  /* A leva vira pilha: rótulo, chips e, por último, o botão de lançar em
+     largura cheia. */
+  .laminas-leva-row { flex-direction: column; align-items: stretch; gap: 8px; padding-top: 10px; }
+  .laminas-leva-chips { flex: 1 1 auto; gap: 8px; }
+  .laminas-vazio-inline { font-size: 0.78rem; line-height: 1.45; }
+
+  .laminas-pill { padding: 6px 6px 6px 11px; gap: 8px; font-size: 0.8rem; }
+  .laminas-pill.is-sm { padding: 6px 11px; gap: 7px; font-size: 0.75rem; }
+  .laminas-pill.is-xs { padding: 4px 10px; gap: 6px; font-size: 0.72rem; }
+  .laminas-pill-x { width: 22px; height: 22px; font-size: 0.65rem; }
+
+  /* Fila: bloco com os pills quebrando em linhas, não um trilho horizontal —
+     rolagem lateral dentro de página que já rola é armadilha. */
+  .laminas-fila { flex-direction: column; align-items: flex-start; gap: 8px; padding: 9px 12px; }
+  .laminas-fila-lista { flex-wrap: wrap; overflow-x: visible; width: 100%; gap: 8px; }
+  .laminas-fila-item { min-height: 36px; padding: 6px 12px; gap: 7px; font-size: 0.8rem; }
+
+  /* Botão de lançar em largura cheia, logo abaixo dos chips: é para onde o
+     olho vai depois de adicionar o último protocolo. No artboard ele mora numa
+     barra fixa no rodapé; aqui não dá — a barra flutuante de navegação do app
+     já ocupa esse lugar, e o cartão tem animação de entrada com `transform`,
+     que faria um `position: fixed` aqui dentro se ancorar no cartão em vez de
+     na tela. */
+  .laminas-lancar {
+    margin-left: 0;
+    height: 48px;
+    border-radius: 12px;
+    gap: 9px;
+    font-size: 0.94rem;
+  }
+
+  .laminas-lancar:hover { transform: none; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3); }
+
+  /* O artboard põe o toast a 84px do fim; aqui são 102px porque a barra de
+     navegação (20px de folga + 70px de altura) não existe lá. */
+  .laminas-toast {
+    left: 16px;
+    right: 16px;
+    bottom: calc(102px + var(--safe-bottom));
+    max-width: none;
+    padding: 13px 15px;
+    border-radius: 14px;
+  }
+
+  .laminas-periodo-row { flex-direction: column; align-items: stretch; gap: 8px; }
+
+  .laminas-seg.is-periodo {
+    height: 48px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    padding: 4px;
+    border-radius: 11px;
+  }
+
+  .laminas-seg.is-periodo button { height: 40px; padding: 0; border-radius: 8px; font-size: 0.8rem; }
+  .laminas-resumo { font-size: 0.74rem; }
+
+  .laminas-paineis { grid-template-columns: 1fr; gap: 10px; }
+  .laminas-painel-body { overflow-y: visible; max-height: none; }
+  .laminas-painel-head span { display: none; }
+
+  /* A grade de quatro números vira a linha de resumo. */
+  .laminas-pessoa-head { grid-template-columns: 34px minmax(0, 1fr) auto 18px; gap: 11px; padding: 13px 14px; }
+  .laminas-pessoa-num { display: none; }
+  .laminas-pessoa-resumo { display: block; }
+  .laminas-avatar { width: 34px; height: 34px; font-size: 0.75rem; }
+  .laminas-pessoa-protocolos { gap: 7px; padding: 0 14px 14px 59px; }
+
+  /* A leva do log vira cartão empilhado: cabeçalho e, embaixo, os protocolos
+     em largura cheia — sem o recuo que alinha com o ícone no desktop. */
+  .laminas-leva-log { padding: 13px 14px; }
+  .laminas-leva-log-head { grid-template-columns: 32px minmax(0, 1fr) auto; }
+  .laminas-leva-icone { width: 32px; height: 32px; border-radius: 10px; font-size: 0.78rem; }
+  .laminas-leva-titulo { font-size: 0.84rem; }
+  .laminas-leva-detalhe { font-size: 0.7rem; }
+  .laminas-desfazer { min-height: 36px; padding: 7px 13px; font-size: 0.72rem; }
+  .laminas-leva-itens { gap: 6px; margin-top: 10px; padding-left: 0; }
+
+  .laminas-empty { padding: 2.5rem 1.2rem; }
+  .laminas-empty i { font-size: 2rem; margin-bottom: 0; }
+  .laminas-empty h3 { margin: 12px 0 6px; font-size: 1rem; }
+  .laminas-empty p { font-size: 0.83rem; }
+}

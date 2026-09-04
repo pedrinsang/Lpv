@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <!-- Redireciona quem chega pelo endereço antigo. Tem que vir antes de tudo. -->
+    <script src="../assets/js/migracao.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Produção de Lâminas | LPV</title>
+
+    <script>
+        (function() {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        })();
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/global.css">
+    <link rel="stylesheet" href="../assets/css/pages/laminas.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
+</head>
+<body class="laminas-page">
+
+    <aside class="desktop-sidebar">
+        <div class="sidebar-header">
+            <img src="../assets/images/lpvminilogo2.png" alt="LPV" class="light-mode-only" style="height: 40px;">
+            <img src="../assets/images/lpvminilogo.png" alt="LPV" class="dark-mode-only" style="height: 40px;">
+            <div style="line-height: 1;">
+                <div class="sidebar-brand-text">LPV Digital</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">Patologia Veterinária</div>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="hub.html" class="sidebar-link"><i class="fas fa-home"></i> <span>Visão Geral</span></a>
+            <a href="mural.html" class="sidebar-link"><i class="fas fa-columns"></i> <span>Mural</span></a>
+            <a href="historico.html" class="sidebar-link"><i class="fas fa-history"></i> <span>Registros</span></a>
+            <a href="estoque.html" class="sidebar-link"><i class="fas fa-boxes-stacked"></i> <span>Estoque</span></a>
+            <a href="planner.html" class="sidebar-link"><i class="fas fa-calendar-alt"></i> <span>Planner</span></a>
+            <a href="laminas.html" class="sidebar-link active hidden" id="sidebar-laminas-link"><i class="fas fa-layer-group"></i> <span>Lâminas</span></a>
+            <a href="admin.html" class="sidebar-link hidden" id="sidebar-admin-link"><i class="fas fa-shield-alt"></i> <span>Admin</span></a>
+            <button class="sidebar-link btn-sidebar-new"><i class="fas fa-plus"></i> <span>Nova Entrada</span></button>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="sidebar-user-avatar"><i class="fas fa-user"></i></div>
+            <div class="sidebar-user-info">
+                <div id="sidebar-user-name" class="user-name-text">Carregando...</div>
+                <div id="sidebar-user-role" class="user-role-text">...</div>
+            </div>
+            <button id="btn-logout" class="btn-sidebar-settings" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </aside>
+
+    <div class="layout-wrapper">
+
+        <header class="app-header">
+            <div class="header-brand" style="display: flex; align-items: center; gap: 10px;">
+                <button id="mobile-menu-btn" class="btn-icon mobile-menu-btn">
+                    <i class="fas fa-bars"></i>
+                </button>
+
+                <img src="../assets/images/lpvminilogo2.png" alt="Logo" class="header-logo light-mode-only">
+                <img src="../assets/images/lpvminilogo.png" alt="Logo" class="header-logo dark-mode-only">
+
+                <div class="header-text-column">
+                    <span class="brand-title">LPV<span class="brand-subtitle">Lâminas</span></span>
+                    <span id="user-role-badge" class="user-badge">...</span>
+                </div>
+                <span class="page-title">Produção de Lâminas</span>
+            </div>
+            <div class="header-actions">
+                <!-- Os dois totais do período, sempre à vista: é a leitura que
+                     a bancada procura antes de qualquer outra. -->
+                <div class="laminas-counters">
+                    <div class="laminas-counter">
+                        <span id="head-vn" class="laminas-counter-val is-necro">0</span>
+                        <span class="laminas-counter-label">VN</span>
+                    </div>
+                    <span class="laminas-counter-sep"></span>
+                    <div class="laminas-counter">
+                        <span id="head-v" class="laminas-counter-val is-bio">0</span>
+                        <span class="laminas-counter-label">V</span>
+                    </div>
+                    <!-- O total geral é o único que não cabe no celular; o
+                         artboard mobile também só traz VN e V. -->
+                    <span class="laminas-counter-sep is-geral"></span>
+                    <div class="laminas-counter is-geral">
+                        <span id="head-geral" class="laminas-counter-val">0</span>
+                        <span class="laminas-counter-label">Lâminas</span>
+                    </div>
+                </div>
+                <button id="logout-btn-header" class="btn-icon" style="color: var(--color-error);"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+        </header>
+
+        <main class="main-container laminas-main">
+
+            <!-- Quem não é admin, professor ou estagiário não passa daqui: o
+                 conteúdo é escondido e esta mensagem toma o lugar. -->
+            <section id="laminas-bloqueio" class="laminas-bloqueio hidden">
+                <i class="fas fa-lock"></i>
+                <h2>Página restrita</h2>
+                <p>A produção de lâminas é lançada por quem está na bancada. Fale com um administrador se você precisa de acesso.</p>
+            </section>
+
+            <div id="laminas-conteudo">
+
+                <!-- Abas do celular. No desktop somem e as duas seções ficam
+                     visíveis ao mesmo tempo (ver pages/laminas.css). -->
+                <nav class="laminas-tabs" role="tablist" aria-label="Seções da produção de lâminas">
+                    <button type="button" role="tab" id="tab-registro" class="is-on" data-aba="registro" aria-selected="true" aria-controls="pane-registro">
+                        <i class="fas fa-layer-group"></i> Registro
+                    </button>
+                    <button type="button" role="tab" id="tab-historico" data-aba="historico" aria-selected="false" aria-controls="pane-historico">
+                        <i class="fas fa-clock-rotate-left"></i> Histórico
+                    </button>
+                </nav>
+
+                <!-- ============================================================
+                     REGISTRO — montar a leva e lançar
+                     ============================================================ -->
+                <section id="pane-registro" class="laminas-pane is-ativa" role="tabpanel" aria-labelledby="tab-registro">
+
+                    <div class="laminas-card">
+                        <div class="laminas-form-row">
+
+                            <div class="laminas-field">
+                                <span class="laminas-legend">Etapa desta leva</span>
+                                <div class="laminas-seg is-etapa" id="seg-acao" role="group" aria-label="Etapa desta leva">
+                                    <button type="button" data-acao="corte" class="is-on"><i class="fas fa-scissors"></i> Corte</button>
+                                    <button type="button" data-acao="coloracao"><i class="fas fa-droplet"></i> Coloração</button>
+                                </div>
+                            </div>
+
+                            <div class="laminas-field is-proto">
+                                <label for="lam-protocolo">Protocolo</label>
+                                <div class="laminas-input-wrap">
+                                    <i class="fas fa-hashtag"></i>
+                                    <input id="lam-protocolo" class="laminas-input is-proto" type="text" autocomplete="off" placeholder="V088-26 ou Vn142-26">
+                                </div>
+                                <div id="lam-sugestoes" class="laminas-sugestoes hidden">
+                                    <div class="laminas-sugestoes-head">Casos abertos no mural</div>
+                                    <div id="lam-sugestoes-lista"></div>
+                                </div>
+                            </div>
+
+                            <div class="laminas-field">
+                                <label for="lam-qtd">Lâminas deste protocolo</label>
+                                <div class="laminas-qtd-row">
+                                    <div class="laminas-stepper">
+                                        <button type="button" id="lam-menos" title="Menos uma" aria-label="Menos uma lâmina"><i class="fas fa-minus"></i></button>
+                                        <input id="lam-qtd" type="number" min="1" max="999" value="1" inputmode="numeric">
+                                        <button type="button" id="lam-mais" title="Mais uma" aria-label="Mais uma lâmina"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                    <button type="button" id="lam-adicionar" class="laminas-add"><i class="fas fa-plus"></i> <span>Adicionar à leva</span></button>
+                                </div>
+                            </div>
+
+                            <div class="laminas-field is-resp">
+                                <label for="lam-responsavel">Responsável</label>
+                                <div class="laminas-input-wrap">
+                                    <i class="fas fa-user-pen"></i>
+                                    <input id="lam-responsavel" class="laminas-input" type="text" list="lam-usuarios" autocomplete="off" placeholder="Quem cortou ou corou">
+                                </div>
+                                <datalist id="lam-usuarios"></datalist>
+                            </div>
+                        </div>
+
+                        <div class="laminas-leva-row">
+                            <span class="laminas-leva-rotulo" id="lam-leva-rotulo">Nesta leva</span>
+                            <div class="laminas-leva-chips" id="lam-leva">
+                                <span class="laminas-vazio-inline">Nenhum protocolo ainda — digite acima e toque em Adicionar. Pode misturar V e VN livremente.</span>
+                            </div>
+                            <button type="button" id="lam-lancar" class="laminas-lancar"><i class="fas fa-check"></i> <span id="lam-lancar-texto">Lançar leva</span></button>
+                        </div>
+                    </div>
+
+                    <!-- Saldo por protocolo: o que foi cortado e ainda não foi
+                         corado. Tocar num item joga o restante na leva. -->
+                    <section class="laminas-fila" aria-label="Cortadas aguardando coloração">
+                        <div class="laminas-fila-head">
+                            <i class="fas fa-hourglass-half"></i>
+                            <span>Cortadas aguardando coloração</span>
+                            <span class="laminas-fila-total" id="lam-fila-total">0</span>
+                        </div>
+                        <div class="laminas-fila-lista" id="lam-fila"></div>
+                    </section>
+                </section>
+
+                <!-- ============================================================
+                     HISTÓRICO — o que o período produziu
+                     ============================================================ -->
+                <section id="pane-historico" class="laminas-pane" role="tabpanel" aria-labelledby="tab-historico">
+
+                    <div class="laminas-periodo-row">
+                        <div class="laminas-seg is-periodo" id="seg-periodo" role="group" aria-label="Período">
+                            <button type="button" data-periodo="hoje">Hoje</button>
+                            <button type="button" data-periodo="semana" class="is-on">Semana</button>
+                            <button type="button" data-periodo="mes">Mês</button>
+                            <button type="button" data-periodo="tudo">Tudo</button>
+                        </div>
+                        <span class="laminas-resumo" id="lam-resumo">Carregando…</span>
+                    </div>
+
+                    <div id="lam-dados">
+                        <section class="laminas-totais" aria-label="Totais do período">
+                            <div class="laminas-totais-vazio"></div>
+                            <div class="laminas-totais-head"><i class="fas fa-scissors"></i> Cortadas</div>
+                            <div class="laminas-totais-head"><i class="fas fa-droplet"></i> Coradas</div>
+
+                            <div class="laminas-totais-rotulo is-necro"><i class="fas fa-skull"></i> VN · Necropsia</div>
+                            <div class="laminas-total is-necro" id="total-vn-corte">
+                                <strong data-valor="0">0</strong>
+                                <small>lâminas · <span data-prot>0 protocolos</span></small>
+                            </div>
+                            <div class="laminas-total is-necro" id="total-vn-coloracao">
+                                <strong data-valor="0">0</strong>
+                                <small>lâminas · <span data-prot>0 protocolos</span></small>
+                            </div>
+
+                            <div class="laminas-totais-rotulo is-bio"><i class="fas fa-microscope"></i> V · Biópsia</div>
+                            <div class="laminas-total is-bio" id="total-v-corte">
+                                <strong data-valor="0">0</strong>
+                                <small>lâminas · <span data-prot>0 protocolos</span></small>
+                            </div>
+                            <div class="laminas-total is-bio" id="total-v-coloracao">
+                                <strong data-valor="0">0</strong>
+                                <small>lâminas · <span data-prot>0 protocolos</span></small>
+                            </div>
+                        </section>
+
+                        <section class="laminas-paineis">
+                            <div class="laminas-painel">
+                                <div class="laminas-painel-head">
+                                    <h2>Por responsável</h2>
+                                    <span>toque para ver os protocolos</span>
+                                </div>
+                                <div class="laminas-painel-body" id="lam-pessoas"></div>
+                            </div>
+
+                            <div class="laminas-painel is-log">
+                                <div class="laminas-painel-head">
+                                    <h2>Últimas levas</h2>
+                                    <span>log, nunca editado</span>
+                                </div>
+                                <div class="laminas-painel-body" id="lam-log"></div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <section class="laminas-empty hidden" id="lam-vazio">
+                        <i class="fas fa-layer-group"></i>
+                        <h3>Nenhuma lâmina lançada neste período</h3>
+                        <p>Escolha a etapa, adicione os protocolos que passaram pela bancada — V e VN na mesma leva — e toque em Lançar.</p>
+                    </section>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="hub.html" class="nav-item"><i class="fas fa-home"></i><span>Início</span></a>
+        <a href="mural.html" class="nav-item"><i class="fas fa-columns"></i><span>Mural</span></a>
+        <div class="nav-fab-container"><button class="nav-fab"><i class="fas fa-plus"></i></button></div>
+        <a href="historico.html" class="nav-item"><i class="fas fa-history"></i><span>Registros</span></a>
+        <a href="planner.html" class="nav-item"><i class="fas fa-calendar-alt"></i><span>Planner</span></a>
+    </nav>
+
+    <div id="lam-toast" class="laminas-toast"><i class="fas fa-circle-check"></i> <span></span></div>
+
+    <lpv-entry-form></lpv-entry-form>
+
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <script type="module" src="../assets/js/components/entry-form.js"></script>
+    <script type="module" src="../assets/js/components/entry-modal.js"></script>
+    <script type="module" src="../assets/js/core.js"></script>
+    <script type="module" src="../assets/js/pages/laminas.js"></script>
+</body>
+</html>

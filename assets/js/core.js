@@ -30,6 +30,15 @@ let unsubscribeCurrentUserProfile = null;
 
 const FULL_CONTROL_ROLES = ['admin', 'professor', 'pós graduando'];
 
+/**
+ * Quem vê a aba Lâminas.
+ *
+ * Lista própria de propósito: `FULL_CONTROL_ROLES` deixa o estagiário de fora,
+ * e é justamente ele quem passa o dia no micrótomo. O pós-graduando fica de
+ * fora aqui por decisão de quem toca o laboratório — não é um esquecimento.
+ */
+const ROLES_LAMINAS = ['admin', 'professor', 'estagiario'];
+
 function canonicalizeRole(rawRole) {
     if (!rawRole) return '';
 
@@ -237,6 +246,13 @@ function applyRolePermissions(role) {
         if (newFabMobile) newFabMobile.style.display = 'none';
     }
 
+    // A aba Lâminas nasce escondida em todas as páginas; quem tem o papel a
+    // revela. A página em si também confere o papel — esconder link não é
+    // controle de acesso.
+    if (hasAnyRole(role, ROLES_LAMINAS)) {
+        document.getElementById('sidebar-laminas-link')?.classList.remove('hidden');
+    }
+
     if (isSuperUser) {
         const adminCards = document.querySelectorAll('#admin-card');
         adminCards.forEach(card => card.classList.remove('hidden'));
@@ -303,4 +319,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // EXPORTS
-export { app, auth, db, initThemeSystem, onAuthStateChanged, signOut, logout, normalizeRoles, hasAnyRole, hasFullControl, primaryRole, FULL_CONTROL_ROLES };
+export { app, auth, db, initThemeSystem, onAuthStateChanged, signOut, logout, normalizeRoles, hasAnyRole, hasFullControl, primaryRole, FULL_CONTROL_ROLES, ROLES_LAMINAS };

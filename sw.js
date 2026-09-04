@@ -1,6 +1,6 @@
 // Trocar a versão descarta o cache anterior na ativação. Suba um número sempre
 // que um arquivo da lista abaixo mudar de conteúdo.
-const CACHE_NAME = 'lpv-ultra-fast-v21';
+const CACHE_NAME = 'lpv-ultra-fast-v22';
 
 // Caminhos RELATIVOS ao próprio sw.js — nunca absolutos.
 //
@@ -16,11 +16,14 @@ const ASSETS_TO_CACHE = [
   './pages/hub.html',
   './pages/mural.html',
   './pages/estoque.html',
+  './pages/laminas.html',
   './assets/css/global.css',
   './assets/css/pages/auth.css',
   './assets/css/pages/estoque.css',
+  './assets/css/pages/laminas.css',
   './assets/js/core.js',
   './assets/js/pages/estoque.js',
+  './assets/js/pages/laminas.js',
   './assets/images/lpvminilogo2.png',
   './manifest.json'
 ];
