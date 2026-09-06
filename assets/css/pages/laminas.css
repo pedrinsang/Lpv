@@ -31,6 +31,17 @@
   --bio-text: #f9a8d4;
   --fila-line: rgba(251, 191, 36, 0.35);
   --fila-fill: rgba(251, 191, 36, 0.16);
+
+  /* As duas etapas. Depois que a contagem deixou de ser por tipo (V/VN) e
+     passou a ser por etapa, "cortadas" e "coradas" viraram as duas leituras
+     que se comparam o tempo todo — e comparar pede cor. Âmbar é o mesmo da
+     fila de espera, que é feita de cortadas; violeta é o corante. */
+  --corte-line: rgba(251, 191, 36, 0.45);
+  --corte-halo: rgba(251, 191, 36, 0.18);
+  --corte-text: #fcd34d;
+  --cor-line: rgba(168, 85, 247, 0.45);
+  --cor-halo: rgba(168, 85, 247, 0.18);
+  --cor-text: #d8b4fe;
 }
 
 .main-container.laminas-main {
@@ -62,8 +73,15 @@
 
 /* Nasce escondido e só aparece no desktop, como os contadores do Livro de
    Registros. No celular a barra superior já é logo + marca + papel, e o bloco
-   de três números empurrava tudo por cima do "LPV Lâminas". Os mesmos totais
-   estão a um toque, grandes, na aba Histórico. */
+   de números empurrava tudo por cima do "LPV Lâminas". Os mesmos totais estão
+   a um toque, grandes, na aba Histórico.
+
+   Já tentamos encaixar os dois. Com "Cortadas" e "Coradas" por extenso o bloco
+   pede 154px, e a coluna da marca pede 186 — quem manda nela é o papel, e
+   "Estagiario / Admin" tem 111px sozinho. Numa barra de 371 os dois não cabem
+   junto com menu, logo e o botão de sair: sobrava cortar a marca com
+   reticências ou tirar a pata. Nenhuma das duas paga o preço de repetir no
+   cabeçalho um número que está grande a um toque de distância. */
 .laminas-counters {
   display: none;
   align-items: center;
@@ -89,10 +107,18 @@
   color: var(--text-primary);
 }
 
-.laminas-counter-val.is-necro { color: var(--color-necro); }
-.laminas-counter-val.is-bio { color: var(--color-bio); }
+/* O tom da etapa vale para o número e para o ícone: no celular o ícone é o
+   único rótulo que sobra, e sem cor ele não diz de quem é a contagem. */
+.laminas-counter.is-corte .laminas-counter-val,
+.laminas-counter.is-corte .laminas-counter-label i { color: var(--corte-text); }
+
+.laminas-counter.is-coloracao .laminas-counter-val,
+.laminas-counter.is-coloracao .laminas-counter-label i { color: var(--cor-text); }
 
 .laminas-counter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -100,10 +126,177 @@
   color: var(--text-tertiary);
 }
 
+.laminas-counter-label i { font-size: 0.66rem; }
+
 .laminas-counter-sep {
   width: 1px;
   height: 24px;
   background: var(--border-color);
+}
+
+
+/* ==========================================================
+   BATERIA DE ÁLCOOL
+
+   Fica acima das abas e é a única coisa da página que muda de cor
+   sozinha: em dia é uma leitura discreta, perto do marco fica âmbar,
+   e vencida fica vermelha com o botão de confirmar. A mudança de cor
+   é o aviso — quem chega na bancada não lê texto, olha a faixa.
+   ========================================================== */
+
+.laminas-marcos {
+  --marcos-linha: var(--border-glass);
+  --marcos-tom: var(--text-tertiary);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 13px 16px 14px;
+  border: 1px solid var(--marcos-linha);
+  border-radius: 14px;
+  background: var(--bg-card);
+  transition: border-color var(--duration-normal) ease, background var(--duration-normal) ease;
+}
+
+.laminas-marcos.is-perto {
+  --marcos-linha: rgba(251, 191, 36, 0.45);
+  --marcos-tom: #fcd34d;
+  background: rgba(251, 191, 36, 0.06);
+}
+
+.laminas-marcos.is-bloqueada {
+  --marcos-linha: rgba(239, 68, 68, 0.5);
+  --marcos-tom: #fca5a5;
+  background: rgba(239, 68, 68, 0.07);
+  animation: laminasBateriaEntra 0.4s var(--ease-spring) both;
+}
+
+@keyframes laminasBateriaEntra {
+  from { transform: scale(0.99); opacity: 0.6; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.laminas-marcos-topo {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto auto;
+  gap: 13px;
+  align-items: center;
+}
+
+.laminas-marcos-icone {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  font-size: 0.9rem;
+  border: 1px solid var(--marcos-linha);
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--marcos-tom);
+}
+
+.laminas-marcos-texto { min-width: 0; }
+
+.laminas-marcos-texto h2 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.laminas-marcos-texto p {
+  margin: 3px 0 0;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+}
+
+.laminas-marcos.is-bloqueada .laminas-marcos-texto h2 { color: var(--marcos-tom); }
+
+.laminas-marcos-num { text-align: right; }
+
+.laminas-marcos-num strong {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.laminas-marcos-num small {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.laminas-marcos-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 11px;
+  background: var(--color-error);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-spring), filter var(--duration-fast) ease;
+}
+
+.laminas-marcos-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.laminas-marcos-btn:active { transform: scale(0.97); }
+
+/* Barra dos 320. Os traços marcam 80/160/240; o fim da barra é a troca. */
+.laminas-marcos-barra {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+  overflow: hidden;
+}
+
+.laminas-marcos-preenchida {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--cor-text);
+  transition: width var(--duration-slow) var(--ease-spring), background var(--duration-normal) ease;
+}
+
+.laminas-marcos.is-perto .laminas-marcos-preenchida { background: #fbbf24; }
+.laminas-marcos.is-bloqueada .laminas-marcos-preenchida { background: var(--color-error); }
+
+.laminas-marcos-tick {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--bg-card);
+}
+
+.laminas-marcos-escala {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.laminas-marcos-escala span { text-align: right; }
+
+.laminas-marcos-semestre {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 
 
@@ -273,6 +466,33 @@
 
 .laminas-input:focus { border-color: var(--color-primary); }
 
+/* O select usa a mesma casca do input (ícone à esquerda, altura, foco), e
+   troca a seta do sistema por uma chevron própria à direita — a nativa muda
+   de desenho em cada navegador e destoava do resto do formulário. */
+.laminas-input-wrap.is-select { position: relative; }
+
+.laminas-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  cursor: pointer;
+}
+
+/* Herda o ícone absoluto de `.laminas-input-wrap > i` e troca de lado. O
+   `width` fixo não é enfeite: com `left: auto` o navegador usa a posição
+   estática no lugar do `left` e resolve a largura por subtração — sem ela a
+   chevron estica de ponta a ponta do campo. */
+.laminas-input-wrap > i.laminas-select-caret {
+  left: auto;
+  right: 13px;
+  width: 12px;
+  text-align: center;
+  font-size: 0.7rem;
+  opacity: 1;
+}
+
+.laminas-select option { background: var(--bg-body); color: var(--text-primary); }
+
 .laminas-input.is-proto {
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -329,7 +549,26 @@
 .laminas-sugestao i { width: 16px; text-align: center; font-size: 0.78rem; opacity: 0.85; }
 .laminas-sugestao strong { font-weight: 800; letter-spacing: 0.02em; }
 
+/* Caso que já saiu da fila. A etiqueta não é aviso de erro — recorte e nova
+   coloração de caso laudado são rotina —, só avisa que aquele protocolo não
+   está mais no Mural, para ninguém achar que errou o número. */
+.laminas-sugestao-tag {
+  margin-left: auto;
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--text-tertiary);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* `min-width: 0` para a descrição ceder espaço à etiqueta em vez de empurrá-la
+   para fora da linha: quem corta com reticências é a descrição. */
 .laminas-sugestao small {
+  min-width: 0;
   color: var(--text-tertiary);
   font-size: 0.72rem;
   overflow: hidden;
@@ -447,8 +686,37 @@
 
 .laminas-vazio-inline { font-size: 0.78rem; color: #94a3b8; }
 
-/* Pill de protocolo — o mesmo desenho serve na leva, na fila, na quebra
-   por pessoa e no log. O que muda é o tamanho, via modificadores. */
+/* O "+N · ver lista" vem antes dos chips, e não depois: o que ele conta está
+   atrás dele: a linha mostra o fim da leva, e os protocolos escondidos são os
+   mais antigos. Tem a altura de um chip para a linha não pular de altura
+   quando ele aparece. */
+.laminas-leva-mais {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+
+.laminas-leva-mais:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.laminas-leva-mais i { font-size: 0.7rem; opacity: 0.8; }
+
+/* Pill de protocolo — o mesmo desenho serve na leva, na fila e no log.
+   O que muda é o tamanho, via modificadores. */
 .laminas-pill {
   display: inline-flex;
   align-items: center;
@@ -463,6 +731,14 @@
 }
 
 .laminas-pill i { font-size: 0.72rem; opacity: 0.9; }
+
+/* O protocolo é um identificador: pode sobrar da célula e empurrar a
+   quantidade para a linha de baixo, mas não pode partir no meio — sem isto
+   "Vn1234-26" quebrava no hífen e virava "Vn1234-" e "26". */
+.laminas-pill b {
+  font-weight: inherit;
+  white-space: nowrap;
+}
 
 .laminas-pill em {
   font-style: normal;
@@ -485,7 +761,6 @@
 
 .laminas-pill.is-nova { animation: badgePop 0.32s var(--ease-spring) both; }
 
-.laminas-pill.is-sm { padding: 5px 11px; font-size: 0.73rem; }
 .laminas-pill.is-xs { padding: 3px 9px; font-size: 0.68rem; gap: 6px; }
 
 .laminas-pill-x {
@@ -628,89 +903,65 @@
 
 .laminas-totais {
   display: grid;
-  grid-template-columns: 200px 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
-  align-items: center;
   animation: springUp var(--duration-slow) var(--ease-spring) 0.15s backwards;
-}
-
-.laminas-totais-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-left: 4px;
-  color: var(--text-tertiary);
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.laminas-totais-rotulo {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 13px;
-  border-radius: 12px;
-  font-size: 0.86rem;
-  font-weight: 800;
-}
-
-.laminas-totais-rotulo.is-necro {
-  border: 1px solid rgba(59, 130, 246, 0.4);
-  background: rgba(59, 130, 246, 0.08);
-  color: var(--color-necro);
-}
-
-.laminas-totais-rotulo.is-bio {
-  border: 1px solid rgba(236, 72, 153, 0.4);
-  background: rgba(236, 72, 153, 0.08);
-  color: var(--color-bio);
 }
 
 .laminas-total {
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
   border-radius: 14px;
-  padding: 13px 18px;
+  padding: 13px 18px 15px;
   display: flex;
-  align-items: baseline;
-  gap: 9px;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.laminas-total.is-necro { border-left: 3px solid var(--color-necro); }
-.laminas-total.is-bio { border-left: 3px solid var(--color-bio); }
+.laminas-total.is-corte { border-left: 3px solid var(--corte-text); }
+.laminas-total.is-coloracao { border-left: 3px solid var(--cor-text); }
+
+.laminas-total-cap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.laminas-total.is-corte .laminas-total-cap { color: var(--corte-text); }
+.laminas-total.is-coloracao .laminas-total-cap { color: var(--cor-text); }
 
 .laminas-total strong {
   font-size: 2.15rem;
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.05;
   font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
 }
-
-.laminas-total.is-necro strong { color: var(--color-necro); }
-.laminas-total.is-bio strong { color: var(--color-bio); }
 
 .laminas-total small { color: var(--text-tertiary); font-size: 0.72rem; }
 
-/* Pulso de confirmação: a leitura que acabou de mudar pisca na cor do
-   tipo. É o feedback de "entrou", junto com o toast. */
-@keyframes laminasPulseNecro {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-  45%      { box-shadow: 0 0 0 7px var(--necro-halo); }
+/* Pulso de confirmação: a leitura que acabou de mudar pisca na cor da
+   etapa. É o feedback de "entrou", junto com o toast. */
+@keyframes laminasPulseCorte {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+  45%      { box-shadow: 0 0 0 7px var(--corte-halo); }
 }
 
-@keyframes laminasPulseBio {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
-  45%      { box-shadow: 0 0 0 7px var(--bio-halo); }
+@keyframes laminasPulseColoracao {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
+  45%      { box-shadow: 0 0 0 7px var(--cor-halo); }
 }
 
-.laminas-total.pulse-necro { animation: laminasPulseNecro 0.9s var(--ease-spring); }
-.laminas-total.pulse-bio { animation: laminasPulseBio 0.9s var(--ease-spring); }
+.laminas-total.pulse-corte { animation: laminasPulseCorte 0.9s var(--ease-spring); }
+.laminas-total.pulse-coloracao { animation: laminasPulseColoracao 0.9s var(--ease-spring); }
 
 
 /* ==========================================================
-   PAINÉIS (por responsável / últimas levas)
+   PAINÉIS (trocas / últimas levas)
    ========================================================== */
 
 .laminas-paineis {
@@ -761,118 +1012,55 @@
   flex: 1;
 }
 
-/* --- Linha de pessoa --- */
-.laminas-pessoa { border-bottom: 1px solid var(--border-glass); }
-
-.laminas-pessoa-head {
+/* --- Linha de troca/rodízio --- */
+.laminas-troca {
   display: grid;
-  grid-template-columns: 36px minmax(150px, 1fr) 168px 62px 20px;
-  gap: 13px;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 12px;
   align-items: center;
-  padding: 13px 18px;
-  width: 100%;
-  border: none;
-  background: transparent;
-  text-align: left;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background var(--duration-fast) ease;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-glass);
 }
 
-.laminas-pessoa-head:hover { background: rgba(255, 255, 255, 0.025); }
-
-.laminas-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--gradient-main);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffffff;
-  font-size: 0.8rem;
-  font-weight: 800;
+.laminas-troca-icone {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 0.78rem;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  background: rgba(168, 85, 247, 0.12);
+  color: var(--cor-text);
 }
 
-/* Os netos da grade continuam inline por padrão — só os filhos diretos são
-   blocados por ela. Sem isso o corte com reticências não acontece. */
-.laminas-pessoa-head > span { min-width: 0; }
+/* A troca completa é o evento raro e o que se procura primeiro na lista;
+   o âmbar a separa dos rodízios sem precisar de rótulo extra. */
+.laminas-troca-icone.is-troca {
+  border-color: var(--corte-line);
+  background: rgba(251, 191, 36, 0.14);
+  color: var(--corte-text);
+}
 
-.laminas-pessoa-nome {
+.laminas-troca > span { min-width: 0; }
+
+.laminas-troca-titulo {
   display: block;
   color: var(--text-primary);
   font-weight: 800;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.laminas-barra {
-  display: flex;
-  height: 6px;
-  margin-top: 8px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.18);
-  overflow: hidden;
-}
-
-.laminas-barra span { height: 100%; animation: densityGrow var(--duration-slow) var(--ease-spring) both; }
-.laminas-barra .is-necro { background: var(--color-necro); }
-.laminas-barra .is-bio { background: var(--color-bio); }
-
-.laminas-pessoa-num {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px 10px;
-  font-size: 0.72rem;
-  color: var(--text-tertiary);
-}
-
-.laminas-pessoa-num span { font-variant-numeric: tabular-nums; }
-.laminas-pessoa-num .is-necro { color: var(--color-necro); }
-.laminas-pessoa-num .is-bio { color: var(--color-bio); }
-.laminas-pessoa-num strong { font-weight: 800; }
-
-/* No celular a grade de quatro números não cabe; vira uma linha só de
-   resumo, que o JS já monta junto. */
-.laminas-pessoa-resumo {
-  display: none;
-  margin-top: 6px;
-  font-size: 0.66rem;
-  color: var(--text-tertiary);
-  font-variant-numeric: tabular-nums;
-}
-
-.laminas-pessoa-total { text-align: right; }
-
-.laminas-pessoa-total strong {
+.laminas-troca-detalhe {
   display: block;
-  color: var(--text-primary);
-  font-size: 1.1rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.laminas-pessoa-total small {
-  display: block;
+  margin-top: 3px;
+  font-size: 0.7rem;
   color: var(--text-tertiary);
-  font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-top: 2px;
 }
 
-.laminas-pessoa-head > i { color: #94a3b8; font-size: 0.75rem; text-align: center; }
-
-.laminas-pessoa-protocolos {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 0 18px 14px 67px;
-  animation: fadeInUp 0.24s var(--ease-spring) both;
-}
 
 /* --- Linha de leva --- */
 .laminas-leva-log {
@@ -1009,6 +1197,71 @@
 
 
 /* ==========================================================
+   MODAL DE CONFIRMAÇÃO DA TROCA
+   ========================================================== */
+
+.laminas-modal { max-width: 520px; }
+
+.laminas-modal-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding-right: 35px;
+  margin-bottom: 1.25rem;
+}
+
+.laminas-modal-head h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.2rem;
+}
+
+.laminas-modal-head p {
+  margin: 5px 0 0;
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.laminas-modal-campo { display: flex; flex-direction: column; gap: 6px; }
+
+.laminas-modal-campo > label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.laminas-modal-nota {
+  margin: 2px 0 0;
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+}
+
+.laminas-modal-acoes {
+  border-top: 1px solid var(--border-glass);
+  margin-top: 18px;
+  padding-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+
+/* A leva inteira dentro do modal. Rola por dentro: uma leva de mutirão passa
+   de trinta protocolos, e o botão de fechar não pode fugir do alcance. */
+.laminas-leva-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+
+
+/* ==========================================================
    BLOQUEIO DE ACESSO
    ========================================================== */
 
@@ -1071,11 +1324,10 @@
   .laminas-paineis { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 1050px) {
-  .laminas-totais { grid-template-columns: 1fr 1fr; }
-  .laminas-totais > .laminas-totais-head,
-  .laminas-totais > .laminas-totais-vazio { display: none; }
-  .laminas-totais > .laminas-totais-rotulo { grid-column: span 2; }
+@media (max-width: 720px) {
+  /* Abaixo disso os dois números perdem a folga e o rótulo quebra em duas
+     linhas; empilhados continuam grandes e comparáveis. */
+  .laminas-totais { grid-template-columns: 1fr; }
 }
 
 
@@ -1099,18 +1351,9 @@
     gap: 10px;
   }
 
-  /* Contadores compactos: o artboard mobile traz VN e V, sem o total geral —
-     que é justamente o que não cabe ao lado da marca e do papel. */
-  .laminas-counters {
-    display: flex;
-    gap: 12px;
-    padding: 6px 12px;
-    border-radius: 10px;
-  }
-
-  .laminas-counters .is-geral { display: none; }
-  .laminas-counter-val { font-size: 0.85rem; }
-  .laminas-counter-label { font-size: 0.55rem; }
+  /* Os contadores não descem para o celular: a barra aqui é a mesma das outras
+     páginas (menu, pata, marca, papel, sair), e os totais moram na aba
+     Histórico. Ver o comentário da regra base, lá em cima. */
 
   /* Abas mais baixas: são duas, sempre no mesmo lugar, e não precisam do
      mesmo peso de um botão de ação. */
@@ -1160,11 +1403,37 @@
   /* A leva vira pilha: rótulo, chips e, por último, o botão de lançar em
      largura cheia. */
   .laminas-leva-row { flex-direction: column; align-items: stretch; gap: 8px; padding-top: 10px; }
-  .laminas-leva-chips { flex: 1 1 auto; gap: 8px; }
   .laminas-vazio-inline { font-size: 0.78rem; line-height: 1.45; }
 
-  .laminas-pill { padding: 6px 6px 6px 11px; gap: 8px; font-size: 0.8rem; }
-  .laminas-pill.is-sm { padding: 6px 11px; gap: 7px; font-size: 0.75rem; }
+  /* Duas colunas fixas, e não `flex-wrap`.
+
+     Com wrap a conta ficava no fio: a coluna de chips tem 311px numa tela de
+     375, e um chip mede de 147 a 153 conforme o tamanho do protocolo. Dois mais
+     o gap davam 302 a 314 — ora cabiam, ora não, na mesma leva, e o chip que
+     sobrava ainda era espremido pelo `flex-shrink` até o número encavalar. A
+     grade decide a largura antes de olhar para o conteúdo, então são sempre
+     duas colunas iguais. */
+  .laminas-leva-chips {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    align-content: start;
+  }
+
+  /* O texto de "nenhum protocolo ainda" não é um chip: ocupa a linha toda. */
+  .laminas-leva-chips .laminas-vazio-inline { grid-column: 1 / -1; }
+
+  /* Esticados na célula, os chips precisam do X encostado à direita — senão
+     ele fica colado no número com um vazio depois. */
+  .laminas-leva-chips .laminas-pill { min-width: 0; }
+  .laminas-leva-chips .laminas-pill-x { margin-left: auto; }
+  .laminas-leva-chips .laminas-leva-mais { justify-content: center; }
+
+  /* Um respiro a menos de cada lado: é o que faz o protocolo mais longo
+     ("Vn135-26 1×") caber na célula sem encostar no X. */
+  .laminas-pill { padding: 6px 5px 6px 9px; gap: 6px; font-size: 0.8rem; }
+  .laminas-leva-mais { padding: 6px 10px; font-size: 0.8rem; min-height: 34px; }
   .laminas-pill.is-xs { padding: 4px 10px; gap: 6px; font-size: 0.72rem; }
   .laminas-pill-x { width: 22px; height: 22px; font-size: 0.65rem; }
 
@@ -1219,12 +1488,7 @@
   .laminas-painel-body { overflow-y: visible; max-height: none; }
   .laminas-painel-head span { display: none; }
 
-  /* A grade de quatro números vira a linha de resumo. */
-  .laminas-pessoa-head { grid-template-columns: 34px minmax(0, 1fr) auto 18px; gap: 11px; padding: 13px 14px; }
-  .laminas-pessoa-num { display: none; }
-  .laminas-pessoa-resumo { display: block; }
-  .laminas-avatar { width: 34px; height: 34px; font-size: 0.75rem; }
-  .laminas-pessoa-protocolos { gap: 7px; padding: 0 14px 14px 59px; }
+  .laminas-troca { padding: 12px 14px; gap: 11px; }
 
   /* A leva do log vira cartão empilhado: cabeçalho e, embaixo, os protocolos
      em largura cheia — sem o recuo que alinha com o ícone no desktop. */
@@ -1236,8 +1500,38 @@
   .laminas-desfazer { min-height: 36px; padding: 7px 13px; font-size: 0.72rem; }
   .laminas-leva-itens { gap: 6px; margin-top: 10px; padding-left: 0; }
 
+  /* A faixa da bateria empilha: número e botão descem para uma linha
+     própria, em largura cheia — é o botão que a pessoa vai procurar. */
+  .laminas-marcos { padding: 12px 13px 13px; gap: 9px; border-radius: 12px; }
+  .laminas-marcos-topo { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 11px; }
+  .laminas-marcos-icone { width: 34px; height: 34px; border-radius: 10px; }
+  .laminas-marcos-texto h2 { font-size: 0.86rem; }
+  .laminas-marcos-texto p { font-size: 0.72rem; }
+  .laminas-marcos-num strong { font-size: 1.3rem; }
+  .laminas-marcos-btn { grid-column: 1 / -1; width: 100%; justify-content: center; height: 44px; }
+
+  .laminas-modal-head { gap: 12px; margin-bottom: 1rem; }
+  .laminas-modal-head h2 { font-size: 1.05rem; }
+  .laminas-modal-acoes { flex-direction: column-reverse; }
+  .laminas-modal-acoes .btn { width: 100%; justify-content: center; }
+
   .laminas-empty { padding: 2.5rem 1.2rem; }
   .laminas-empty i { font-size: 2rem; margin-bottom: 0; }
   .laminas-empty h3 { margin: 12px 0 6px; font-size: 1rem; }
   .laminas-empty p { font-size: 0.83rem; }
+}
+
+
+/* ==========================================================
+   CELULAR ESTREITO — abaixo de 360px
+
+   Duas colunas de chip a 320px ficam com 145px cada, e a última
+   coisa da célula é o X de remover: sem apertar aqui ele perdia um
+   pixel na borda. Só os respiros encolhem; o protocolo continua
+   inteiro e o alvo de toque continua em 20px.
+   ========================================================== */
+
+@media (max-width: 360px) {
+  .laminas-leva-chips .laminas-pill { gap: 5px; padding-left: 8px; }
+  .laminas-leva-chips .laminas-pill-x { width: 20px; height: 20px; }
 }

@@ -186,6 +186,35 @@ service cloud.firestore {
         && (resource.data.createdByUid == request.auth.uid || isAdmin());
     }
 
+    // Bateria de alcool: a cada 80 laminas coradas a bancada faz o rodizio dos
+    // alcoois, e em 320 troca a bateria inteira. Cada confirmacao vira um
+    // documento aqui, com quem fez a troca.
+    //
+    // O bloqueio dos lancamentos enquanto o marco nao e confirmado mora no
+    // cliente, e nao aqui: a regra teria que somar a colecao inteira de
+    // slide_records para saber a contagem parcial, o que uma regra nao faz. O
+    // que esta colecao garante e o que importa depois - quem confirmou, quando,
+    // e que ninguem reescreveu o registro.
+    match /slide_maintenance/{eventId} {
+      allow read: if isApprovedUser();
+
+      allow create: if isSlideRecorder()
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.tipo in ['rodizio', 'troca']
+        && request.resource.data.marco is number
+        && request.resource.data.marco > 0
+        && request.resource.data.ano is number
+        && request.resource.data.responsavelNome is string
+        && request.resource.data.responsavelNome.size() > 0;
+
+      // Mesmo espirito do log de laminas: confirmacao errada se apaga, nao se
+      // reescreve.
+      allow update: if false;
+
+      allow delete: if isApprovedUser()
+        && (resource.data.createdByUid == request.auth.uid || isAdmin());
+    }
+
     // O estoque nao controla saldo: cada item guarda quanto se compra de uma vez
     // e quanto tempo essa quantidade costuma durar. Ninguem lanca consumo, entao
     // so quem responde pelo laboratorio escreve aqui.
