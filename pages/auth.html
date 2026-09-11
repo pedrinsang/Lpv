@@ -16,11 +16,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/global.css">
     <link rel="stylesheet" href="../assets/css/pages/auth.css">
+    <link rel="stylesheet" href="../assets/css/components/intro.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
     <link rel="manifest" href="../manifest.json">
 </head>
 <body class="auth-page">
+
+    <!-- Animação de abertura do aplicativo instalado.
+         O PWA abre direto nesta página (start_url do manifest), então é aqui que
+         a animação precisa morar para quem usa o app — no index ela nunca seria
+         vista. Só roda em janela de app E se a pessoa tiver ligado a opção em
+         Meu Perfil; no navegador esta página continua igual. Ver intro.js. -->
+    <script src="../assets/js/intro.js" data-modo="app"></script>
 
     <div class="auth-layout">
 

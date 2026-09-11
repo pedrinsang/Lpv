@@ -16,6 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/global.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/components/intro.css">
     <link rel="icon" type="image/png" href="../assets/images/lpvminilogo2.png">
 
     <style>
@@ -58,6 +59,46 @@
         }
         .profile-crmv-feedback.error {
             color: var(--color-error);
+        }
+
+        /* Preferências que valem só neste aparelho (ficam no localStorage). */
+        .profile-pref {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+        }
+        .profile-pref input {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            flex-shrink: 0;
+            accent-color: var(--color-primary);
+            cursor: pointer;
+        }
+        .profile-pref-text small {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.78rem;
+            line-height: 1.45;
+            color: var(--text-secondary);
+        }
+        .profile-pref-actions {
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .profile-pref-feedback {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #10b981;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .profile-pref-feedback.show {
+            opacity: 1;
         }
 
     </style>
@@ -132,6 +173,31 @@
                         </button>
                     </div>
                     <div id="profile-crmv-feedback" class="profile-crmv-feedback"></div>
+                </div>
+            </div>
+
+            <!-- PREFERÊNCIAS DESTE APARELHO -->
+            <div class="card fade-in" style="padding: 0; margin-top: 1.5rem;">
+                <div class="profile-data-group" style="border-bottom: none;">
+                    <div class="profile-label">Preferências deste dispositivo</div>
+                    <label class="profile-pref" for="pref-intro">
+                        <input type="checkbox" id="pref-intro">
+                        <span class="profile-pref-text">
+                            <strong class="profile-value">Animação ao abrir o aplicativo</strong>
+                            <small>
+                                Toca a abertura do LPV quando você abre o aplicativo instalado.
+                                Vale só neste computador e não muda nada para as outras pessoas.
+                                O jingle só sai se você clicar na animação; sem clique, ela
+                                segue sozinha e em silêncio.
+                            </small>
+                        </span>
+                    </label>
+                    <div class="profile-pref-actions">
+                        <button id="btn-ver-intro" class="btn btn-secondary" type="button">
+                            <i class="fas fa-play"></i> Ver agora
+                        </button>
+                        <span id="pref-intro-feedback" class="profile-pref-feedback">Preferência salva.</span>
+                    </div>
                 </div>
             </div>
 
@@ -243,6 +309,53 @@
                 console.error('Erro ao carregar perfil:', err);
             }
         });
+
+        // ─── PREFERÊNCIA: ANIMAÇÃO DE ABERTURA ───────────────────────────────────
+        //
+        // Fica no localStorage, e não no Firestore, porque a animação roda em
+        // pages/auth.html ANTES do login — naquele momento não há usuário para
+        // consultar. O preço é que a escolha vale por aparelho.
+        const CHAVE_INTRO   = 'lpv-intro-app';
+        const prefIntro     = document.getElementById('pref-intro');
+        const prefFeedback  = document.getElementById('pref-intro-feedback');
+        const btnVerIntro   = document.getElementById('btn-ver-intro');
+
+        if (prefIntro) {
+            try {
+                prefIntro.checked = localStorage.getItem(CHAVE_INTRO) === '1';
+            } catch (e) {
+                // Armazenamento bloqueado (aba anônima): deixa desmarcado e sem
+                // como salvar — melhor do que quebrar a página inteira.
+                prefIntro.disabled = true;
+            }
+
+            prefIntro.addEventListener('change', () => {
+                try {
+                    localStorage.setItem(CHAVE_INTRO, prefIntro.checked ? '1' : '0');
+                    prefFeedback.textContent = prefIntro.checked
+                        ? 'Animação ligada neste dispositivo.'
+                        : 'Animação desligada neste dispositivo.';
+                    prefFeedback.classList.add('show');
+                    setTimeout(() => prefFeedback.classList.remove('show'), 2500);
+                } catch (e) {
+                    console.warn('Não foi possível salvar a preferência:', e);
+                }
+            });
+        }
+
+        // Pré-visualização: injeta o intro.js aqui mesmo, em modo forçado, para
+        // a pessoa ver como ficou sem fechar e reabrir o aplicativo — e sem ir
+        // parar na tela de login.
+        if (btnVerIntro) {
+            btnVerIntro.addEventListener('click', () => {
+                const script = document.createElement('script');
+                script.src = '../assets/js/intro.js';
+                script.dataset.modo = 'forcado';
+                document.body.appendChild(script);
+                // Fora do DOM a tag não volta a executar no próximo clique.
+                script.addEventListener('load', () => script.remove());
+            });
+        }
 
         // Logout
         document.getElementById('logout-btn-profile').addEventListener('click', async () => {

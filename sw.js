@@ -1,6 +1,6 @@
 // Trocar a versão descarta o cache anterior na ativação. Suba um número sempre
 // que um arquivo da lista abaixo mudar de conteúdo.
-const CACHE_NAME = 'lpv-ultra-fast-v22';
+const CACHE_NAME = 'lpv-ultra-fast-v23';
 
 // Caminhos RELATIVOS ao próprio sw.js — nunca absolutos.
 //
@@ -21,10 +21,13 @@ const ASSETS_TO_CACHE = [
   './assets/css/pages/auth.css',
   './assets/css/pages/estoque.css',
   './assets/css/pages/laminas.css',
+  './assets/css/components/intro.css',
   './assets/js/core.js',
+  './assets/js/intro.js',
   './assets/js/pages/estoque.js',
   './assets/js/pages/laminas.js',
   './assets/images/lpvminilogo2.png',
+  './assets/images/centro.png',
   './manifest.json'
 ];
 
@@ -77,7 +80,12 @@ self.addEventListener('fetch', (event) => {
   // revalidava: uma vez no cache, o arquivo ficava congelado até alguém trocar
   // o CACHE_NAME. Na prática, um deploy novo não chegava em quem já tinha
   // aberto o site — o usuário via CSS e JS antigos sem saber por quê.
-  if (url.pathname.match(/\.(css|js|png|jpg|jpeg|svg|woff2)$/)) {
+  //
+  // `ttf` e `wav` entraram por causa da animação de abertura: a fonte do "LPV"
+  // e o jingle não estão na lista de precache (o jingle sozinho passa de 1 MB e
+  // não faz sentido empurrar na instalação para quem nunca liga a animação).
+  // Sem cair nesta regra eles voltariam da rede a cada abertura do aplicativo.
+  if (url.pathname.match(/\.(css|js|png|jpg|jpeg|svg|woff2|ttf|wav)$/)) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) =>
         cache.match(event.request).then((cached) => {

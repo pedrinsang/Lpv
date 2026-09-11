@@ -1,0 +1,211 @@
+/*
+ * ANIMAÇÃO DE ABERTURA (intro) — logo com as bolinhas em órbita.
+ *
+ * Saiu de dentro do index.html para poder ser reaproveitada na tela de login:
+ * quem instala o PWA abre direto em pages/auth.html e nunca passava pelo index,
+ * então a animação simplesmente não existia no app instalado.
+ *
+ * O overlay é `position: fixed` cobrindo tudo e não depende do layout da página
+ * que o hospeda — o único acoplamento é a classe `page-revealed`, que o
+ * intro.js põe no <body> ao terminar (o index usa para revelar o conteúdo; as
+ * outras páginas ignoram).
+ *
+ * Quem monta o HTML é o assets/js/intro.js.
+ */
+
+/* --- INTRO ANIMATION --- */
+.intro-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: radial-gradient(ellipse at center, #0f1729 0%, #050810 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.8s ease, visibility 0.8s ease;
+    cursor: pointer;
+    overflow: hidden;
+}
+.intro-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(39, 174, 96, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(34, 167, 240, 0.08) 0%, transparent 50%);
+    pointer-events: none;
+}
+.intro-overlay.fade-out {
+    opacity: 0;
+    visibility: hidden;
+}
+.intro-logo-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.intro-overlay.playing .intro-logo-container {
+    transform: translateX(-200px);
+}
+
+/* Fonte ITC Eras Std Bold */
+@font-face {
+    font-family: 'ITC Eras Std';
+    src: url('../../fonts/eras-bold-itc.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+}
+
+/* Texto LPV */
+.intro-text {
+    position: absolute;
+    top: 50%;
+    left: 52%;
+    transform: translate(-50%, -50%) translateX(50px);
+    font-family: 'ITC Eras Std', 'Arial Black', sans-serif;
+    font-size: 14rem;
+    font-weight: bold;
+    color: white;
+    letter-spacing: -5px;
+    opacity: 0;
+    white-space: nowrap;
+    text-shadow: 0 0 40px rgba(255,255,255,0.3);
+    transition: opacity 0.8s ease 0.3s, transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+}
+.intro-overlay.playing .intro-text {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateX(120px);
+}
+
+/* Centro (pata) - Estado inicial: visível com glow */
+.intro-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200px;
+    height: 200px;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    animation: centerPulse 2s ease-in-out infinite;
+}
+.intro-overlay.playing .intro-center {
+    animation: none;
+    transform: translate(-50%, -50%);
+}
+.intro-center img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 40px rgba(255,255,255,0.4));
+}
+@keyframes centerPulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); filter: drop-shadow(0 0 30px rgba(255,255,255,0.3)); }
+    50% { transform: translate(-50%, -50%) scale(1.05); filter: drop-shadow(0 0 50px rgba(255,255,255,0.5)); }
+}
+
+/* Bolinhas orbitantes */
+.intro-orbs-wrapper {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 0;
+    height: 0;
+    --orbit-radius: 200px;
+}
+.intro-orb {
+    position: absolute;
+    border-radius: 50%;
+    top: 0;
+    left: 0;
+    box-shadow: 0 0 20px currentColor;
+}
+.intro-orb.blue { background: #22a7f0; color: rgba(34, 167, 240, 0.5); }
+.intro-orb.green { background: #27ae60; color: rgba(39, 174, 96, 0.5); }
+
+/* Tamanhos das bolinhas - individuais */
+.intro-orb:nth-child(1) { width: 25px; height: 25px; --orbit-offset: 0deg; }
+.intro-orb:nth-child(2) { width: 35px; height: 35px; --orbit-offset: 40deg; }
+.intro-orb:nth-child(3) { width: 45px; height: 45px; --orbit-offset: 80deg; }
+.intro-orb:nth-child(4) { width: 55px; height: 55px; --orbit-offset: 120deg; }
+.intro-orb:nth-child(5) { width: 60px; height: 60px; --orbit-offset: 160deg; }
+.intro-orb:nth-child(6) { width: 65px; height: 65px; --orbit-offset: 200deg; }
+.intro-orb:nth-child(7) { width: 65px; height: 65px; --orbit-offset: 240deg; }
+.intro-orb:nth-child(8) { width: 60px; height: 60px; --orbit-offset: 280deg; }
+.intro-orb:nth-child(9) { width: 55px; height: 55px; --orbit-offset: 320deg; }
+
+
+/* Smooth transition handled by JavaScript */
+.intro-orb.settling {
+    animation: none !important;
+}
+
+/* CTA Text */
+.intro-cta {
+    position: absolute;
+    bottom: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1rem;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    animation: ctaPulse 2s ease-in-out infinite;
+}
+.intro-cta i {
+    display: block;
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    animation: ctaBounce 1.5s ease-in-out infinite;
+}
+@keyframes ctaPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+@keyframes ctaBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+.intro-overlay.playing .intro-cta {
+    /* `animation: none` é obrigatório aqui: a `ctaPulse`, infinita, vence o
+       `opacity: 0` na cascata (animação ganha de declaração normal) e o "Toque
+       para entrar" ficava aceso durante a montagem do logo. */
+    animation: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+@media (max-width: 900px) {
+
+    /* INTRO MOBILE */
+    .intro-text {
+        font-size: 4.5rem;
+        letter-spacing: -2px;
+        transform: translate(-50%, -50%) translateX(15px);
+    }
+    .intro-overlay.playing .intro-text {
+        transform: translate(-50%, -50%) translateX(40px);
+    }
+    .intro-logo-container {
+        width: 100px;
+        height: 100px;
+    }
+    .intro-overlay.playing .intro-logo-container {
+        transform: translateX(-100px);
+    }
+    .intro-center {
+        width: 100px;
+        height: 100px;
+    }
+    /* Tamanhos das bolinhas controlados por JS */
+    /* Órbita e posições controladas por JS */
+    .intro-cta {
+        font-size: 0.9rem;
+        bottom: 10%;
+    }
+}
