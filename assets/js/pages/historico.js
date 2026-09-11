@@ -948,9 +948,7 @@ if (typeof ResizeObserver === 'function') {
     }).observe(viewport);
 }
 
-[el('btn-logout'), el('logout-btn-header')].forEach((btn) => {
-    if (btn) btn.addEventListener('click', logout);
-});
+el('logout-btn-header')?.addEventListener('click', logout);
 
 // ================================================================
 // EXPORTAÇÃO EXCEL — exporta o que está no filtro atual

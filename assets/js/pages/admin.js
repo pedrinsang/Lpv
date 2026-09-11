@@ -16,9 +16,7 @@ const searchInput = document.getElementById('admin-search');
 
 // --- SETUP ---
 document.addEventListener('DOMContentLoaded', () => {
-    const btnLogoutSidebar = document.getElementById('btn-logout');
     const btnLogoutHeader = document.getElementById('logout-btn-header');
-    if (btnLogoutSidebar) btnLogoutSidebar.addEventListener('click', logout);
     if (btnLogoutHeader) btnLogoutHeader.addEventListener('click', logout);
 });
 

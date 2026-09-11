@@ -259,7 +259,6 @@ onAuthStateChanged(auth, async (user) => {
     assinarCasosAbertos();
 });
 
-document.getElementById('btn-logout')?.addEventListener('click', logout);
 document.getElementById('logout-btn-header')?.addEventListener('click', logout);
 
 

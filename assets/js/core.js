@@ -291,12 +291,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Inicia o sistema de tema
     initThemeSystem();
     
-    // 2. Configura botões de logout
+    // 2. Configura o botão de logout do cabeçalho
+    //
+    // `logout-btn-profile` saiu daqui junto com o botão vermelho que ficava no
+    // corpo do Meu Perfil: sair agora mora só no canto superior direito, e lá o
+    // botão usa o mesmo `logout-btn` das outras páginas.
     const logoutBtn = document.getElementById('logout-btn');
-    const logoutProfile = document.getElementById('logout-btn-profile');
-    
     if (logoutBtn) logoutBtn.addEventListener('click', logout);
-    if (logoutProfile) logoutProfile.addEventListener('click', logout);
 
     // 3. Stagger animation indices para sidebar links
     document.querySelectorAll('.sidebar-link').forEach((link, i) => {

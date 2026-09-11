@@ -1066,9 +1066,6 @@ function initControles() {
         else if (state.dia) fecharDia();
         else if (state.rail === 'detalhe') { state.rail = null; state.detalheId = null; renderAll(); }
     });
-
-    const logoutDesk = document.getElementById('logout-btn-desk');
-    if (logoutDesk) logoutDesk.addEventListener('click', () => auth.signOut());
 }
 
 function aplicarPermissoes() {

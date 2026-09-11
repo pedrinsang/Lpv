@@ -89,7 +89,6 @@ onAuthStateChanged(auth, async (user) => {
     subscribeInventory();
 });
 
-document.getElementById('btn-logout')?.addEventListener('click', logout);
 document.getElementById('logout-btn-header')?.addEventListener('click', logout);
 els.newItem?.addEventListener('click', () => openItemModal());
 els.search?.addEventListener('input', renderInventory);
